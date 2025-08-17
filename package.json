@@ -1,0 +1,43 @@
+{
+  "name": "limud-ai",
+  "version": "1.0.0",
+  "description": "LimudAI is a comprehensive Hebrew-language educational platform that revolutionizes classroom assessment and curriculum tracking through AI-powered lesson analysis, automated test generation, and real-time teaching effectiveness monitoring.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && nodemon app.js",
+    "client": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "start": "cd server && node app.js",
+    "install-deps": "npm install && cd server && npm install && cd ../client && npm install",
+    "db:migrate": "psql -U postgres -d limudai_db -f database/schema.sql",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlonKaraev/Limud-AI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AlonKaraev/Limud-AI/issues"
+  },
+  "homepage": "https://github.com/AlonKaraev/Limud-AI#readme",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.0.1",
+    "express-validator": "^7.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "nodemon": "^3.1.10"
+  }
+}
