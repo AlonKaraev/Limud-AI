@@ -327,7 +327,22 @@ const SessionManager = ({ t }) => {
     try {
       setLoading(true);
       const localSessions = await fileStorageService.getLocalRecordings();
-      setSessions(localSessions);
+      
+      // Deduplicate sessions by ID to prevent duplicates
+      const uniqueSessions = localSessions.reduce((acc, session) => {
+        if (!acc.find(existing => existing.id === session.id)) {
+          acc.push(session);
+        }
+        return acc;
+      }, []);
+      
+      console.log('Loaded sessions:', {
+        total: localSessions.length,
+        unique: uniqueSessions.length,
+        duplicatesRemoved: localSessions.length - uniqueSessions.length
+      });
+      
+      setSessions(uniqueSessions);
     } catch (error) {
       console.error('Error loading sessions:', error);
     } finally {
@@ -384,9 +399,14 @@ const SessionManager = ({ t }) => {
     try {
       console.log('Attempting to play session:', session.id);
       console.log('Session metadata:', session.metadata);
+      console.log('Session metadata duration:', session.metadata?.duration);
+      console.log('Session metadata qualityReport:', session.metadata?.qualityReport);
       
       const fullSession = await fileStorageService.getRecording(session.id);
       console.log('Retrieved full session:', fullSession);
+      console.log('Full session metadata:', fullSession?.metadata);
+      console.log('Full session metadata duration:', fullSession?.metadata?.duration);
+      console.log('Full session metadata qualityReport:', fullSession?.metadata?.qualityReport);
       
       if (fullSession && fullSession.blob) {
         console.log('Audio blob found:', {

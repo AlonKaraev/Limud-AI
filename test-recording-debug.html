@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recording Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            direction: rtl;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .info {
+            background: #f0f0f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .debug {
+            background: #e8f4f8;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Recording Debug Test</h1>
+        
+        <div class="controls">
+            <button id="startBtn">Start Recording</button>
+            <button id="pauseBtn" disabled>Pause</button>
+            <button id="resumeBtn" disabled>Resume</button>
+            <button id="stopBtn" disabled>Stop</button>
+        </div>
+        
+        <div class="info">
+            <div>Status: <span id="status">Ready</span></div>
+            <div>Duration: <span id="duration">0:00</span></div>
+            <div>Audio Level: <span id="audioLevel">0%</span></div>
+        </div>
+        
+        <div class="debug" id="debugLog">Debug log will appear here...</div>
+        
+        <div id="recordings">
+            <h3>Recordings:</h3>
+            <div id="recordingsList"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Simple AudioRecordingService for testing
+        class TestAudioRecordingService {
+            constructor() {
+                this.mediaRecorder = null;
+                this.stream = null;
+                this.recordedChunks = [];
+                this.isRecording = false;
+                this.isPaused = false;
+                this.startTime = null;
+                this.pausedDuration = 0;
+                this.pauseStartTime = null;
+                this.eventListeners = {};
+            }
+
+            log(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const debugLog = document.getElementById('debugLog');
+                debugLog.textContent += `[${timestamp}] ${message}\n`;
+                debugLog.scrollTop = debugLog.scrollHeight;
+                console.log(message);
+            }
+
+            async initialize() {
+                this.log('Initializing recording service...');
+                return true;
+            }
+
+            async requestMicrophoneAccess() {
+                this.log('Requesting microphone access...');
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.log('Microphone access granted');
+                    return { success: true };
+                } catch (error) {
+                    this.log(`Microphone access error: ${error.message}`);
+                    throw error;
+                }
+            }
+
+            async startRecording() {
+                this.log('Starting recording...');
+                
+                if (!this.stream) {
+                    await this.requestMicrophoneAccess();
+                }
+
+                this.recordedChunks = [];
+                this.pausedDuration = 0;
+                this.startTime = Date.now();
+                
+                this.mediaRecorder = new MediaRecorder(this.stream);
+                
+                this.mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        this.recordedChunks.push(event.data);
+                        this.log(`Data chunk received: ${event.data.size} bytes`);
+                    }
+                };
+
+                this.mediaRecorder.onstop = () => {
+                    this.log('MediaRecorder stopped');
+                    this.handleRecordingStop();
+                };
+
+                this.mediaRecorder.start(1000);
+                this.isRecording = true;
+                this.isPaused = false;
+
+                this.log(`Recording started at ${this.startTime}`);
+                this.emitEvent('onRecordingStart', { startTime: this.startTime });
+            }
+
+            pauseRecording() {
+                this.log('Pausing recording...');
+                if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+                    this.mediaRecorder.pause();
+                    this.isPaused = true;
+                    this.pauseStartTime = Date.now();
+                    this.log(`Recording paused at ${this.pauseStartTime}`);
+                }
+            }
+
+            resumeRecording() {
+                this.log('Resuming recording...');
+                if (this.mediaRecorder && this.mediaRecorder.state === 'paused') {
+                    if (this.pauseStartTime) {
+                        this.pausedDuration += Date.now() - this.pauseStartTime;
+                        this.pauseStartTime = null;
+                        this.log(`Total paused duration: ${this.pausedDuration}ms`);
+                    }
+                    this.mediaRecorder.resume();
+                    this.isPaused = false;
+                }
+            }
+
+            async stopRecording() {
+                this.log('Stopping recording...');
+                return new Promise((resolve) => {
+                    this.mediaRecorder.onstop = () => {
+                        const result = this.handleRecordingStop();
+                        resolve(result);
+                    };
+                    this.mediaRecorder.stop();
+                });
+            }
+
+            handleRecordingStop() {
+                const endTime = Date.now();
+                const totalDuration = this.getRecordedDuration();
+                
+                this.log(`Recording stopped. Duration: ${totalDuration}ms`);
+                
+                const audioBlob = new Blob(this.recordedChunks, { type: 'audio/webm' });
+                
+                const result = {
+                    audioBlob,
+                    duration: totalDuration,
+                    size: audioBlob.size,
+                    qualityReport: {
+                        duration: totalDuration,
+                        size: audioBlob.size
+                    }
+                };
+
+                this.isRecording = false;
+                this.isPaused = false;
+                this.startTime = null;
+                this.pausedDuration = 0;
+                this.pauseStartTime = null;
+
+                this.emitEvent('onRecordingStop', result);
+                return result;
+            }
+
+            getRecordedDuration() {
+                if (!this.startTime) {
+                    this.log('No start time, duration = 0');
+                    return 0;
+                }
+                
+                const currentTime = Date.now();
+                const totalElapsed = currentTime - this.startTime;
+                const currentPausedDuration = this.isPaused && this.pauseStartTime 
+                    ? currentTime - this.pauseStartTime 
+                    : 0;
+                
+                const duration = totalElapsed - this.pausedDuration - currentPausedDuration;
+                
+                this.log(`Duration calculation: ${totalElapsed} - ${this.pausedDuration} - ${currentPausedDuration} = ${duration}`);
+                return duration;
+            }
+
+            addEventListener(eventType, callback) {
+                if (!this.eventListeners[eventType]) {
+                    this.eventListeners[eventType] = [];
+                }
+                this.eventListeners[eventType].push(callback);
+            }
+
+            emitEvent(eventType, data) {
+                if (this.eventListeners[eventType]) {
+                    this.eventListeners[eventType].forEach(callback => callback(data));
+                }
+            }
+        }
+
+        // Test implementation
+        const recordingService = new TestAudioRecordingService();
+        const recordings = [];
+        let durationInterval = null;
+
+        // UI elements
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+        const duration = document.getElementById('duration');
+        const recordingsList = document.getElementById('recordingsList');
+
+        // Initialize
+        await recordingService.initialize();
+
+        // Event listeners
+        recordingService.addEventListener('onRecordingStart', () => {
+            status.textContent = 'Recording';
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            stopBtn.disabled = false;
+            
+            // Start duration timer
+            durationInterval = setInterval(() => {
+                const currentDuration = recordingService.getRecordedDuration();
+                duration.textContent = formatDuration(currentDuration);
+            }, 100);
+        });
+
+        recordingService.addEventListener('onRecordingStop', (result) => {
+            status.textContent = 'Stopped';
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            resumeBtn.disabled = true;
+            stopBtn.disabled = true;
+            
+            if (durationInterval) {
+                clearInterval(durationInterval);
+                durationInterval = null;
+            }
+            
+            // Add to recordings list
+            const recording = {
+                id: Date.now(),
+                duration: result.duration,
+                size: result.size,
+                timestamp: new Date().toLocaleString()
+            };
+            
+            recordings.push(recording);
+            updateRecordingsList();
+            
+            recordingService.log(`Recording saved: ${JSON.stringify(recording)}`);
+        });
+
+        // Button handlers
+        startBtn.addEventListener('click', async () => {
+            try {
+                await recordingService.startRecording();
+            } catch (error) {
+                recordingService.log(`Start recording error: ${error.message}`);
+            }
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            recordingService.pauseRecording();
+            status.textContent = 'Paused';
+            pauseBtn.disabled = true;
+            resumeBtn.disabled = false;
+        });
+
+        resumeBtn.addEventListener('click', () => {
+            recordingService.resumeRecording();
+            status.textContent = 'Recording';
+            pauseBtn.disabled = false;
+            resumeBtn.disabled = true;
+        });
+
+        stopBtn.addEventListener('click', async () => {
+            try {
+                await recordingService.stopRecording();
+            } catch (error) {
+                recordingService.log(`Stop recording error: ${error.message}`);
+            }
+        });
+
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
+        }
+
+        function updateRecordingsList() {
+            recordingsList.innerHTML = recordings.map(recording => `
+                <div style="border: 1px solid #ccc; padding: 10px; margin: 5px 0;">
+                    <div>ID: ${recording.id}</div>
+                    <div>Duration: ${formatDuration(recording.duration)}</div>
+                    <div>Size: ${recording.size} bytes</div>
+                    <div>Time: ${recording.timestamp}</div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

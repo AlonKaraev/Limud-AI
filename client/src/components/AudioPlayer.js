@@ -279,6 +279,28 @@ const AudioPlayer = ({
     }
   }, [audioBlob]);
 
+  // Initialize duration from metadata immediately
+  useEffect(() => {
+    console.log('AudioPlayer metadata changed:', metadata);
+    
+    let initialDuration = 0;
+    
+    if (metadata?.duration && metadata.duration > 0) {
+      // Use duration from recording metadata (in milliseconds, convert to seconds)
+      initialDuration = metadata.duration / 1000;
+      console.log('Setting initial duration from metadata.duration:', initialDuration);
+    } else if (metadata?.qualityReport?.duration && metadata.qualityReport.duration > 0) {
+      // Use duration from quality report (in milliseconds, convert to seconds)
+      initialDuration = metadata.qualityReport.duration / 1000;
+      console.log('Setting initial duration from qualityReport.duration:', initialDuration);
+    }
+    
+    if (initialDuration > 0) {
+      setDuration(initialDuration);
+      setIsLoading(false);
+    }
+  }, [metadata]);
+
   // Setup audio event listeners
   useEffect(() => {
     const audio = audioRef.current;
@@ -291,21 +313,66 @@ const AudioPlayer = ({
         duration: audio.duration,
         readyState: audio.readyState,
         isFinite: isFinite(audio.duration),
-        isNaN: isNaN(audio.duration)
+        isNaN: isNaN(audio.duration),
+        metadataDuration: metadata?.duration,
+        currentDurationState: duration
       });
       
-      // Ensure duration is valid
-      if (isFinite(audio.duration) && !isNaN(audio.duration) && audio.duration > 0) {
-        setDuration(audio.duration);
+      // Only update duration if we don't already have one from metadata
+      if (duration === 0) {
+        let audioDuration = 0;
+        
+        if (metadata?.duration && metadata.duration > 0) {
+          // Use duration from recording metadata (in milliseconds, convert to seconds)
+          audioDuration = metadata.duration / 1000;
+          console.log('LoadedMetadata: Using metadata duration:', audioDuration);
+        } else if (metadata?.qualityReport?.duration && metadata.qualityReport.duration > 0) {
+          // Use duration from quality report (in milliseconds, convert to seconds)
+          audioDuration = metadata.qualityReport.duration / 1000;
+          console.log('LoadedMetadata: Using quality report duration:', audioDuration);
+        } else if (isFinite(audio.duration) && !isNaN(audio.duration) && audio.duration > 0) {
+          // Use duration from audio element
+          audioDuration = audio.duration;
+          console.log('LoadedMetadata: Using audio element duration:', audioDuration);
+        } else {
+          console.warn('LoadedMetadata: No valid duration found, keeping current:', duration);
+        }
+        
+        if (audioDuration > 0) {
+          setDuration(audioDuration);
+        }
       } else {
-        console.warn('Invalid duration detected, setting to 0');
-        setDuration(0);
+        console.log('LoadedMetadata: Duration already set from metadata:', duration);
       }
+      
       setIsLoading(false);
     };
 
     const handleCanPlay = () => {
-      console.log('Audio can play');
+      console.log('Audio can play, current duration state:', duration);
+      
+      // If we still don't have a duration, try to get it again
+      if (duration === 0) {
+        let audioDuration = 0;
+        
+        if (metadata?.duration && metadata.duration > 0) {
+          audioDuration = metadata.duration / 1000;
+          console.log('CanPlay: Using metadata duration:', audioDuration);
+        } else if (metadata?.qualityReport?.duration && metadata.qualityReport.duration > 0) {
+          audioDuration = metadata.qualityReport.duration / 1000;
+          console.log('CanPlay: Using quality report duration:', audioDuration);
+        } else if (isFinite(audio.duration) && !isNaN(audio.duration) && audio.duration > 0) {
+          audioDuration = audio.duration;
+          console.log('CanPlay: Using audio element duration:', audioDuration);
+        }
+        
+        if (audioDuration > 0) {
+          setDuration(audioDuration);
+        }
+      } else {
+        console.log('CanPlay: Duration already set:', duration);
+      }
+      
       setIsLoading(false);
     };
 
@@ -378,7 +445,7 @@ const AudioPlayer = ({
       audio.removeEventListener('volumechange', handleVolumeChange);
       audio.removeEventListener('error', handleError);
     };
-  }, [skipSilence, loopMode, isLoading]);
+  }, [skipSilence, loopMode, isLoading, duration, metadata]);
 
   const togglePlay = async () => {
     console.log('togglePlay called!', { isLoading, isPlaying });

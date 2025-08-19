@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Recordings Database</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            direction: rtl;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .info {
+            background: #f0f0f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Clear Recordings Database</h1>
+        <p>This utility will help clear any duplicate or corrupted recordings from the local IndexedDB database.</p>
+        
+        <button onclick="showRecordings()">Show Current Recordings</button>
+        <button onclick="clearAllRecordings()">Clear All Recordings</button>
+        <button onclick="removeDuplicates()">Remove Duplicates Only</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function showRecordings() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="info">Loading recordings...</div>';
+            
+            try {
+                const recordings = await getLocalRecordings();
+                
+                if (recordings.length === 0) {
+                    results.innerHTML = '<div class="info">No recordings found in local database.</div>';
+                    return;
+                }
+                
+                let html = `<div class="info">Found ${recordings.length} recordings:</div>`;
+                html += '<ul>';
+                
+                recordings.forEach((recording, index) => {
+                    const duration = recording.metadata?.duration || 0;
+                    const size = recording.metadata?.fileSize || 0;
+                    const createdAt = recording.metadata?.createdAt || 'Unknown';
+                    
+                    html += `<li>
+                        <strong>ID:</strong> ${recording.id}<br>
+                        <strong>Filename:</strong> ${recording.filename}<br>
+                        <strong>Duration:</strong> ${formatDuration(duration)}<br>
+                        <strong>Size:</strong> ${formatFileSize(size)}<br>
+                        <strong>Created:</strong> ${new Date(createdAt).toLocaleString()}<br>
+                        <hr>
+                    </li>`;
+                });
+                
+                html += '</ul>';
+                results.innerHTML = html;
+                
+            } catch (error) {
+                results.innerHTML = `<div class="error">Error loading recordings: ${error.message}</div>`;
+            }
+        }
+        
+        async function clearAllRecordings() {
+            if (!confirm('Are you sure you want to delete ALL recordings? This cannot be undone.')) {
+                return;
+            }
+            
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="info">Clearing all recordings...</div>';
+            
+            try {
+                await clearRecordingsDB();
+                results.innerHTML = '<div class="success">All recordings have been cleared successfully!</div>';
+            } catch (error) {
+                results.innerHTML = `<div class="error">Error clearing recordings: ${error.message}</div>`;
+            }
+        }
+        
+        async function removeDuplicates() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="info">Removing duplicates...</div>';
+            
+            try {
+                const recordings = await getLocalRecordings();
+                const seen = new Set();
+                const duplicates = [];
+                
+                recordings.forEach(recording => {
+                    const key = `${recording.filename}_${recording.metadata?.createdAt}`;
+                    if (seen.has(key)) {
+                        duplicates.push(recording.id);
+                    } else {
+                        seen.add(key);
+                    }
+                });
+                
+                if (duplicates.length === 0) {
+                    results.innerHTML = '<div class="info">No duplicates found!</div>';
+                    return;
+                }
+                
+                // Remove duplicates
+                for (const id of duplicates) {
+                    await deleteRecording(id);
+                }
+                
+                results.innerHTML = `<div class="success">Removed ${duplicates.length} duplicate recordings!</div>`;
+                
+            } catch (error) {
+                results.innerHTML = `<div class="error">Error removing duplicates: ${error.message}</div>`;
+            }
+        }
+        
+        function getLocalRecordings() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('LimudAI_Recordings', 1);
+                
+                request.onerror = () => reject(request.error);
+                
+                request.onsuccess = (event) => {
+                    const db = event.target.result;
+                    const transaction = db.transaction(['recordings'], 'readonly');
+                    const store = transaction.objectStore('recordings');
+                    const getAllRequest = store.getAll();
+                    
+                    getAllRequest.onsuccess = () => resolve(getAllRequest.result);
+                    getAllRequest.onerror = () => reject(getAllRequest.error);
+                };
+            });
+        }
+        
+        function deleteRecording(recordingId) {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('LimudAI_Recordings', 1);
+                
+                request.onerror = () => reject(request.error);
+                
+                request.onsuccess = (event) => {
+                    const db = event.target.result;
+                    const transaction = db.transaction(['recordings'], 'readwrite');
+                    const store = transaction.objectStore('recordings');
+                    const deleteRequest = store.delete(recordingId);
+                    
+                    deleteRequest.onsuccess = () => resolve(true);
+                    deleteRequest.onerror = () => reject(deleteRequest.error);
+                };
+            });
+        }
+        
+        function clearRecordingsDB() {
+            return new Promise((resolve, reject) => {
+                const deleteRequest = indexedDB.deleteDatabase('LimudAI_Recordings');
+                
+                deleteRequest.onsuccess = () => resolve();
+                deleteRequest.onerror = () => reject(deleteRequest.error);
+                deleteRequest.onblocked = () => reject(new Error('Database deletion blocked'));
+            });
+        }
+        
+        function formatDuration(ms) {
+            if (!ms) return '0:00';
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Player Debug Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .audio-player {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 10px 0;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #ddd;
+            border-radius: 3px;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            border-radius: 3px;
+            transition: width 0.1s;
+        }
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            margin: 10px 0;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        .metadata-input {
+            margin: 10px 0;
+        }
+        .metadata-input label {
+            display: block;
+            margin: 5px 0;
+        }
+        .metadata-input input {
+            width: 200px;
+            padding: 4px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Audio Player Debug Test</h1>
+        
+        <div class="test-section">
+            <h3>Test 1: Basic Audio Player with Metadata</h3>
+            <input type="file" id="audioFile" accept="audio/*">
+            
+            <div class="metadata-input">
+                <label>Duration (ms): <input type="number" id="durationInput" value="30000" placeholder="30000"></label>
+                <label>Lesson Name: <input type="text" id="lessonNameInput" value="Test Lesson" placeholder="Test Lesson"></label>
+                <button onclick="createTestPlayer()">Create Player with Metadata</button>
+            </div>
+            
+            <div id="playerContainer"></div>
+            <div id="debugInfo" class="debug-info"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 2: Native HTML5 Audio Element</h3>
+            <div id="nativeAudioContainer"></div>
+            <div id="nativeDebugInfo" class="debug-info"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentAudio = null;
+        let currentBlob = null;
+        let testMetadata = null;
+
+        function log(message, containerId = 'debugInfo') {
+            const container = document.getElementById(containerId);
+            const timestamp = new Date().toLocaleTimeString();
+            container.textContent += `[${timestamp}] ${message}\n`;
+            console.log(message);
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds) || seconds === null || seconds === undefined || seconds < 0) {
+                return '0:00';
+            }
+            if (!isFinite(seconds)) {
+                return '0:00';
+            }
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function createTestPlayer() {
+            const fileInput = document.getElementById('audioFile');
+            const durationInput = document.getElementById('durationInput');
+            const lessonNameInput = document.getElementById('lessonNameInput');
+            
+            if (!fileInput.files[0]) {
+                alert('Please select an audio file first');
+                return;
+            }
+
+            currentBlob = fileInput.files[0];
+            testMetadata = {
+                duration: parseInt(durationInput.value) || 30000,
+                lessonName: lessonNameInput.value || 'Test Lesson',
+                createdAt: new Date().toISOString(),
+                fileSize: currentBlob.size,
+                mimeType: currentBlob.type,
+                qualityReport: {
+                    duration: parseInt(durationInput.value) || 30000
+                }
+            };
+
+            log('Creating test player with metadata:');
+            log(JSON.stringify(testMetadata, null, 2));
+
+            createCustomPlayer();
+            createNativePlayer();
+        }
+
+        function createCustomPlayer() {
+            const container = document.getElementById('playerContainer');
+            const audioUrl = URL.createObjectURL(currentBlob);
+            
+            let isPlaying = false;
+            let currentTime = 0;
+            let duration = 0;
+            let isLoading = true;
+
+            // Initialize duration from metadata immediately
+            if (testMetadata?.duration && testMetadata.duration > 0) {
+                duration = testMetadata.duration / 1000; // Convert ms to seconds
+                isLoading = false;
+                log(`Set initial duration from metadata: ${duration} seconds`);
+            } else if (testMetadata?.qualityReport?.duration && testMetadata.qualityReport.duration > 0) {
+                duration = testMetadata.qualityReport.duration / 1000;
+                isLoading = false;
+                log(`Set initial duration from quality report: ${duration} seconds`);
+            }
+
+            container.innerHTML = `
+                <div class="audio-player">
+                    <h4>${testMetadata.lessonName}</h4>
+                    <audio id="testAudio" preload="metadata"></audio>
+                    <div class="controls">
+                        <button id="playBtn" ${isLoading ? 'disabled' : ''}>▶️ Play</button>
+                        <button onclick="skipTime(-10)">⏪ -10s</button>
+                        <button onclick="skipTime(10)">⏩ +10s</button>
+                    </div>
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                    <div class="time-display">
+                        <span id="currentTimeDisplay">0:00</span>
+                        <span id="durationDisplay">${formatTime(duration)}</span>
+                    </div>
+                </div>
+            `;
+
+            const audio = document.getElementById('testAudio');
+            const playBtn = document.getElementById('playBtn');
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            const currentTimeDisplay = document.getElementById('currentTimeDisplay');
+            const durationDisplay = document.getElementById('durationDisplay');
+
+            audio.src = audioUrl;
+            currentAudio = audio;
+
+            // Event listeners
+            audio.addEventListener('loadedmetadata', () => {
+                log(`Audio metadata loaded: duration=${audio.duration}, readyState=${audio.readyState}`);
+                
+                // Only update duration if we don't already have one from metadata
+                if (duration === 0) {
+                    if (isFinite(audio.duration) && !isNaN(audio.duration) && audio.duration > 0) {
+                        duration = audio.duration;
+                        durationDisplay.textContent = formatTime(duration);
+                        log(`Updated duration from audio element: ${duration} seconds`);
+                    }
+                }
+                isLoading = false;
+                playBtn.disabled = false;
+            });
+
+            audio.addEventListener('canplay', () => {
+                log(`Audio can play: duration=${audio.duration}, readyState=${audio.readyState}`);
+                isLoading = false;
+                playBtn.disabled = false;
+            });
+
+            audio.addEventListener('timeupdate', () => {
+                if (isFinite(audio.currentTime) && !isNaN(audio.currentTime) && audio.currentTime >= 0) {
+                    currentTime = audio.currentTime;
+                    currentTimeDisplay.textContent = formatTime(currentTime);
+                    
+                    if (duration > 0) {
+                        const progress = (currentTime / duration) * 100;
+                        progressFill.style.width = progress + '%';
+                    }
+                }
+            });
+
+            audio.addEventListener('play', () => {
+                isPlaying = true;
+                playBtn.textContent = '⏸️ Pause';
+                log('Audio started playing');
+            });
+
+            audio.addEventListener('pause', () => {
+                isPlaying = false;
+                playBtn.textContent = '▶️ Play';
+                log('Audio paused');
+            });
+
+            audio.addEventListener('ended', () => {
+                isPlaying = false;
+                playBtn.textContent = '▶️ Play';
+                log('Audio ended');
+            });
+
+            audio.addEventListener('error', (e) => {
+                log(`Audio error: ${e.message || 'Unknown error'}`);
+                isLoading = false;
+                playBtn.disabled = false;
+            });
+
+            playBtn.addEventListener('click', () => {
+                if (isPlaying) {
+                    audio.pause();
+                } else {
+                    audio.play().catch(error => {
+                        log(`Play error: ${error.message}`);
+                    });
+                }
+            });
+
+            progressBar.addEventListener('click', (e) => {
+                if (duration > 0) {
+                    const rect = progressBar.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const percentage = clickX / rect.width;
+                    const newTime = percentage * duration;
+                    audio.currentTime = newTime;
+                    log(`Seeked to: ${formatTime(newTime)}`);
+                }
+            });
+
+            window.skipTime = (seconds) => {
+                if (audio) {
+                    const newTime = Math.max(0, Math.min(duration, audio.currentTime + seconds));
+                    audio.currentTime = newTime;
+                    log(`Skipped ${seconds}s to: ${formatTime(newTime)}`);
+                }
+            };
+
+            log('Custom player created successfully');
+        }
+
+        function createNativePlayer() {
+            const container = document.getElementById('nativeAudioContainer');
+            const audioUrl = URL.createObjectURL(currentBlob);
+            
+            container.innerHTML = `
+                <div class="audio-player">
+                    <h4>Native HTML5 Audio Player</h4>
+                    <audio id="nativeAudio" controls preload="metadata" style="width: 100%;">
+                        <source src="${audioUrl}" type="${currentBlob.type}">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+            `;
+
+            const nativeAudio = document.getElementById('nativeAudio');
+            
+            nativeAudio.addEventListener('loadedmetadata', () => {
+                log(`Native audio metadata loaded: duration=${nativeAudio.duration}`, 'nativeDebugInfo');
+            });
+
+            nativeAudio.addEventListener('canplay', () => {
+                log(`Native audio can play: duration=${nativeAudio.duration}`, 'nativeDebugInfo');
+            });
+
+            nativeAudio.addEventListener('timeupdate', () => {
+                log(`Native audio time: ${formatTime(nativeAudio.currentTime)} / ${formatTime(nativeAudio.duration)}`, 'nativeDebugInfo');
+            });
+
+            log('Native player created successfully', 'nativeDebugInfo');
+        }
+
+        // File input change handler
+        document.getElementById('audioFile').addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                log(`File selected: ${e.target.files[0].name}, size: ${e.target.files[0].size} bytes, type: ${e.target.files[0].type}`);
+            }
+        });
+
+        // Clear debug info
+        function clearDebug() {
+            document.getElementById('debugInfo').textContent = '';
+            document.getElementById('nativeDebugInfo').textContent = '';
+        }
+
+        log('Debug page loaded. Please select an audio file and test the player.');
+    </script>
+</body>
+</html>

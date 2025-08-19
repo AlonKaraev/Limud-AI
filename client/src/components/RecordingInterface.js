@@ -312,12 +312,22 @@ const RecordingInterface = ({ t, onRecordingComplete }) => {
   }, []);
 
   const handleRecordingStart = () => {
+    console.log('Recording started event received');
     setRecordingState('recording');
     setError('');
+    setDuration(0); // Reset duration
     
     // Start duration timer
     durationIntervalRef.current = setInterval(() => {
-      setDuration(recordingService.getRecordedDuration());
+      const currentDuration = recordingService.getRecordedDuration();
+      const status = recordingService.getStatus();
+      console.log('Duration update:', {
+        currentDuration,
+        status,
+        isRecording: status.isRecording,
+        startTime: recordingService.startTime
+      });
+      setDuration(currentDuration);
     }, 100);
   };
 

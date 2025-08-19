@@ -32,6 +32,23 @@ class FileStorageService {
       // Generate unique filename
       const filename = this.generateFilename(metadata);
       
+      // Create a deterministic recording ID based on content and timestamp
+      // This helps prevent duplicates from the same recording session
+      const contentHash = await this.generateContentHash(audioBlob);
+      const recordingId = `rec_${Date.now()}_${contentHash.substring(0, 8)}`;
+      
+      // Check if this recording already exists locally
+      const existingRecording = await this.getRecording(recordingId);
+      if (existingRecording) {
+        console.log('Recording already exists, returning existing ID:', recordingId);
+        return {
+          success: true,
+          recordingId: existingRecording.id,
+          filename: existingRecording.filename,
+          size: existingRecording.blob?.size || existingRecording.metadata?.fileSize || 0
+        };
+      }
+      
       // Compress audio if enabled and file is large
       let processedBlob = audioBlob;
       if (this.compressionEnabled && audioBlob.size > 10 * 1024 * 1024) { // 10MB
@@ -46,7 +63,7 @@ class FileStorageService {
 
       // Create recording object
       const recording = {
-        id: this.generateId(),
+        id: recordingId,
         filename,
         blob: processedBlob,
         metadata: {
@@ -55,15 +72,23 @@ class FileStorageService {
           fileSize: processedBlob.size,
           mimeType: audioBlob.type,
           createdAt: new Date().toISOString(),
-          duration: qualityReport.duration,
+          duration: qualityReport?.duration || 0,
           qualityReport
         }
       };
 
+      console.log('FileStorageService: Creating recording object:', {
+        id: recordingId,
+        filename,
+        blobSize: processedBlob.size,
+        metadataDuration: qualityReport?.duration,
+        qualityReportDuration: qualityReport?.duration
+      });
+
       // Store locally first
       await this.storeLocally(recording);
       
-      // Add to upload queue
+      // Add to upload queue (with additional duplicate check)
       this.addToUploadQueue(recording);
       
       return {
@@ -111,6 +136,22 @@ class FileStorageService {
   }
 
   /**
+   * Generate content hash for duplicate detection
+   */
+  async generateContentHash(blob) {
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (error) {
+      console.warn('Failed to generate content hash, using fallback:', error);
+      // Fallback to simple hash based on size and timestamp
+      return `${blob.size}_${Date.now()}`;
+    }
+  }
+
+  /**
    * Store recording locally using IndexedDB
    */
   async storeLocally(recording) {
@@ -133,10 +174,38 @@ class FileStorageService {
         const transaction = db.transaction(['recordings'], 'readwrite');
         const store = transaction.objectStore('recordings');
         
-        const addRequest = store.add(recording);
+        // Check if recording already exists
+        const checkRequest = store.get(recording.id);
         
-        addRequest.onsuccess = () => resolve(recording.id);
-        addRequest.onerror = () => reject(addRequest.error);
+        checkRequest.onsuccess = () => {
+          if (checkRequest.result) {
+            // Recording already exists, resolve with existing ID
+            console.log('Recording already exists in IndexedDB, skipping duplicate:', recording.id);
+            resolve(recording.id);
+          } else {
+            // Recording doesn't exist, add it
+            const addRequest = store.add(recording);
+            
+            addRequest.onsuccess = () => {
+              console.log('Recording successfully stored in IndexedDB:', recording.id);
+              resolve(recording.id);
+            };
+            addRequest.onerror = () => {
+              console.error('Error storing recording in IndexedDB:', addRequest.error);
+              reject(addRequest.error);
+            };
+          }
+        };
+        
+        checkRequest.onerror = () => {
+          console.error('Error checking for existing recording:', checkRequest.error);
+          reject(checkRequest.error);
+        };
+        
+        transaction.onerror = () => {
+          console.error('Transaction error:', transaction.error);
+          reject(transaction.error);
+        };
       };
     });
   }
@@ -226,6 +295,25 @@ class FileStorageService {
    * Add recording to upload queue
    */
   addToUploadQueue(recording) {
+    // Check if recording is already in queue to prevent duplicates
+    const existingIndex = this.uploadQueue.findIndex(item => item.id === recording.id);
+    if (existingIndex !== -1) {
+      console.log('Recording already in upload queue, skipping:', recording.id);
+      return;
+    }
+    
+    // Also check for similar recordings based on filename and size to prevent near-duplicates
+    const similarRecording = this.uploadQueue.find(item => 
+      item.filename === recording.filename && 
+      Math.abs(item.blob?.size - recording.blob?.size) < 1000 // Within 1KB
+    );
+    
+    if (similarRecording) {
+      console.log('Similar recording already in upload queue, skipping:', recording.id, 'similar to:', similarRecording.id);
+      return;
+    }
+    
+    console.log('Adding recording to upload queue:', recording.id);
     this.uploadQueue.push(recording);
     
     // Start upload process if not already running

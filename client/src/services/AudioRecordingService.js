@@ -373,22 +373,25 @@ class AudioRecordingService {
    */
   handleRecordingStop() {
     const endTime = Date.now();
+    
+    // Calculate duration BEFORE resetting state
     const totalDuration = this.getRecordedDuration();
+    
+    console.log('Recording stop details:', {
+      startTime: this.startTime,
+      endTime: endTime,
+      totalDuration: totalDuration,
+      pausedDuration: this.pausedDuration,
+      chunksCount: this.recordedChunks.length
+    });
     
     // Create final audio blob
     const audioBlob = new Blob(this.recordedChunks, { 
       type: this.config.mimeType 
     });
 
-    // Generate quality report
+    // Generate quality report with the calculated duration
     const qualityReport = this.generateQualityReport(audioBlob, totalDuration);
-
-    // Reset state
-    this.isRecording = false;
-    this.isPaused = false;
-    this.startTime = null;
-    this.pausedDuration = 0;
-    this.pauseStartTime = null;
 
     const result = {
       audioBlob,
@@ -399,6 +402,13 @@ class AudioRecordingService {
       endTime
     };
 
+    // Reset state AFTER creating result
+    this.isRecording = false;
+    this.isPaused = false;
+    this.startTime = null;
+    this.pausedDuration = 0;
+    this.pauseStartTime = null;
+
     this.emitEvent('onRecordingStop', result);
     
     return result;
@@ -408,7 +418,10 @@ class AudioRecordingService {
    * Get current recorded duration in milliseconds
    */
   getRecordedDuration() {
-    if (!this.startTime) return 0;
+    if (!this.startTime) {
+      console.log('getRecordedDuration: No startTime, returning 0');
+      return 0;
+    }
     
     const currentTime = Date.now();
     const totalElapsed = currentTime - this.startTime;
@@ -416,15 +429,36 @@ class AudioRecordingService {
       ? currentTime - this.pauseStartTime 
       : 0;
     
-    return totalElapsed - this.pausedDuration - currentPausedDuration;
+    const duration = totalElapsed - this.pausedDuration - currentPausedDuration;
+    
+    console.log('getRecordedDuration calculation:', {
+      startTime: this.startTime,
+      currentTime,
+      totalElapsed,
+      pausedDuration: this.pausedDuration,
+      currentPausedDuration,
+      finalDuration: duration
+    });
+    
+    return Math.max(0, duration); // Ensure non-negative duration
   }
 
   /**
    * Generate quality assessment report
    */
   generateQualityReport(audioBlob, duration) {
+    console.log('generateQualityReport called with:', { 
+      blobSize: audioBlob.size, 
+      duration: duration,
+      durationInSeconds: duration / 1000
+    });
+    
+    // Ensure duration is valid
+    const validDuration = Math.max(duration || 0, 0);
     const sizeInMB = (audioBlob.size / (1024 * 1024)).toFixed(2);
-    const bitrate = Math.round((audioBlob.size * 8) / (duration / 1000));
+    
+    // Avoid division by zero
+    const bitrate = validDuration > 0 ? Math.round((audioBlob.size * 8) / (validDuration / 1000)) : 0;
     
     const issues = [];
     const recommendations = [];
@@ -445,8 +479,8 @@ class AudioRecordingService {
       recommendations.push('שקול דחיסה נוספת או הקלטה באיכות נמוכה יותר');
     }
 
-    return {
-      duration,
+    const report = {
+      duration: validDuration,
       size: audioBlob.size,
       sizeInMB,
       bitrate,
@@ -458,6 +492,9 @@ class AudioRecordingService {
       recommendations,
       overallQuality: this.calculateOverallQuality()
     };
+    
+    console.log('Generated quality report:', report);
+    return report;
   }
 
   /**

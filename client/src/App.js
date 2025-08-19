@@ -768,15 +768,36 @@ const Dashboard = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('overview');
   const [fileStorageService] = useState(() => new (require('./services/FileStorageService').default)());
+  const [isProcessingRecording, setIsProcessingRecording] = useState(false);
 
   const handleRecordingComplete = async (recordingData) => {
+    // Prevent duplicate processing
+    if (isProcessingRecording) {
+      console.log('Recording already being processed, ignoring duplicate call');
+      return;
+    }
+
+    setIsProcessingRecording(true);
+    
     try {
+      console.log('Processing recording completion:', {
+        duration: recordingData.duration,
+        qualityReportDuration: recordingData.qualityReport?.duration,
+        blobSize: recordingData.audioBlob?.size
+      });
+      
       const result = await fileStorageService.saveRecording(recordingData);
-      console.log('Recording saved:', result);
+      console.log('Recording saved successfully:', result);
+      
       // Optionally switch to sessions tab to show the new recording
       setActiveTab('sessions');
     } catch (error) {
       console.error('Error saving recording:', error);
+    } finally {
+      // Reset the flag after a short delay to allow for legitimate subsequent recordings
+      setTimeout(() => {
+        setIsProcessingRecording(false);
+      }, 2000);
     }
   };
 

@@ -436,6 +436,29 @@ router.get('/stats', authenticate, async (req, res) => {
 async function saveRecordingToDatabase({ userId, recordingId, filename, filePath, fileSize, metadata }) {
   const db = require('../config/database-sqlite');
   
+  // Check if recording already exists to prevent duplicates
+  const existingRecording = db.prepare(`
+    SELECT id FROM recordings 
+    WHERE user_id = ? AND recording_id = ?
+  `).get(userId, recordingId);
+  
+  if (existingRecording) {
+    console.log('Recording already exists in database, returning existing record:', recordingId);
+    const fullRecord = db.prepare(`
+      SELECT * FROM recordings WHERE id = ?
+    `).get(existingRecording.id);
+    
+    return {
+      id: fullRecord.id,
+      recording_id: fullRecord.recording_id,
+      filename: fullRecord.filename,
+      file_path: fullRecord.file_path,
+      file_size: fullRecord.file_size,
+      metadata: JSON.parse(fullRecord.metadata || '{}'),
+      created_at: fullRecord.created_at
+    };
+  }
+  
   const stmt = db.prepare(`
     INSERT INTO recordings (
       user_id, recording_id, filename, file_path, file_size, 
@@ -451,6 +474,13 @@ async function saveRecordingToDatabase({ userId, recordingId, filename, filePath
     fileSize,
     JSON.stringify(metadata)
   );
+
+  console.log('Recording saved to database:', {
+    id: result.lastInsertRowid,
+    recordingId,
+    filename,
+    fileSize
+  });
 
   return {
     id: result.lastInsertRowid,
