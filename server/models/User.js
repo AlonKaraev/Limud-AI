@@ -113,14 +113,13 @@ class User {
   async verifyAccount(token) {
     const queryText = `
       UPDATE users 
-      SET is_verified = true, verification_token = NULL 
-      WHERE id = $1 AND verification_token = $2
-      RETURNING *
+      SET is_verified = 1, verification_token = NULL 
+      WHERE id = ? AND verification_token = ?
     `;
     
-    const result = await query(queryText, [this.id, token]);
+    const result = await run(queryText, [this.id, token]);
     
-    if (result.rows.length === 0) {
+    if (result.changes === 0) {
       throw new Error('טוקן אימות לא תקין');
     }
     
@@ -131,16 +130,15 @@ class User {
   // Generate password reset token
   async generatePasswordResetToken() {
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetExpires = new Date(Date.now() + 3600000); // 1 hour from now
+    const resetExpires = new Date(Date.now() + 3600000).toISOString(); // 1 hour from now
     
     const queryText = `
       UPDATE users 
-      SET reset_password_token = $1, reset_password_expires = $2 
-      WHERE id = $3
-      RETURNING *
+      SET reset_password_token = ?, reset_password_expires = ? 
+      WHERE id = ?
     `;
     
-    await query(queryText, [resetToken, resetExpires, this.id]);
+    await run(queryText, [resetToken, resetExpires, this.id]);
     return resetToken;
   }
 
@@ -148,7 +146,7 @@ class User {
   static async resetPassword(token, newPassword) {
     const queryText = `
       SELECT * FROM users 
-      WHERE reset_password_token = $1 AND reset_password_expires > NOW()
+      WHERE reset_password_token = ? AND reset_password_expires > datetime('now')
     `;
     
     const result = await query(queryText, [token]);
@@ -163,13 +161,16 @@ class User {
     
     const updateQuery = `
       UPDATE users 
-      SET password_hash = $1, reset_password_token = NULL, reset_password_expires = NULL 
-      WHERE id = $2
-      RETURNING *
+      SET password_hash = ?, reset_password_token = NULL, reset_password_expires = NULL 
+      WHERE id = ?
     `;
     
-    const updateResult = await query(updateQuery, [passwordHash, user.id]);
-    return new User(updateResult.rows[0]);
+    await run(updateQuery, [passwordHash, user.id]);
+    
+    // Get updated user
+    const getUserQuery = 'SELECT * FROM users WHERE id = ?';
+    const userResult = await query(getUserQuery, [user.id]);
+    return new User(userResult.rows[0]);
   }
 
   // Update user profile
@@ -177,13 +178,11 @@ class User {
     const allowedFields = ['first_name', 'last_name', 'phone'];
     const updates = [];
     const values = [];
-    let paramCount = 1;
     
     for (const [key, value] of Object.entries(updateData)) {
       if (allowedFields.includes(key) && value !== undefined) {
-        updates.push(`${key} = $${paramCount}`);
+        updates.push(`${key} = ?`);
         values.push(value);
-        paramCount++;
       }
     }
     
@@ -195,21 +194,24 @@ class User {
     const queryText = `
       UPDATE users 
       SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP 
-      WHERE id = $${paramCount}
-      RETURNING *
+      WHERE id = ?
     `;
     
-    const result = await query(queryText, values);
-    return new User(result.rows[0]);
+    await run(queryText, values);
+    
+    // Get updated user
+    const getUserQuery = 'SELECT * FROM users WHERE id = ?';
+    const userResult = await query(getUserQuery, [this.id]);
+    return new User(userResult.rows[0]);
   }
 
   // Get users by school (for teachers to see their students)
   static async getBySchool(schoolId, role = null) {
-    let queryText = 'SELECT * FROM users WHERE school_id = $1';
+    let queryText = 'SELECT * FROM users WHERE school_id = ?';
     const values = [schoolId];
     
     if (role) {
-      queryText += ' AND role = $2';
+      queryText += ' AND role = ?';
       values.push(role);
     }
     

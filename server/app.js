@@ -65,6 +65,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/recordings', require('./routes/recordings'));
 
 // Serve static files from React app in production
 if (process.env.NODE_ENV === 'production') {

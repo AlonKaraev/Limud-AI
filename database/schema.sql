@@ -56,6 +56,29 @@ CREATE TRIGGER update_schools_updated_at BEFORE UPDATE ON schools
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Recordings table for audio lesson recordings
+CREATE TABLE recordings (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recording_id VARCHAR(255) NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    file_path TEXT NOT NULL,
+    file_size BIGINT NOT NULL,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for recordings
+CREATE INDEX idx_recordings_user_id ON recordings(user_id);
+CREATE INDEX idx_recordings_recording_id ON recordings(recording_id);
+CREATE INDEX idx_recordings_created_at ON recordings(created_at);
+CREATE INDEX idx_recordings_metadata ON recordings USING GIN(metadata);
+
+-- Apply update trigger to recordings
+CREATE TRIGGER update_recordings_updated_at BEFORE UPDATE ON recordings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Insert sample school
 INSERT INTO schools (name, address, phone, email) VALUES 
 ('בית ספר דוגמה', 'רחוב הרצל 123, תל אביב', '03-1234567', 'info@example-school.co.il');

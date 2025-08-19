@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Player Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            direction: rtl;
+            text-align: right;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .play-btn {
+            background: #3498db;
+            color: white;
+        }
+        .play-btn:hover {
+            background: #2980b9;
+        }
+        .info {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        #log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>בדיקת נגן אודיו</h1>
+        
+        <div class="info">
+            <strong>הוראות:</strong><br>
+            1. בחר קובץ אודיו מהמחשב<br>
+            2. לחץ על כפתור "נגן" לבדיקת הפעלה<br>
+            3. בדוק את הלוג לפרטים נוספים
+        </div>
+
+        <input type="file" id="audioFile" accept="audio/*" style="margin: 10px 0;">
+        
+        <audio id="audioPlayer" controls style="width: 100%; margin: 10px 0;"></audio>
+        
+        <div class="controls">
+            <button id="playBtn" class="play-btn">נגן</button>
+            <button id="pauseBtn">השהה</button>
+            <button id="stopBtn">עצור</button>
+            <button id="testBtn">בדיקת דפדפן</button>
+        </div>
+
+        <div id="status" class="info">
+            סטטוס: מוכן לבדיקה
+        </div>
+
+        <h3>לוג פעילות:</h3>
+        <div id="log"></div>
+        
+        <button onclick="clearLog()" style="margin-top: 10px;">נקה לוג</button>
+    </div>
+
+    <script>
+        const audioPlayer = document.getElementById('audioPlayer');
+        const audioFile = document.getElementById('audioFile');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const testBtn = document.getElementById('testBtn');
+        const status = document.getElementById('status');
+        const log = document.getElementById('log');
+
+        let audioBlob = null;
+        let audioUrl = null;
+
+        function logMessage(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('he-IL');
+            const logEntry = `[${timestamp}] ${message}\n`;
+            log.textContent += logEntry;
+            log.scrollTop = log.scrollHeight;
+            
+            console.log(message);
+        }
+
+        function updateStatus(message, type = 'info') {
+            status.textContent = message;
+            status.className = type;
+        }
+
+        // File selection handler
+        audioFile.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                logMessage(`קובץ נבחר: ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+                
+                // Clean up previous URL
+                if (audioUrl) {
+                    URL.revokeObjectURL(audioUrl);
+                }
+                
+                // Create new blob URL
+                audioBlob = file;
+                audioUrl = URL.createObjectURL(file);
+                audioPlayer.src = audioUrl;
+                
+                updateStatus(`קובץ נטען: ${file.name}`, 'success');
+                logMessage(`URL נוצר: ${audioUrl}`);
+            }
+        });
+
+        // Audio event listeners
+        audioPlayer.addEventListener('loadstart', () => logMessage('התחלת טעינה'));
+        audioPlayer.addEventListener('loadedmetadata', () => {
+            logMessage(`מטאדטה נטענה - משך: ${audioPlayer.duration.toFixed(2)} שניות`);
+        });
+        audioPlayer.addEventListener('canplay', () => logMessage('מוכן לנגינה'));
+        audioPlayer.addEventListener('canplaythrough', () => logMessage('מוכן לנגינה מלאה'));
+        audioPlayer.addEventListener('play', () => {
+            logMessage('נגינה התחילה');
+            updateStatus('מנגן...', 'success');
+        });
+        audioPlayer.addEventListener('pause', () => {
+            logMessage('נגינה הושהתה');
+            updateStatus('מושהה', 'info');
+        });
+        audioPlayer.addEventListener('ended', () => {
+            logMessage('נגינה הסתיימה');
+            updateStatus('הסתיים', 'info');
+        });
+        audioPlayer.addEventListener('error', (e) => {
+            logMessage(`שגיאה באודיו: ${e.message || 'שגיאה לא ידועה'}`, 'error');
+            updateStatus('שגיאה באודיו', 'error');
+        });
+
+        // Control buttons
+        playBtn.addEventListener('click', async () => {
+            logMessage('לחיצה על כפתור נגן');
+            
+            if (!audioPlayer.src) {
+                logMessage('אין מקור אודיו', 'error');
+                updateStatus('אין קובץ אודיו', 'error');
+                return;
+            }
+
+            try {
+                logMessage(`מצב אודיו: readyState=${audioPlayer.readyState}, networkState=${audioPlayer.networkState}`);
+                
+                if (audioPlayer.readyState < 2) {
+                    logMessage('ממתין לטעינת אודיו...');
+                    updateStatus('טוען אודיו...', 'info');
+                }
+                
+                await audioPlayer.play();
+                logMessage('נגינה התחילה בהצלחה');
+                
+            } catch (error) {
+                logMessage(`שגיאה בנגינה: ${error.name} - ${error.message}`, 'error');
+                updateStatus(`שגיאה: ${error.name}`, 'error');
+                
+                if (error.name === 'NotAllowedError') {
+                    alert('הדפדפן חוסם נגינה אוטומטית. אנא לחץ שוב על כפתור הנגינה.');
+                }
+            }
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            logMessage('לחיצה על כפתור השהיה');
+            audioPlayer.pause();
+        });
+
+        stopBtn.addEventListener('click', () => {
+            logMessage('לחיצה על כפתור עצירה');
+            audioPlayer.pause();
+            audioPlayer.currentTime = 0;
+        });
+
+        testBtn.addEventListener('click', () => {
+            logMessage('=== בדיקת תמיכת דפדפן ===');
+            logMessage(`User Agent: ${navigator.userAgent}`);
+            logMessage(`Audio support: ${!!window.Audio}`);
+            logMessage(`MediaSource support: ${!!window.MediaSource}`);
+            logMessage(`Blob support: ${!!window.Blob}`);
+            logMessage(`URL.createObjectURL support: ${!!window.URL && !!window.URL.createObjectURL}`);
+            
+            // Test audio formats
+            const audio = new Audio();
+            const formats = {
+                'MP3': 'audio/mpeg',
+                'WAV': 'audio/wav',
+                'OGG': 'audio/ogg',
+                'WebM': 'audio/webm',
+                'AAC': 'audio/aac'
+            };
+            
+            logMessage('תמיכה בפורמטים:');
+            for (const [name, type] of Object.entries(formats)) {
+                const support = audio.canPlayType(type);
+                logMessage(`  ${name}: ${support || 'לא נתמך'}`);
+            }
+            
+            logMessage('=== סיום בדיקה ===');
+        });
+
+        function clearLog() {
+            log.textContent = '';
+        }
+
+        // Initial browser test
+        logMessage('נגן אודיו נטען');
+        logMessage(`דפדפן: ${navigator.userAgent.split(' ').pop()}`);
+    </script>
+</body>
+</html>

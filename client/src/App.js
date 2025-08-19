@@ -1,6 +1,8 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import styled from 'styled-components';
 import { heTranslations } from './translations';
+import RecordingInterface from './components/RecordingInterface';
+import SessionManager from './components/SessionManager';
 
 // Create contexts for global state management
 const AuthContext = createContext();
@@ -764,46 +766,121 @@ const RegisterForm = () => {
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [fileStorageService] = useState(() => new (require('./services/FileStorageService').default)());
+
+  const handleRecordingComplete = async (recordingData) => {
+    try {
+      const result = await fileStorageService.saveRecording(recordingData);
+      console.log('Recording saved:', result);
+      // Optionally switch to sessions tab to show the new recording
+      setActiveTab('sessions');
+    } catch (error) {
+      console.error('Error saving recording:', error);
+    }
+  };
 
   return (
-    <Card>
-      <h2 style={{ color: '#2c3e50', marginBottom: '1rem' }}>
-        {user.role === 'teacher' ? t('dashboard.teacherDashboard') : t('dashboard.studentDashboard')}
-      </h2>
-      <p style={{ fontSize: '1.1rem', marginBottom: '2rem' }}>
-        {t('dashboard.welcome')}, {user.firstName} {user.lastName}!
-      </p>
-      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <div style={{ 
-          background: '#ecf0f1', 
-          padding: '1rem', 
-          borderRadius: '4px', 
-          flex: '1',
-          minWidth: '200px'
-        }}>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>
-            {t('dashboard.recentActivity')}
-          </h3>
-          <p style={{ margin: 0, color: '#7f8c8d' }}>
-            {t('forms.noData')}
-          </p>
-        </div>
-        <div style={{ 
-          background: '#ecf0f1', 
-          padding: '1rem', 
-          borderRadius: '4px', 
-          flex: '1',
-          minWidth: '200px'
-        }}>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>
-            {t('dashboard.quickActions')}
-          </h3>
-          <p style={{ margin: 0, color: '#7f8c8d' }}>
-            בקרוב...
-          </p>
-        </div>
-      </div>
-    </Card>
+    <>
+      <Card>
+        <h2 style={{ color: '#2c3e50', marginBottom: '1rem' }}>
+          {user.role === 'teacher' ? t('dashboard.teacherDashboard') : t('dashboard.studentDashboard')}
+        </h2>
+        <p style={{ fontSize: '1.1rem', marginBottom: '2rem' }}>
+          {t('dashboard.welcome')}, {user.firstName} {user.lastName}!
+        </p>
+        
+        {user.role === 'teacher' && (
+          <div style={{ marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #ecf0f1' }}>
+              <button
+                onClick={() => setActiveTab('overview')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  background: activeTab === 'overview' ? '#3498db' : 'transparent',
+                  color: activeTab === 'overview' ? 'white' : '#2c3e50',
+                  borderRadius: '4px 4px 0 0',
+                  cursor: 'pointer',
+                  fontFamily: 'Heebo, sans-serif'
+                }}
+              >
+                סקירה כללית
+              </button>
+              <button
+                onClick={() => setActiveTab('record')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  background: activeTab === 'record' ? '#3498db' : 'transparent',
+                  color: activeTab === 'record' ? 'white' : '#2c3e50',
+                  borderRadius: '4px 4px 0 0',
+                  cursor: 'pointer',
+                  fontFamily: 'Heebo, sans-serif'
+                }}
+              >
+                הקלטת שיעור
+              </button>
+              <button
+                onClick={() => setActiveTab('sessions')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  background: activeTab === 'sessions' ? '#3498db' : 'transparent',
+                  color: activeTab === 'sessions' ? 'white' : '#2c3e50',
+                  borderRadius: '4px 4px 0 0',
+                  cursor: 'pointer',
+                  fontFamily: 'Heebo, sans-serif'
+                }}
+              >
+                ניהול הקלטות
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'overview' && (
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ 
+              background: '#ecf0f1', 
+              padding: '1rem', 
+              borderRadius: '4px', 
+              flex: '1',
+              minWidth: '200px'
+            }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>
+                {t('dashboard.recentActivity')}
+              </h3>
+              <p style={{ margin: 0, color: '#7f8c8d' }}>
+                {t('forms.noData')}
+              </p>
+            </div>
+            <div style={{ 
+              background: '#ecf0f1', 
+              padding: '1rem', 
+              borderRadius: '4px', 
+              flex: '1',
+              minWidth: '200px'
+            }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>
+                {t('dashboard.quickActions')}
+              </h3>
+              <p style={{ margin: 0, color: '#7f8c8d' }}>
+                {user.role === 'teacher' ? 'השתמש בלשוניות למעלה לגישה להקלטת שיעורים וניהול הקלטות' : 'בקרוב...'}
+              </p>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {user.role === 'teacher' && activeTab === 'record' && (
+        <RecordingInterface t={t} onRecordingComplete={handleRecordingComplete} />
+      )}
+
+      {user.role === 'teacher' && activeTab === 'sessions' && (
+        <SessionManager t={t} />
+      )}
+    </>
   );
 };
 

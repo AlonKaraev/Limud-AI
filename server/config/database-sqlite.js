@@ -78,10 +78,29 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // Create recordings table
+    await run(`
+      CREATE TABLE IF NOT EXISTS recordings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        recording_id TEXT NOT NULL,
+        filename TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size INTEGER NOT NULL,
+        metadata TEXT DEFAULT '{}',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
     // Create indexes
     await run(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
     await run(`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`);
     await run(`CREATE INDEX IF NOT EXISTS idx_users_school_id ON users(school_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_recordings_user_id ON recordings(user_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_recordings_recording_id ON recordings(recording_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_recordings_created_at ON recordings(created_at)`);
 
     // Insert sample school if not exists
     const schoolExists = await query(`SELECT COUNT(*) as count FROM schools`);
