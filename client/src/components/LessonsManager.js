@@ -18,6 +18,31 @@ const Header = styled.div`
   border-bottom: 1px solid #ecf0f1;
 `;
 
+const HeaderButtons = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const UploadButton = styled.button`
+  padding: 0.5rem 1rem;
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #229954;
+  }
+
+  &:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+  }
+`;
+
 const Title = styled.h2`
   color: #2c3e50;
   margin: 0;
@@ -269,6 +294,174 @@ const CheckboxLabel = styled.label`
   cursor: pointer;
 `;
 
+const AIStatusSection = styled.div`
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  background: #f8f9fa;
+  border-left: 4px solid #3498db;
+`;
+
+const StatusDetails = styled.div`
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.5rem;
+`;
+
+const ErrorDetails = styled.div`
+  background-color: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 4px;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #c53030;
+`;
+
+const WarningDetails = styled.div`
+  background-color: #fffbeb;
+  border: 1px solid #fed7aa;
+  border-radius: 4px;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #d97706;
+`;
+
+const ServiceHealthIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  
+  &.healthy {
+    background-color: #f0f9ff;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+  }
+  
+  &.unhealthy {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+  }
+`;
+
+const HealthDot = styled.div`
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  
+  &.healthy {
+    background-color: #10b981;
+  }
+  
+  &.unhealthy {
+    background-color: #ef4444;
+  }
+`;
+
+const UploadModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const UploadModalContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+`;
+
+const FileInput = styled.input`
+  display: none;
+`;
+
+const FileInputLabel = styled.label`
+  display: inline-block;
+  padding: 1rem 2rem;
+  background-color: #3498db;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  transition: background-color 0.2s;
+  margin: 1rem 0;
+
+  &:hover {
+    background-color: #2980b9;
+  }
+`;
+
+const UploadArea = styled.div`
+  border: 2px dashed #bdc3c7;
+  border-radius: 8px;
+  padding: 2rem;
+  margin: 1rem 0;
+  text-align: center;
+  transition: border-color 0.2s;
+
+  &.dragover {
+    border-color: #3498db;
+    background-color: #f8f9fa;
+  }
+`;
+
+const ProgressBar = styled.div`
+  width: 100%;
+  height: 8px;
+  background-color: #ecf0f1;
+  border-radius: 4px;
+  margin: 1rem 0;
+  overflow: hidden;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  background-color: #27ae60;
+  transition: width 0.3s ease;
+  width: ${props => props.progress}%;
+`;
+
+const FormGroup = styled.div`
+  margin: 1rem 0;
+  text-align: right;
+`;
+
+const FormLabel = styled.label`
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #2c3e50;
+  font-weight: 500;
+`;
+
+const FormInput = styled.input`
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-family: 'Heebo', sans-serif;
+  direction: rtl;
+
+  &:focus {
+    outline: none;
+    border-color: #3498db;
+  }
+`;
+
 const LessonsManager = ({ t }) => {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -278,9 +471,24 @@ const LessonsManager = ({ t }) => {
     generateSummary: true,
     generateQuestions: true
   });
+  const [processingJobs, setProcessingJobs] = useState({});
+  const [aiServiceHealth, setAiServiceHealth] = useState(null);
+  const [uploadModal, setUploadModal] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [lessonName, setLessonName] = useState('');
+  const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
     fetchLessons();
+    fetchAIServiceHealth();
+    // Set up periodic refresh for processing jobs
+    const interval = setInterval(() => {
+      fetchProcessingJobs();
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchLessons = async () => {
@@ -340,6 +548,46 @@ const LessonsManager = ({ t }) => {
     }
   };
 
+  const fetchProcessingJobs = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/ai-content/jobs', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const jobsMap = {};
+        data.jobs.forEach(job => {
+          jobsMap[job.recording_id] = job;
+        });
+        setProcessingJobs(jobsMap);
+      }
+    } catch (error) {
+      console.error('Error fetching processing jobs:', error);
+    }
+  };
+
+  const fetchAIServiceHealth = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/ai-content/health', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAiServiceHealth(data.health);
+      }
+    } catch (error) {
+      console.error('Error fetching AI service health:', error);
+    }
+  };
+
   const startAIProcessing = async (recordingId) => {
     try {
       const token = localStorage.getItem('token');
@@ -352,15 +600,15 @@ const LessonsManager = ({ t }) => {
         processingTypes.push('questions');
       }
       
-      const response = await fetch('/api/ai-content/process-recording', {
+      const response = await fetch(`/api/ai-content/process/${recordingId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          recordingId,
-          processingOptions: processingTypes
+          generateSummary: processingOptions.generateSummary,
+          generateQuestions: processingOptions.generateQuestions
         })
       });
 
@@ -404,33 +652,279 @@ const LessonsManager = ({ t }) => {
     return `${mb.toFixed(1)} MB`;
   };
 
-  const getAIStatus = (lesson) => {
-    if (!lesson.aiContent) {
-      return 'pending';
+  const getAIStatusInfo = (lesson) => {
+    const job = processingJobs[lesson.id];
+    const { aiContent } = lesson;
+    
+    // Check if there's an active processing job
+    if (job) {
+      if (job.status === 'failed') {
+        return {
+          status: 'failed',
+          text: 'נכשל',
+          details: job.error_message || 'עיבוד AI נכשל',
+          showError: true
+        };
+      } else if (job.status === 'processing') {
+        return {
+          status: 'processing',
+          text: 'בעיבוד',
+          details: `מעבד ${job.job_type}...`,
+          showProgress: true
+        };
+      } else if (job.status === 'pending') {
+        return {
+          status: 'processing',
+          text: 'ממתין בתור',
+          details: 'המשימה ממתינה לעיבוד',
+          showProgress: true
+        };
+      }
     }
 
-    const { transcription, summary, questions } = lesson.aiContent;
+    // Check AI content status
+    if (!aiContent) {
+      // Check if AI service is healthy
+      if (aiServiceHealth && !aiServiceHealth.configuration.valid) {
+        return {
+          status: 'failed',
+          text: 'שירות לא זמין',
+          details: 'שירותי AI אינם מוגדרים כראוי',
+          showError: true,
+          configIssues: aiServiceHealth.configuration.issues
+        };
+      }
+      return {
+        status: 'pending',
+        text: 'ממתין',
+        details: 'לא הופק תוכן AI עדיין'
+      };
+    }
+
+    const { transcription, summary, questions } = aiContent;
     
+    // Check for errors in content
+    const hasErrors = (transcription?.error) || (summary?.error) || (questions?.error);
+    if (hasErrors) {
+      const errors = [];
+      if (transcription?.error) errors.push(`תמליל: ${transcription.error}`);
+      if (summary?.error) errors.push(`סיכום: ${summary.error}`);
+      if (questions?.error) errors.push(`שאלות: ${questions.error}`);
+      
+      return {
+        status: 'failed',
+        text: 'נכשל חלקית',
+        details: 'חלק מהעיבוד נכשל',
+        showError: true,
+        errors
+      };
+    }
+    
+    // Check completion status
     if (transcription && summary && questions?.length > 0) {
-      return 'completed';
+      return {
+        status: 'completed',
+        text: 'הושלם',
+        details: `תמליל, סיכום ו-${questions.length} שאלות`
+      };
     } else if (transcription || summary || questions?.length > 0) {
-      return 'processing';
-    } else {
-      return 'pending';
+      const completed = [];
+      if (transcription) completed.push('תמליל');
+      if (summary) completed.push('סיכום');
+      if (questions?.length > 0) completed.push(`${questions.length} שאלות`);
+      
+      return {
+        status: 'processing',
+        text: 'הושלם חלקית',
+        details: `הושלם: ${completed.join(', ')}`,
+        showWarning: true
+      };
+    }
+
+    return {
+      status: 'pending',
+      text: 'ממתין',
+      details: 'לא הופק תוכן AI עדיין'
+    };
+  };
+
+  const renderAIStatusSection = (lesson) => {
+    const statusInfo = getAIStatusInfo(lesson);
+    
+    return (
+      <AIStatusSection>
+        <InfoRow>
+          <InfoLabel>סטטוס AI:</InfoLabel>
+          <StatusBadge className={statusInfo.status}>
+            {statusInfo.text}
+          </StatusBadge>
+        </InfoRow>
+        
+        <StatusDetails>
+          {statusInfo.details}
+        </StatusDetails>
+
+        {statusInfo.showError && (
+          <ErrorDetails>
+            <strong>שגיאה:</strong> {statusInfo.details}
+            {statusInfo.errors && (
+              <div style={{ marginTop: '0.5rem' }}>
+                {statusInfo.errors.map((error, index) => (
+                  <div key={index}>• {error}</div>
+                ))}
+              </div>
+            )}
+            {statusInfo.configIssues && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <strong>בעיות תצורה:</strong>
+                {statusInfo.configIssues.map((issue, index) => (
+                  <div key={index}>• {issue}</div>
+                ))}
+              </div>
+            )}
+          </ErrorDetails>
+        )}
+
+        {statusInfo.showWarning && (
+          <WarningDetails>
+            <strong>התראה:</strong> העיבוד לא הושלם במלואו. ייתכן שחלק מהשירותים נכשלו.
+          </WarningDetails>
+        )}
+      </AIStatusSection>
+    );
+  };
+
+  const handleFileSelect = (file) => {
+    // Validate file type
+    if (!file.type.startsWith('audio/')) {
+      alert('אנא בחר קובץ אודיו תקין');
+      return;
+    }
+
+    // Validate file size (100MB limit)
+    if (file.size > 100 * 1024 * 1024) {
+      alert('גודל הקובץ חייב להיות קטן מ-100MB');
+      return;
+    }
+
+    setSelectedFile(file);
+    
+    // Auto-generate lesson name from file name if not set
+    if (!lessonName) {
+      const fileName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+      setLessonName(fileName);
     }
   };
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'completed':
-        return 'הושלם';
-      case 'processing':
-        return 'בעיבוד';
-      case 'failed':
-        return 'נכשל';
-      case 'pending':
-      default:
-        return 'ממתין';
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      alert('אנא בחר קובץ לעלות');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setUploadProgress(0);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
+      }
+
+      const formData = new FormData();
+      formData.append('audio', selectedFile);
+      formData.append('recordingId', `upload_${Date.now()}`);
+      formData.append('metadata', JSON.stringify({
+        lessonName: lessonName || selectedFile.name,
+        uploadedAt: new Date().toISOString(),
+        originalFileName: selectedFile.name
+      }));
+
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const progress = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(progress);
+        }
+      });
+
+      // Handle completion
+      xhr.addEventListener('load', () => {
+        try {
+          if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+            console.log('Upload successful:', response);
+            
+            if (response.success) {
+              // Close modal and refresh lessons
+              setUploadModal(false);
+              setSelectedFile(null);
+              setLessonName('');
+              setUploadProgress(0);
+              setUploading(false);
+              
+              // Refresh lessons list
+              fetchLessons();
+              
+              alert('הקובץ הועלה בהצלחה!');
+            } else {
+              throw new Error(response.error || 'העלאה נכשלה');
+            }
+          } else {
+            let errorMessage = `שגיאת שרת: ${xhr.status}`;
+            try {
+              const errorResponse = JSON.parse(xhr.responseText);
+              errorMessage = errorResponse.error || errorMessage;
+            } catch (e) {
+              // If response is not JSON, use status text
+              errorMessage = xhr.statusText || errorMessage;
+            }
+            throw new Error(errorMessage);
+          }
+        } catch (parseError) {
+          console.error('Error processing upload response:', parseError);
+          throw new Error('שגיאה בעיבוד תגובת השרת: ' + parseError.message);
+        }
+      });
+
+      // Handle network errors
+      xhr.addEventListener('error', (e) => {
+        console.error('Network error during upload:', e);
+        throw new Error('שגיאת רשת - בדוק את החיבור לאינטרנט ושהשרת פועל');
+      });
+
+      // Handle timeout
+      xhr.addEventListener('timeout', () => {
+        throw new Error('זמן ההעלאה פג - הקובץ גדול מדי או החיבור איטי');
+      });
+
+      // Handle abort
+      xhr.addEventListener('abort', () => {
+        throw new Error('העלאה בוטלה');
+      });
+
+      // Set timeout (5 minutes for large files)
+      xhr.timeout = 5 * 60 * 1000;
+
+      // Start upload
+      xhr.open('POST', '/api/recordings/upload');
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      
+      console.log('Starting upload:', {
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        fileType: selectedFile.type
+      });
+      
+      xhr.send(formData);
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('שגיאה בהעלאת הקובץ: ' + error.message);
+      setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -456,8 +950,26 @@ const LessonsManager = ({ t }) => {
       <Container>
         <Header>
           <Title>שיעורים</Title>
-          <RefreshButton onClick={fetchLessons}>רענן</RefreshButton>
+          <HeaderButtons>
+            <UploadButton onClick={() => setUploadModal(true)}>
+              העלה הקלטה
+            </UploadButton>
+            <RefreshButton onClick={fetchLessons}>רענן</RefreshButton>
+          </HeaderButtons>
         </Header>
+
+        {/* AI Service Health Indicator */}
+        {aiServiceHealth && (
+          <ServiceHealthIndicator className={aiServiceHealth.configuration.valid ? 'healthy' : 'unhealthy'}>
+            <HealthDot className={aiServiceHealth.configuration.valid ? 'healthy' : 'unhealthy'} />
+            {aiServiceHealth.configuration.valid ? 'שירותי AI פעילים' : 'שירותי AI לא זמינים'}
+            {!aiServiceHealth.configuration.valid && aiServiceHealth.configuration.issues && (
+              <span style={{ marginRight: '0.5rem' }}>
+                - {aiServiceHealth.configuration.issues[0]}
+              </span>
+            )}
+          </ServiceHealthIndicator>
+        )}
 
         {lessons.length === 0 ? (
           <EmptyState>
@@ -467,7 +979,7 @@ const LessonsManager = ({ t }) => {
         ) : (
           <LessonGrid>
             {lessons.map((lesson) => {
-              const aiStatus = getAIStatus(lesson);
+              const statusInfo = getAIStatusInfo(lesson);
               const { aiContent } = lesson;
 
               return (
@@ -488,13 +1000,10 @@ const LessonsManager = ({ t }) => {
                       <InfoLabel>גודל קובץ:</InfoLabel>
                       <InfoValue>{formatFileSize(lesson.file_size)}</InfoValue>
                     </InfoRow>
-                    <InfoRow>
-                      <InfoLabel>סטטוס AI:</InfoLabel>
-                      <StatusBadge className={aiStatus}>
-                        {getStatusText(aiStatus)}
-                      </StatusBadge>
-                    </InfoRow>
                   </LessonInfo>
+
+                  {/* Enhanced AI Status Section */}
+                  {renderAIStatusSection(lesson)}
 
                   {aiContent?.transcription && (
                     <ContentSection>
@@ -538,12 +1047,21 @@ const LessonsManager = ({ t }) => {
                       השמע
                     </ActionButton>
 
-                    {aiStatus === 'pending' && (
+                    {statusInfo.status === 'pending' && (
                       <ActionButton 
                         className="success"
                         onClick={() => setProcessingModal(lesson)}
                       >
                         צור תוכן AI
+                      </ActionButton>
+                    )}
+
+                    {statusInfo.status === 'failed' && (
+                      <ActionButton 
+                        className="success"
+                        onClick={() => setProcessingModal(lesson)}
+                      >
+                        נסה שוב
                       </ActionButton>
                     )}
 
@@ -648,6 +1166,100 @@ const LessonsManager = ({ t }) => {
             </ActionButtons>
           </ModalContent>
         </ProcessingModal>
+      )}
+
+      {uploadModal && (
+        <UploadModal>
+          <UploadModalContent>
+            <ModalTitle>העלה הקלטת שיעור</ModalTitle>
+            
+            <FormGroup>
+              <FormLabel>שם השיעור</FormLabel>
+              <FormInput
+                type="text"
+                value={lessonName}
+                onChange={(e) => setLessonName(e.target.value)}
+                placeholder="הכנס שם לשיעור"
+              />
+            </FormGroup>
+
+            <UploadArea 
+              className={dragOver ? 'dragover' : ''}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                  handleFileSelect(files[0]);
+                }
+              }}
+            >
+              {selectedFile ? (
+                <div>
+                  <p>קובץ נבחר: {selectedFile.name}</p>
+                  <p>גודל: {formatFileSize(selectedFile.size)}</p>
+                </div>
+              ) : (
+                <div>
+                  <p>גרור קובץ אודיו לכאן או</p>
+                  <FileInputLabel htmlFor="fileInput">
+                    בחר קובץ
+                  </FileInputLabel>
+                  <FileInput
+                    id="fileInput"
+                    type="file"
+                    accept="audio/*"
+                    onChange={(e) => {
+                      if (e.target.files.length > 0) {
+                        handleFileSelect(e.target.files[0]);
+                      }
+                    }}
+                  />
+                  <p style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>
+                    קבצי אודיו עד 100MB
+                  </p>
+                </div>
+              )}
+            </UploadArea>
+
+            {uploading && (
+              <div>
+                <p>מעלה קובץ...</p>
+                <ProgressBar>
+                  <ProgressFill progress={uploadProgress} />
+                </ProgressBar>
+                <p>{uploadProgress}%</p>
+              </div>
+            )}
+
+            <ActionButtons>
+              <ActionButton 
+                className="success"
+                onClick={handleUpload}
+                disabled={!selectedFile || uploading}
+              >
+                {uploading ? 'מעלה...' : 'העלה'}
+              </ActionButton>
+              <ActionButton 
+                className="secondary"
+                onClick={() => {
+                  setUploadModal(false);
+                  setSelectedFile(null);
+                  setLessonName('');
+                  setUploadProgress(0);
+                  setUploading(false);
+                }}
+              >
+                ביטול
+              </ActionButton>
+            </ActionButtons>
+          </UploadModalContent>
+        </UploadModal>
       )}
     </>
   );
