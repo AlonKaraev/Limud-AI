@@ -99,13 +99,16 @@ const ProgressFill = styled.div`
   border-radius: 3px;
   width: ${props => props.progress}%;
   transition: width 0.1s ease;
+  position: absolute;
+  left: 0;
+  top: 0;
 `;
 
 const ProgressHandle = styled.div`
   position: absolute;
   top: 50%;
-  right: ${props => props.progress}%;
-  transform: translate(50%, -50%);
+  left: ${props => props.progress}%;
+  transform: translate(-50%, -50%);
   width: 16px;
   height: 16px;
   background: #3498db;
