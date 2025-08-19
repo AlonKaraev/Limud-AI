@@ -283,19 +283,47 @@ router.get('/', authenticate, async (req, res) => {
 
     res.json({
       success: true,
-      recordings: recordings.data,
+      recordings: recordings.data || [],
       pagination: {
-        page: recordings.page,
-        limit: recordings.limit,
-        total: recordings.total,
-        pages: recordings.pages
+        page: recordings.page || 1,
+        limit: recordings.limit || 20,
+        total: recordings.total || 0,
+        pages: recordings.pages || 0
       }
     });
   } catch (error) {
     console.error('Error fetching recordings:', error);
+    // Return empty result instead of error when no recordings exist
+    res.json({
+      success: true,
+      recordings: [],
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 0,
+        pages: 0
+      }
+    });
+  }
+});
+
+/**
+ * Get storage statistics
+ */
+router.get('/stats', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const stats = await getUserStorageStats(userId);
+
+    res.json({
+      success: true,
+      ...stats
+    });
+  } catch (error) {
+    console.error('Error fetching storage stats:', error);
     res.status(500).json({
-      error: 'שגיאה בטעינת ההקלטות',
-      code: 'FETCH_ERROR'
+      error: 'שגיאה בטעינת סטטיסטיקות',
+      code: 'STATS_ERROR'
     });
   }
 });
@@ -411,43 +439,23 @@ router.delete('/:id', authenticate, async (req, res) => {
   }
 });
 
-/**
- * Get storage statistics
- */
-router.get('/stats', authenticate, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const stats = await getUserStorageStats(userId);
-
-    res.json({
-      success: true,
-      ...stats
-    });
-  } catch (error) {
-    console.error('Error fetching storage stats:', error);
-    res.status(500).json({
-      error: 'שגיאה בטעינת סטטיסטיקות',
-      code: 'STATS_ERROR'
-    });
-  }
-});
-
 // Database helper functions
 async function saveRecordingToDatabase({ userId, recordingId, filename, filePath, fileSize, metadata }) {
-  const db = require('../config/database-sqlite');
+  const { query, run } = require('../config/database-sqlite');
   
   // Check if recording already exists to prevent duplicates
-  const existingRecording = db.prepare(`
+  const existingResult = await query(`
     SELECT id FROM recordings 
     WHERE user_id = ? AND recording_id = ?
-  `).get(userId, recordingId);
+  `, [userId, recordingId]);
   
-  if (existingRecording) {
+  if (existingResult.rows.length > 0) {
     console.log('Recording already exists in database, returning existing record:', recordingId);
-    const fullRecord = db.prepare(`
+    const fullResult = await query(`
       SELECT * FROM recordings WHERE id = ?
-    `).get(existingRecording.id);
+    `, [existingResult.rows[0].id]);
     
+    const fullRecord = fullResult.rows[0];
     return {
       id: fullRecord.id,
       recording_id: fullRecord.recording_id,
@@ -459,31 +467,29 @@ async function saveRecordingToDatabase({ userId, recordingId, filename, filePath
     };
   }
   
-  const stmt = db.prepare(`
+  const result = await run(`
     INSERT INTO recordings (
       user_id, recording_id, filename, file_path, file_size, 
       metadata, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-  `);
-
-  const result = stmt.run(
+  `, [
     userId,
     recordingId,
     filename,
     filePath,
     fileSize,
     JSON.stringify(metadata)
-  );
+  ]);
 
   console.log('Recording saved to database:', {
-    id: result.lastInsertRowid,
+    id: result.lastID,
     recordingId,
     filename,
     fileSize
   });
 
   return {
-    id: result.lastInsertRowid,
+    id: result.lastID,
     recording_id: recordingId,
     filename,
     file_path: filePath,
@@ -494,9 +500,9 @@ async function saveRecordingToDatabase({ userId, recordingId, filename, filePath
 }
 
 async function getUserRecordings({ userId, page, limit, search, sortBy, sortOrder }) {
-  const db = require('../config/database-sqlite');
+  const { query } = require('../config/database-sqlite');
   
-  let query = `
+  let sql = `
     SELECT id, recording_id, filename, file_size, metadata, created_at, updated_at
     FROM recordings 
     WHERE user_id = ?
@@ -505,7 +511,7 @@ async function getUserRecordings({ userId, page, limit, search, sortBy, sortOrde
   const params = [userId];
 
   if (search) {
-    query += ` AND (filename LIKE ? OR json_extract(metadata, '$.lessonName') LIKE ?)`;
+    sql += ` AND (filename LIKE ? OR json_extract(metadata, '$.lessonName') LIKE ?)`;
     params.push(`%${search}%`, `%${search}%`);
   }
 
@@ -514,25 +520,27 @@ async function getUserRecordings({ userId, page, limit, search, sortBy, sortOrde
   const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
   const validSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
   
-  query += ` ORDER BY ${validSortBy} ${validSortOrder}`;
+  sql += ` ORDER BY ${validSortBy} ${validSortOrder}`;
   
   // Add pagination
   const offset = (page - 1) * limit;
-  query += ` LIMIT ? OFFSET ?`;
+  sql += ` LIMIT ? OFFSET ?`;
   params.push(limit, offset);
 
-  const recordings = db.prepare(query).all(...params);
+  const result = await query(sql, params);
+  const recordings = result.rows;
 
   // Get total count
-  let countQuery = `SELECT COUNT(*) as total FROM recordings WHERE user_id = ?`;
+  let countSql = `SELECT COUNT(*) as total FROM recordings WHERE user_id = ?`;
   const countParams = [userId];
   
   if (search) {
-    countQuery += ` AND (filename LIKE ? OR json_extract(metadata, '$.lessonName') LIKE ?)`;
+    countSql += ` AND (filename LIKE ? OR json_extract(metadata, '$.lessonName') LIKE ?)`;
     countParams.push(`%${search}%`, `%${search}%`);
   }
   
-  const { total } = db.prepare(countQuery).get(...countParams);
+  const countResult = await query(countSql, countParams);
+  const total = countResult.rows[0].total;
 
   return {
     data: recordings.map(r => ({
@@ -547,42 +555,45 @@ async function getUserRecordings({ userId, page, limit, search, sortBy, sortOrde
 }
 
 async function getRecordingById(recordingId, userId) {
-  const db = require('../config/database-sqlite');
+  const { query } = require('../config/database-sqlite');
   
-  const recording = db.prepare(`
+  const result = await query(`
     SELECT * FROM recordings 
     WHERE (id = ? OR recording_id = ?) AND user_id = ?
-  `).get(recordingId, recordingId, userId);
+  `, [recordingId, recordingId, userId]);
 
-  if (recording) {
+  if (result.rows.length > 0) {
+    const recording = result.rows[0];
     recording.metadata = JSON.parse(recording.metadata || '{}');
+    return recording;
   }
 
-  return recording;
+  return null;
 }
 
 async function deleteRecordingFromDatabase(recordingId, userId) {
-  const db = require('../config/database-sqlite');
+  const { run } = require('../config/database-sqlite');
   
-  const result = db.prepare(`
+  const result = await run(`
     DELETE FROM recordings 
     WHERE (id = ? OR recording_id = ?) AND user_id = ?
-  `).run(recordingId, recordingId, userId);
+  `, [recordingId, recordingId, userId]);
 
   return result.changes > 0;
 }
 
 async function getUserStorageStats(userId) {
-  const db = require('../config/database-sqlite');
+  const { query } = require('../config/database-sqlite');
   
-  const stats = db.prepare(`
+  const result = await query(`
     SELECT 
       COUNT(*) as count,
       COALESCE(SUM(file_size), 0) as size
     FROM recordings 
     WHERE user_id = ?
-  `).get(userId);
+  `, [userId]);
 
+  const stats = result.rows[0];
   return {
     count: stats.count,
     size: stats.size

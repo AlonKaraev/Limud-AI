@@ -229,6 +229,38 @@ const Input = styled.input`
   }
 `;
 
+const CheckboxGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  grid-column: 1 / -1;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #ddd;
+`;
+
+const CheckboxItem = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: #2c3e50;
+  
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+`;
+
+const AIOptionsTitle = styled.h4`
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+  font-size: 1rem;
+  font-weight: 600;
+`;
+
 const ErrorMessage = styled.div`
   background: #fff5f5;
   border: 1px solid #fed7d7;
@@ -271,6 +303,10 @@ const RecordingInterface = ({ t, onRecordingComplete }) => {
     subject: '',
     classLevel: '',
     curriculum: ''
+  });
+  const [aiOptions, setAiOptions] = useState({
+    generateSummary: false,
+    generateTest: false
   });
 
   const durationIntervalRef = useRef(null);
@@ -343,7 +379,8 @@ const RecordingInterface = ({ t, onRecordingComplete }) => {
     if (onRecordingComplete) {
       onRecordingComplete({
         ...result,
-        metadata
+        metadata,
+        aiOptions
       });
     }
   };
@@ -576,6 +613,26 @@ const RecordingInterface = ({ t, onRecordingComplete }) => {
               placeholder={t('recording.curriculum')}
             />
           </FormGroup>
+          
+          <CheckboxGroup>
+            <AIOptionsTitle>אפשרויות AI</AIOptionsTitle>
+            <CheckboxItem>
+              <input
+                type="checkbox"
+                checked={aiOptions.generateSummary}
+                onChange={(e) => setAiOptions({...aiOptions, generateSummary: e.target.checked})}
+              />
+              צור סיכום
+            </CheckboxItem>
+            <CheckboxItem>
+              <input
+                type="checkbox"
+                checked={aiOptions.generateTest}
+                onChange={(e) => setAiOptions({...aiOptions, generateTest: e.target.checked})}
+              />
+              צור מבחן
+            </CheckboxItem>
+          </CheckboxGroup>
         </MetadataForm>
 
         {error && (

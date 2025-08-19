@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { heTranslations } from './translations';
 import RecordingInterface from './components/RecordingInterface';
 import SessionManager from './components/SessionManager';
+import LessonsManager from './components/LessonsManager';
 
 // Create contexts for global state management
 const AuthContext = createContext();
@@ -783,14 +784,21 @@ const Dashboard = () => {
       console.log('Processing recording completion:', {
         duration: recordingData.duration,
         qualityReportDuration: recordingData.qualityReport?.duration,
-        blobSize: recordingData.audioBlob?.size
+        blobSize: recordingData.audioBlob?.size,
+        aiOptions: recordingData.aiOptions
       });
       
       const result = await fileStorageService.saveRecording(recordingData);
       console.log('Recording saved successfully:', result);
       
-      // Optionally switch to sessions tab to show the new recording
-      setActiveTab('sessions');
+      // Trigger AI processing if requested
+      if (recordingData.aiOptions && (recordingData.aiOptions.generateSummary || recordingData.aiOptions.generateTest)) {
+        console.log('Triggering AI processing for recording:', result.recordingId);
+        await triggerAIProcessing(result.recordingId, recordingData.aiOptions);
+      }
+      
+      // Switch to lessons tab to show the new recording with AI content
+      setActiveTab('lessons');
     } catch (error) {
       console.error('Error saving recording:', error);
     } finally {
@@ -798,6 +806,42 @@ const Dashboard = () => {
       setTimeout(() => {
         setIsProcessingRecording(false);
       }, 2000);
+    }
+  };
+
+  const triggerAIProcessing = async (recordingId, aiOptions) => {
+    try {
+      const token = localStorage.getItem('token');
+      const processingOptions = [];
+      
+      if (aiOptions.generateSummary) {
+        processingOptions.push('summary');
+      }
+      if (aiOptions.generateTest) {
+        processingOptions.push('questions');
+      }
+      
+      const response = await fetch('/api/ai-content/process-recording', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          recordingId,
+          processingOptions
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('AI processing initiated:', result);
+      } else {
+        const error = await response.json();
+        console.error('Failed to initiate AI processing:', error);
+      }
+    } catch (error) {
+      console.error('Error triggering AI processing:', error);
     }
   };
 
@@ -856,6 +900,20 @@ const Dashboard = () => {
               >
                 ניהול הקלטות
               </button>
+              <button
+                onClick={() => setActiveTab('lessons')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  background: activeTab === 'lessons' ? '#3498db' : 'transparent',
+                  color: activeTab === 'lessons' ? 'white' : '#2c3e50',
+                  borderRadius: '4px 4px 0 0',
+                  cursor: 'pointer',
+                  fontFamily: 'Heebo, sans-serif'
+                }}
+              >
+                שיעורים
+              </button>
             </div>
           </div>
         )}
@@ -900,6 +958,10 @@ const Dashboard = () => {
 
       {user.role === 'teacher' && activeTab === 'sessions' && (
         <SessionManager t={t} />
+      )}
+
+      {user.role === 'teacher' && activeTab === 'lessons' && (
+        <LessonsManager t={t} />
       )}
     </>
   );
