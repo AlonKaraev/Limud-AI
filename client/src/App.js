@@ -873,34 +873,6 @@ const Dashboard = () => {
                 סקירה כללית
               </button>
               <button
-                onClick={() => setActiveTab('record')}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: 'none',
-                  background: activeTab === 'record' ? '#3498db' : 'transparent',
-                  color: activeTab === 'record' ? 'white' : '#2c3e50',
-                  borderRadius: '4px 4px 0 0',
-                  cursor: 'pointer',
-                  fontFamily: 'Heebo, sans-serif'
-                }}
-              >
-                הקלטת שיעור
-              </button>
-              <button
-                onClick={() => setActiveTab('sessions')}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: 'none',
-                  background: activeTab === 'sessions' ? '#3498db' : 'transparent',
-                  color: activeTab === 'sessions' ? 'white' : '#2c3e50',
-                  borderRadius: '4px 4px 0 0',
-                  cursor: 'pointer',
-                  fontFamily: 'Heebo, sans-serif'
-                }}
-              >
-                ניהול הקלטות
-              </button>
-              <button
                 onClick={() => setActiveTab('lessons')}
                 style={{
                   padding: '0.5rem 1rem',

@@ -34,7 +34,7 @@ const AI_PROVIDERS = {
 const MODEL_CONFIGS = {
   transcription: {
     openai: {
-      model: 'whisper-1',
+      model: 'gpt-4o-transcribe',
       language: 'he', // Hebrew
       response_format: 'verbose_json',
       temperature: 0.0
@@ -82,6 +82,9 @@ const COST_ESTIMATES = {
   openai: {
     'whisper-1': {
       per_minute: 0.006 // $0.006 per minute of audio
+    },
+    'gpt-4o-transcribe': {
+      per_minute: 0.006 // $0.006 per minute of audio (same as whisper-1)
     },
     'gpt-4': {
       input_tokens: 0.00003, // $0.03 per 1K tokens

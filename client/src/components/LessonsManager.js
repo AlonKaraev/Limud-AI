@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
+import AudioRecordingService from '../services/AudioRecordingService';
+import AudioPlayer from './AudioPlayer';
 
 const Container = styled.div`
   background: white;
@@ -386,6 +388,47 @@ const UploadModalContent = styled.div`
   text-align: center;
 `;
 
+const UploadErrorMessage = styled.div`
+  background-color: #fadbd8;
+  color: #e74c3c;
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+  text-align: right;
+  border: 1px solid #f5b7b1;
+`;
+
+const UploadSuccessMessage = styled.div`
+  background-color: #d5f4e6;
+  color: #27ae60;
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+  text-align: right;
+  border: 1px solid #a9dfbf;
+`;
+
+const RetryButton = styled.button`
+  padding: 0.5rem 1rem;
+  background-color: #f39c12;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  transition: background-color 0.2s;
+  margin: 0 0.5rem;
+
+  &:hover {
+    background-color: #e67e22;
+  }
+
+  &:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+  }
+`;
+
 const FileInput = styled.input`
   display: none;
 `;
@@ -462,6 +505,388 @@ const FormInput = styled.input`
   }
 `;
 
+// Search and Filter Components
+const SearchAndFilterSection = styled.div`
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 1rem;
+  align-items: end;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const SearchInput = styled.input`
+  padding: 0.75rem;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-family: 'Heebo', sans-serif;
+  direction: rtl;
+  font-size: 1rem;
+
+  &:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+  }
+
+  &::placeholder {
+    color: #7f8c8d;
+  }
+`;
+
+const FilterSelect = styled.select`
+  padding: 0.75rem;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-family: 'Heebo', sans-serif;
+  background: white;
+  direction: rtl;
+  font-size: 1rem;
+
+  &:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+  }
+`;
+
+const FilterGroup = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+// Recording Modal Components
+const RecordingModalContainer = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const RecordingModalContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  direction: rtl;
+`;
+
+const RecordingHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #ecf0f1;
+`;
+
+const RecordingTitle = styled.h2`
+  color: #2c3e50;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+`;
+
+const StatusIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  
+  &.recording {
+    color: #e74c3c;
+  }
+  
+  &.paused {
+    color: #f39c12;
+  }
+  
+  &.stopped {
+    color: #7f8c8d;
+  }
+  
+  &.ready {
+    color: #27ae60;
+  }
+`;
+
+const StatusDot = styled.div`
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: currentColor;
+  
+  &.recording {
+    animation: pulse 1.5s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+`;
+
+const ControlsSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+`;
+
+const MainControls = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+`;
+
+const ControlButton = styled.button`
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Heebo', sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 120px;
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  &.primary {
+    background-color: #e74c3c;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: #c0392b;
+    }
+  }
+  
+  &.secondary {
+    background-color: #3498db;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: #2980b9;
+    }
+  }
+  
+  &.success {
+    background-color: #27ae60;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: #229954;
+    }
+  }
+  
+  &.warning {
+    background-color: #f39c12;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: #e67e22;
+    }
+  }
+`;
+
+const InfoSection = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+`;
+
+const InfoItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+const InfoItemLabel = styled.span`
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  font-weight: 500;
+`;
+
+const InfoItemValue = styled.span`
+  font-size: 1.1rem;
+  color: #2c3e50;
+  font-weight: 600;
+`;
+
+const AudioLevelMeter = styled.div`
+  width: 100%;
+  height: 8px;
+  background: #ecf0f1;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+`;
+
+const AudioLevelBar = styled.div`
+  height: 100%;
+  background: ${props => {
+    if (props.level > 0.8) return '#e74c3c';
+    if (props.level > 0.6) return '#f39c12';
+    return '#27ae60';
+  }};
+  width: ${props => props.level * 100}%;
+  transition: width 0.1s ease;
+`;
+
+const DeviceSelector = styled.select`
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Heebo', sans-serif;
+  background: white;
+  direction: rtl;
+  
+  &:focus {
+    outline: none;
+    border-color: #3498db;
+  }
+`;
+
+const MetadataForm = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+`;
+
+const RecordingFormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const RecordingLabel = styled.label`
+  font-weight: 500;
+  color: #2c3e50;
+  font-size: 0.9rem;
+`;
+
+const RecordingInput = styled.input`
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Heebo', sans-serif;
+  direction: rtl;
+  
+  &:focus {
+    outline: none;
+    border-color: #3498db;
+  }
+`;
+
+const RecordingCheckboxGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  grid-column: 1 / -1;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #ddd;
+`;
+
+const RecordingCheckboxItem = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: #2c3e50;
+  
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+`;
+
+const AIOptionsTitle = styled.h4`
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+  font-size: 1rem;
+  font-weight: 600;
+`;
+
+const RecordingErrorMessage = styled.div`
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  color: #e53e3e;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+`;
+
+// Delete Modal Components
+const DeleteModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const DeleteModalContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+`;
+
+const DeleteButton = styled.button`
+  padding: 0.5rem 1rem;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #c0392b;
+  }
+
+  &:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+  }
+`;
+
 const LessonsManager = ({ t }) => {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -479,6 +904,46 @@ const LessonsManager = ({ t }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [lessonName, setLessonName] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Recording functionality state
+  const [recordingService] = useState(() => new AudioRecordingService());
+  const [isRecordingInitialized, setIsRecordingInitialized] = useState(false);
+  const [recordingState, setRecordingState] = useState('stopped');
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [recordingDevices, setRecordingDevices] = useState([]);
+  const [selectedRecordingDevice, setSelectedRecordingDevice] = useState('');
+  const [recordingError, setRecordingError] = useState('');
+  const [recordingModal, setRecordingModal] = useState(false);
+  const [recordingMetadata, setRecordingMetadata] = useState({
+    lessonName: '',
+    subject: '',
+    classLevel: '',
+    curriculum: ''
+  });
+  const [recordingAiOptions, setRecordingAiOptions] = useState({
+    generateSummary: false,
+    generateTest: false
+  });
+
+  // Audio player state
+  const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+  const [audioPlayerData, setAudioPlayerData] = useState(null);
+
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('DESC');
+  const [filteredLessons, setFilteredLessons] = useState([]);
+
+  // Delete confirmation state
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const durationIntervalRef = useRef(null);
 
   useEffect(() => {
     fetchLessons();
@@ -491,12 +956,311 @@ const LessonsManager = ({ t }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Initialize recording service when modal opens
+  useEffect(() => {
+    if (recordingModal) {
+      initializeRecordingService();
+    }
+    
+    return () => {
+      if (durationIntervalRef.current) {
+        clearInterval(durationIntervalRef.current);
+      }
+    };
+  }, [recordingModal]);
+
+  const initializeRecordingService = async () => {
+    try {
+      setRecordingError('');
+      await recordingService.initialize();
+      setIsRecordingInitialized(true);
+      
+      // Get available devices
+      const audioDevices = await recordingService.getAudioInputDevices();
+      setRecordingDevices(audioDevices);
+      if (audioDevices.length > 0) {
+        setSelectedRecordingDevice(audioDevices[0].deviceId);
+      }
+
+      // Setup event listeners
+      recordingService.addEventListener('onRecordingStart', handleRecordingStart);
+      recordingService.addEventListener('onRecordingStop', handleRecordingStop);
+      recordingService.addEventListener('onRecordingPause', handleRecordingPause);
+      recordingService.addEventListener('onRecordingResume', handleRecordingResume);
+      recordingService.addEventListener('onAudioLevel', handleAudioLevel);
+      recordingService.addEventListener('onError', handleRecordingError);
+    } catch (error) {
+      setRecordingError(error.message);
+    }
+  };
+
+  const handleRecordingStart = () => {
+    console.log('Recording started event received');
+    setRecordingState('recording');
+    setRecordingError('');
+    setRecordingDuration(0);
+    
+    // Start duration timer
+    durationIntervalRef.current = setInterval(() => {
+      const currentDuration = recordingService.getRecordedDuration();
+      setRecordingDuration(currentDuration);
+    }, 100);
+  };
+
+  const handleRecordingStop = async (result) => {
+    setRecordingState('stopped');
+    
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+    
+    try {
+      // Upload the recording
+      await uploadRecording(result);
+    } catch (error) {
+      setRecordingError(`שגיאה בשמירת ההקלטה: ${error.message}`);
+    }
+  };
+
+  const handleRecordingPause = () => {
+    setRecordingState('paused');
+  };
+
+  const handleRecordingResume = () => {
+    setRecordingState('recording');
+  };
+
+  const handleAudioLevel = (levelData) => {
+    setAudioLevel(levelData.average);
+  };
+
+  const handleRecordingError = (errorData) => {
+    setRecordingError(errorData.message);
+    setRecordingState('stopped');
+    
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      setRecordingError('');
+      
+      // Switch device if needed
+      if (selectedRecordingDevice && selectedRecordingDevice !== recordingService.getAudioDeviceLabel()) {
+        await recordingService.switchAudioDevice(selectedRecordingDevice);
+      }
+      
+      await recordingService.startRecording();
+    } catch (error) {
+      setRecordingError(error.message);
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      await recordingService.stopRecording();
+    } catch (error) {
+      setRecordingError(error.message);
+    }
+  };
+
+  const pauseRecording = () => {
+    try {
+      recordingService.pauseRecording();
+    } catch (error) {
+      setRecordingError(error.message);
+    }
+  };
+
+  const resumeRecording = () => {
+    try {
+      recordingService.resumeRecording();
+    } catch (error) {
+      setRecordingError(error.message);
+    }
+  };
+
+  const uploadRecording = async (recordingResult) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
+      }
+
+      const formData = new FormData();
+      formData.append('audio', recordingResult.audioBlob, 'recording.webm');
+      formData.append('recordingId', `rec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+      formData.append('metadata', JSON.stringify({
+        ...recordingMetadata,
+        duration: recordingDuration / 1000, // Convert to seconds
+        recordedAt: new Date().toISOString(),
+        qualityReport: recordingResult.qualityReport
+      }));
+
+      const response = await fetch('/api/recordings/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('שגיאה בהעלאת ההקלטה');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Process AI content if requested
+        if (recordingAiOptions.generateSummary || recordingAiOptions.generateTest) {
+          try {
+            await fetch(`/api/ai-content/process/${result.recordingId}`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                generateSummary: recordingAiOptions.generateSummary,
+                generateQuestions: recordingAiOptions.generateTest
+              })
+            });
+          } catch (aiError) {
+            console.error('AI processing failed:', aiError);
+            // Don't fail the whole process if AI fails
+          }
+        }
+
+        // Close modal and refresh lessons
+        setRecordingModal(false);
+        resetRecordingState();
+        fetchLessons();
+        
+        alert('ההקלטה נשמרה בהצלחה!');
+      } else {
+        throw new Error(result.error || 'שגיאה בשמירת ההקלטה');
+      }
+    } catch (error) {
+      console.error('Upload recording error:', error);
+      throw error;
+    }
+  };
+
+  const resetRecordingState = () => {
+    setRecordingState('stopped');
+    setRecordingDuration(0);
+    setAudioLevel(0);
+    setRecordingError('');
+    setIsRecordingInitialized(false);
+    setRecordingMetadata({
+      lessonName: '',
+      subject: '',
+      classLevel: '',
+      curriculum: ''
+    });
+    setRecordingAiOptions({
+      generateSummary: false,
+      generateTest: false
+    });
+    
+    if (recordingService) {
+      recordingService.cleanup();
+    }
+  };
+
+  const formatRecordingDuration = (ms) => {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    
+    if (hours > 0) {
+      return `${hours}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
+  };
+
+  const getRecordingStatusText = () => {
+    switch (recordingState) {
+      case 'recording': return 'מקליט';
+      case 'paused': return 'מושהה';
+      case 'stopped': return isRecordingInitialized ? 'מוכן' : 'טוען...';
+      default: return 'עצור';
+    }
+  };
+
+  const getAudioLevelText = () => {
+    if (audioLevel > 0.8) return 'רמה גבוהה מדי';
+    if (audioLevel < 0.1) return 'רמה נמוכה מדי';
+    return 'רמה טובה';
+  };
+
+  // Filter and sort lessons based on search term and sort options
+  useEffect(() => {
+    let filtered = [...lessons];
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(lesson => {
+        const lessonName = lesson.metadata?.lessonName?.toLowerCase() || '';
+        const filename = lesson.filename?.toLowerCase() || '';
+        const subject = lesson.metadata?.subject?.toLowerCase() || '';
+        const classLevel = lesson.metadata?.classLevel?.toLowerCase() || '';
+        const curriculum = lesson.metadata?.curriculum?.toLowerCase() || '';
+        
+        return lessonName.includes(searchLower) ||
+               filename.includes(searchLower) ||
+               subject.includes(searchLower) ||
+               classLevel.includes(searchLower) ||
+               curriculum.includes(searchLower);
+      });
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'filename':
+          aValue = a.filename || '';
+          bValue = b.filename || '';
+          break;
+        case 'file_size':
+          aValue = a.file_size || 0;
+          bValue = b.file_size || 0;
+          break;
+        case 'created_at':
+        default:
+          aValue = new Date(a.created_at || 0);
+          bValue = new Date(b.created_at || 0);
+          break;
+      }
+
+      if (sortOrder === 'ASC') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    setFilteredLessons(filtered);
+  }, [lessons, searchTerm, sortBy, sortOrder]);
+
   const fetchLessons = async () => {
     try {
       setLoading(true);
       setError('');
 
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch('/api/recordings', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -504,14 +1268,32 @@ const LessonsManager = ({ t }) => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch recordings');
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please log in again.');
+        } else if (response.status === 429) {
+          throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+        } else if (response.status >= 500) {
+          throw new Error('Server temporarily unavailable. Please try again later.');
+        } else if (response.status === 404) {
+          throw new Error('Recordings endpoint not found. Please check server configuration.');
+        }
+        throw new Error(`Failed to fetch recordings: ${response.status}`);
       }
 
       const data = await response.json();
       
-      // Fetch AI content for each recording
+      // Ensure we have recordings array
+      const recordings = data.recordings || [];
+      
+      // Fetch AI content for each recording with better error handling
       const lessonsWithContent = await Promise.all(
-        data.recordings.map(async (recording) => {
+        recordings.map(async (recording) => {
+          // Always return the recording, even if AI content fetch fails
+          const lessonData = {
+            ...recording,
+            aiContent: null
+          };
+
           try {
             const contentResponse = await fetch(`/api/ai-content/content/${recording.id}`, {
               headers: {
@@ -519,30 +1301,31 @@ const LessonsManager = ({ t }) => {
               }
             });
 
-            let aiContent = null;
             if (contentResponse.ok) {
               const contentData = await contentResponse.json();
-              aiContent = contentData.content;
+              // Validate the content structure
+              if (contentData && contentData.content) {
+                lessonData.aiContent = contentData.content;
+              }
+            } else {
+              console.warn(`AI content fetch failed for recording ${recording.id}: ${contentResponse.status}`);
             }
-
-            return {
-              ...recording,
-              aiContent
-            };
           } catch (error) {
             console.error(`Error fetching AI content for recording ${recording.id}:`, error);
-            return {
-              ...recording,
-              aiContent: null
-            };
+            // Don't throw - just log and continue with null aiContent
           }
+
+          return lessonData;
         })
       );
 
       setLessons(lessonsWithContent);
+      console.log(`Successfully loaded ${lessonsWithContent.length} lessons`);
     } catch (error) {
       console.error('Error fetching lessons:', error);
-      setError('שגיאה בטעינת השיעורים');
+      setError(`שגיאה בטעינת השיעורים: ${error.message}`);
+      // Set empty lessons array so UI doesn't break
+      setLessons([]);
     } finally {
       setLoading(false);
     }
@@ -795,15 +1578,19 @@ const LessonsManager = ({ t }) => {
   };
 
   const handleFileSelect = (file) => {
+    // Clear previous errors
+    setUploadError('');
+    setUploadSuccess('');
+    
     // Validate file type
     if (!file.type.startsWith('audio/')) {
-      alert('אנא בחר קובץ אודיו תקין');
+      setUploadError('אנא בחר קובץ אודיו תקין (MP3, WAV, M4A וכו\')');
       return;
     }
 
     // Validate file size (100MB limit)
     if (file.size > 100 * 1024 * 1024) {
-      alert('גודל הקובץ חייב להיות קטן מ-100MB');
+      setUploadError('גודל הקובץ חייב להיות קטן מ-100MB');
       return;
     }
 
@@ -816,11 +1603,20 @@ const LessonsManager = ({ t }) => {
     }
   };
 
-  const handleUpload = async () => {
+  const handleUpload = async (isRetry = false) => {
     if (!selectedFile) {
-      alert('אנא בחר קובץ לעלות');
+      setUploadError('אנא בחר קובץ לעלות');
       return;
     }
+
+    if (!lessonName.trim()) {
+      setUploadError('אנא הכנס שם לשיעור');
+      return;
+    }
+
+    // Clear previous messages
+    setUploadError('');
+    setUploadSuccess('');
 
     try {
       setUploading(true);
@@ -833,80 +1629,123 @@ const LessonsManager = ({ t }) => {
 
       const formData = new FormData();
       formData.append('audio', selectedFile);
-      formData.append('recordingId', `upload_${Date.now()}`);
+      formData.append('recordingId', `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
       formData.append('metadata', JSON.stringify({
-        lessonName: lessonName || selectedFile.name,
+        lessonName: lessonName.trim(),
         uploadedAt: new Date().toISOString(),
-        originalFileName: selectedFile.name
+        originalFileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        fileType: selectedFile.type,
+        retryAttempt: isRetry ? retryCount + 1 : 0
       }));
 
       const xhr = new XMLHttpRequest();
+      let uploadStartTime = Date.now();
 
       // Track upload progress
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
           const progress = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(progress);
+          
+          // Calculate upload speed and ETA
+          const elapsed = (Date.now() - uploadStartTime) / 1000;
+          const speed = e.loaded / elapsed;
+          const remaining = (e.total - e.loaded) / speed;
+          
+          console.log(`Upload progress: ${progress}% (${formatFileSize(e.loaded)}/${formatFileSize(e.total)}) - ETA: ${Math.round(remaining)}s`);
         }
       });
 
       // Handle completion
       xhr.addEventListener('load', () => {
         try {
-          if (xhr.status === 200) {
-            const response = JSON.parse(xhr.responseText);
-            console.log('Upload successful:', response);
+          console.log('Upload completed with status:', xhr.status);
+          
+          if (xhr.status === 200 || xhr.status === 201) {
+            let response;
+            try {
+              response = JSON.parse(xhr.responseText);
+            } catch (parseError) {
+              console.error('Failed to parse response:', xhr.responseText);
+              throw new Error('תגובת השרת אינה תקינה');
+            }
+            
+            console.log('Upload response:', response);
             
             if (response.success) {
-              // Close modal and refresh lessons
-              setUploadModal(false);
-              setSelectedFile(null);
-              setLessonName('');
-              setUploadProgress(0);
-              setUploading(false);
+              setUploadSuccess('הקובץ הועלה בהצלחה! מרענן את רשימת השיעורים...');
+              setRetryCount(0);
               
-              // Refresh lessons list
-              fetchLessons();
-              
-              alert('הקובץ הועלה בהצלחה!');
+              // Wait a moment to show success message
+              setTimeout(() => {
+                setUploadModal(false);
+                setSelectedFile(null);
+                setLessonName('');
+                setUploadProgress(0);
+                setUploading(false);
+                setUploadError('');
+                setUploadSuccess('');
+                
+                // Refresh lessons list
+                fetchLessons();
+              }, 2000);
             } else {
-              throw new Error(response.error || 'העלאה נכשלה');
+              throw new Error(response.error || 'העלאה נכשלה - תגובת שרת לא תקינה');
             }
-          } else {
-            let errorMessage = `שגיאת שרת: ${xhr.status}`;
+          } else if (xhr.status === 413) {
+            throw new Error('הקובץ גדול מדי. אנא בחר קובץ קטן יותר (עד 100MB)');
+          } else if (xhr.status === 401) {
+            throw new Error('אין הרשאה. אנא התחבר מחדש למערכת');
+          } else if (xhr.status === 400) {
+            let errorMessage = 'בקשה לא תקינה';
             try {
               const errorResponse = JSON.parse(xhr.responseText);
               errorMessage = errorResponse.error || errorMessage;
             } catch (e) {
-              // If response is not JSON, use status text
+              // Use default message if can't parse
+            }
+            throw new Error(errorMessage);
+          } else if (xhr.status >= 500) {
+            throw new Error(`שגיאת שרת (${xhr.status}). אנא נסה שוב מאוחר יותר`);
+          } else {
+            let errorMessage = `שגיאה לא צפויה: ${xhr.status}`;
+            try {
+              const errorResponse = JSON.parse(xhr.responseText);
+              errorMessage = errorResponse.error || errorMessage;
+            } catch (e) {
               errorMessage = xhr.statusText || errorMessage;
             }
             throw new Error(errorMessage);
           }
-        } catch (parseError) {
-          console.error('Error processing upload response:', parseError);
-          throw new Error('שגיאה בעיבוד תגובת השרת: ' + parseError.message);
+        } catch (error) {
+          console.error('Error processing upload response:', error);
+          throw error;
         }
       });
 
       // Handle network errors
       xhr.addEventListener('error', (e) => {
         console.error('Network error during upload:', e);
-        throw new Error('שגיאת רשת - בדוק את החיבור לאינטרנט ושהשרת פועל');
+        const errorMsg = 'שגיאת רשת - בדוק את החיבור לאינטרנט ושהשרת פועל';
+        throw new Error(errorMsg);
       });
 
       // Handle timeout
       xhr.addEventListener('timeout', () => {
-        throw new Error('זמן ההעלאה פג - הקובץ גדול מדי או החיבור איטי');
+        console.error('Upload timeout');
+        throw new Error('זמן ההעלאה פג. הקובץ גדול מדי או החיבור איטי');
       });
 
       // Handle abort
       xhr.addEventListener('abort', () => {
+        console.log('Upload aborted');
         throw new Error('העלאה בוטלה');
       });
 
-      // Set timeout (5 minutes for large files)
-      xhr.timeout = 5 * 60 * 1000;
+      // Set timeout based on file size (minimum 2 minutes, up to 10 minutes for large files)
+      const timeoutMinutes = Math.min(10, Math.max(2, selectedFile.size / (1024 * 1024))); // 1 minute per MB, min 2, max 10
+      xhr.timeout = timeoutMinutes * 60 * 1000;
 
       // Start upload
       xhr.open('POST', '/api/recordings/upload');
@@ -915,16 +1754,66 @@ const LessonsManager = ({ t }) => {
       console.log('Starting upload:', {
         fileName: selectedFile.name,
         fileSize: selectedFile.size,
-        fileType: selectedFile.type
+        fileType: selectedFile.type,
+        timeout: `${timeoutMinutes} minutes`,
+        isRetry: isRetry,
+        retryCount: retryCount
       });
       
       xhr.send(formData);
 
     } catch (error) {
       console.error('Upload error:', error);
-      alert('שגיאה בהעלאת הקובץ: ' + error.message);
+      setUploadError(`שגיאה בהעלאת הקובץ: ${error.message}`);
       setUploading(false);
       setUploadProgress(0);
+      
+      // Increment retry count for network-related errors
+      if (error.message.includes('רשת') || error.message.includes('זמן') || error.message.includes('שרת')) {
+        setRetryCount(prev => prev + 1);
+      }
+    }
+  };
+
+  const resetUploadModal = () => {
+    setUploadModal(false);
+    setSelectedFile(null);
+    setLessonName('');
+    setUploadProgress(0);
+    setUploading(false);
+    setUploadError('');
+    setUploadSuccess('');
+    setRetryCount(0);
+    setDragOver(false);
+  };
+
+  // Delete lesson functionality
+  const handleDeleteLesson = async (lesson) => {
+    try {
+      setDeleting(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`/api/recordings/${lesson.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete lesson');
+      }
+
+      // Remove lesson from state
+      setLessons(prev => prev.filter(l => l.id !== lesson.id));
+      setDeleteModal(null);
+      
+      alert('השיעור נמחק בהצלחה');
+    } catch (error) {
+      console.error('Error deleting lesson:', error);
+      alert('שגיאה במחיקת השיעור');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -951,6 +1840,9 @@ const LessonsManager = ({ t }) => {
         <Header>
           <Title>שיעורים</Title>
           <HeaderButtons>
+            <UploadButton onClick={() => setRecordingModal(true)}>
+              הקלט שיעור
+            </UploadButton>
             <UploadButton onClick={() => setUploadModal(true)}>
               העלה הקלטה
             </UploadButton>
@@ -971,6 +1863,35 @@ const LessonsManager = ({ t }) => {
           </ServiceHealthIndicator>
         )}
 
+        {/* Search and Filter Section */}
+        {lessons.length > 0 && (
+          <SearchAndFilterSection>
+            <SearchInput
+              type="text"
+              placeholder="חפש שיעורים..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <FilterSelect
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="created_at">תאריך יצירה</option>
+              <option value="filename">שם קובץ</option>
+              <option value="file_size">גודל קובץ</option>
+            </FilterSelect>
+            <FilterGroup>
+              <FilterSelect
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+              >
+                <option value="DESC">יורד</option>
+                <option value="ASC">עולה</option>
+              </FilterSelect>
+            </FilterGroup>
+          </SearchAndFilterSection>
+        )}
+
         {lessons.length === 0 ? (
           <EmptyState>
             <h3>אין שיעורים עדיין</h3>
@@ -978,7 +1899,7 @@ const LessonsManager = ({ t }) => {
           </EmptyState>
         ) : (
           <LessonGrid>
-            {lessons.map((lesson) => {
+            {(filteredLessons.length > 0 ? filteredLessons : lessons).map((lesson) => {
               const statusInfo = getAIStatusInfo(lesson);
               const { aiContent } = lesson;
 
@@ -1005,7 +1926,7 @@ const LessonsManager = ({ t }) => {
                   {/* Enhanced AI Status Section */}
                   {renderAIStatusSection(lesson)}
 
-                  {aiContent?.transcription && (
+                  {aiContent?.transcription && aiContent.transcription.transcription_text && (
                     <ContentSection>
                       <ContentTitle>תמליל</ContentTitle>
                       <ContentPreview>
@@ -1015,7 +1936,7 @@ const LessonsManager = ({ t }) => {
                     </ContentSection>
                   )}
 
-                  {aiContent?.summary && (
+                  {aiContent?.summary && aiContent.summary.summary_text && (
                     <ContentSection>
                       <ContentTitle>סיכום</ContentTitle>
                       <ContentPreview>
@@ -1025,12 +1946,12 @@ const LessonsManager = ({ t }) => {
                     </ContentSection>
                   )}
 
-                  {aiContent?.questions && aiContent.questions.length > 0 && (
+                  {aiContent?.questions && Array.isArray(aiContent.questions) && aiContent.questions.length > 0 && (
                     <ContentSection>
                       <ContentTitle>שאלות ({aiContent.questions.length})</ContentTitle>
                       <ContentPreview>
                         <strong>שאלה לדוגמה:</strong><br />
-                        {aiContent.questions[0].question_text}
+                        {aiContent.questions[0]?.question_text || 'שאלה לא זמינה'}
                       </ContentPreview>
                     </ContentSection>
                   )}
@@ -1039,18 +1960,33 @@ const LessonsManager = ({ t }) => {
                     <ActionButton 
                       className="primary"
                       onClick={() => {
-                        // Play audio functionality would go here
-                        const audio = new Audio(`/api/recordings/${lesson.id}/download`);
-                        audio.play();
+                        setCurrentlyPlaying(lesson.id);
+                        setAudioPlayerData({
+                          id: lesson.id,
+                          title: lesson.metadata?.lessonName || `הקלטה ${lesson.id}`,
+                          audioUrl: `/api/recordings/${lesson.id}/download`,
+                          duration: lesson.metadata?.duration || 0
+                        });
                       }}
                     >
                       השמע
                     </ActionButton>
 
+                    {/* Debug: Always show status info */}
+                    {console.log('Lesson status debug:', {
+                      lessonId: lesson.id,
+                      statusInfo: statusInfo,
+                      aiContent: lesson.aiContent,
+                      processingJob: processingJobs[lesson.id]
+                    })}
+
                     {statusInfo.status === 'pending' && (
                       <ActionButton 
                         className="success"
-                        onClick={() => setProcessingModal(lesson)}
+                        onClick={() => {
+                          console.log('Create AI content button clicked for lesson:', lesson.id);
+                          setProcessingModal(lesson);
+                        }}
                       >
                         צור תוכן AI
                       </ActionButton>
@@ -1059,45 +1995,90 @@ const LessonsManager = ({ t }) => {
                     {statusInfo.status === 'failed' && (
                       <ActionButton 
                         className="success"
-                        onClick={() => setProcessingModal(lesson)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          console.log('AI retry button clicked for lesson:', lesson.id, 'statusInfo:', statusInfo);
+                          setProcessingModal(lesson);
+                        }}
                       >
                         נסה שוב
                       </ActionButton>
                     )}
 
-                    {aiContent?.transcription && (
+                    <DeleteButton
+                      onClick={() => setDeleteModal(lesson)}
+                    >
+                      מחק
+                    </DeleteButton>
+
+                    {aiContent?.transcription && aiContent.transcription.transcription_text && (
                       <ActionButton 
                         className="secondary"
                         onClick={() => {
                           // View full transcription
-                          alert(aiContent.transcription.transcription_text);
+                          try {
+                            alert(aiContent.transcription.transcription_text || 'תמליל לא זמין');
+                          } catch (error) {
+                            console.error('Error displaying transcription:', error);
+                            alert('שגיאה בהצגת התמליל');
+                          }
                         }}
                       >
                         תמליל מלא
                       </ActionButton>
                     )}
 
-                    {aiContent?.summary && (
+                    {aiContent?.summary && aiContent.summary.summary_text && (
                       <ActionButton 
                         className="secondary"
                         onClick={() => {
                           // View full summary
-                          alert(aiContent.summary.summary_text);
+                          try {
+                            alert(aiContent.summary.summary_text || 'סיכום לא זמין');
+                          } catch (error) {
+                            console.error('Error displaying summary:', error);
+                            alert('שגיאה בהצגת הסיכום');
+                          }
                         }}
                       >
                         סיכום מלא
                       </ActionButton>
                     )}
 
-                    {aiContent?.questions && aiContent.questions.length > 0 && (
+                    {aiContent?.questions && Array.isArray(aiContent.questions) && aiContent.questions.length > 0 && (
                       <ActionButton 
                         className="secondary"
                         onClick={() => {
                           // View all questions
-                          const questionsText = aiContent.questions.map((q, i) => 
-                            `שאלה ${i + 1}: ${q.question_text}\n${q.answer_options?.map((opt, j) => `${String.fromCharCode(97 + j)}) ${opt}`).join('\n') || ''}\nתשובה נכונה: ${q.correct_answer}\n`
-                          ).join('\n---\n');
-                          alert(questionsText);
+                          try {
+                            const questionsText = aiContent.questions
+                              .filter(q => q && q.question_text) // Filter out invalid questions
+                              .map((q, i) => {
+                                let questionText = `שאלה ${i + 1}: ${q.question_text}\n`;
+                                
+                                if (q.answer_options && Array.isArray(q.answer_options)) {
+                                  questionText += q.answer_options.map((opt, j) => 
+                                    `${String.fromCharCode(97 + j)}) ${opt}`
+                                  ).join('\n') + '\n';
+                                }
+                                
+                                if (q.correct_answer) {
+                                  questionText += `תשובה נכונה: ${q.correct_answer}\n`;
+                                }
+                                
+                                return questionText;
+                              })
+                              .join('\n---\n');
+                            
+                            if (questionsText.trim()) {
+                              alert(questionsText);
+                            } else {
+                              alert('אין שאלות זמינות');
+                            }
+                          } catch (error) {
+                            console.error('Error displaying questions:', error);
+                            alert('שגיאה בהצגת השאלות');
+                          }
                         }}
                       >
                         כל השאלות
@@ -1114,7 +2095,9 @@ const LessonsManager = ({ t }) => {
       {processingModal && (
         <ProcessingModal>
           <ModalContent>
-            <ModalTitle>צור תוכן AI עבור השיעור</ModalTitle>
+            <ModalTitle>
+              {getAIStatusInfo(processingModal).status === 'failed' ? 'נסה שוב ליצור תוכן AI' : 'צור תוכן AI עבור השיעור'}
+            </ModalTitle>
             <p>בחר איזה תוכן תרצה ליצור:</p>
             
             <ProcessingOptions>
@@ -1227,6 +2210,25 @@ const LessonsManager = ({ t }) => {
               )}
             </UploadArea>
 
+            {/* Error Message */}
+            {uploadError && (
+              <UploadErrorMessage>
+                <strong>שגיאה:</strong> {uploadError}
+                {retryCount > 0 && (
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
+                    ניסיון {retryCount} נכשל
+                  </div>
+                )}
+              </UploadErrorMessage>
+            )}
+
+            {/* Success Message */}
+            {uploadSuccess && (
+              <UploadSuccessMessage>
+                <strong>הצלחה:</strong> {uploadSuccess}
+              </UploadSuccessMessage>
+            )}
+
             {uploading && (
               <div>
                 <p>מעלה קובץ...</p>
@@ -1234,32 +2236,279 @@ const LessonsManager = ({ t }) => {
                   <ProgressFill progress={uploadProgress} />
                 </ProgressBar>
                 <p>{uploadProgress}%</p>
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <p style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>
+                    אנא המתן, הקובץ נטען...
+                  </p>
+                )}
               </div>
             )}
 
             <ActionButtons>
               <ActionButton 
                 className="success"
-                onClick={handleUpload}
-                disabled={!selectedFile || uploading}
+                onClick={() => handleUpload(false)}
+                disabled={!selectedFile || uploading || !lessonName.trim()}
               >
                 {uploading ? 'מעלה...' : 'העלה'}
               </ActionButton>
+              
+              {uploadError && retryCount < 3 && !uploading && (
+                <RetryButton
+                  onClick={() => handleUpload(true)}
+                  disabled={uploading}
+                >
+                  נסה שוב ({retryCount + 1}/3)
+                </RetryButton>
+              )}
+              
               <ActionButton 
                 className="secondary"
-                onClick={() => {
-                  setUploadModal(false);
-                  setSelectedFile(null);
-                  setLessonName('');
-                  setUploadProgress(0);
-                  setUploading(false);
-                }}
+                onClick={resetUploadModal}
+                disabled={uploading}
               >
                 ביטול
               </ActionButton>
             </ActionButtons>
           </UploadModalContent>
         </UploadModal>
+      )}
+
+      {/* Recording Modal */}
+      {recordingModal && (
+        <RecordingModalContainer>
+          <RecordingModalContent>
+            <RecordingHeader>
+              <RecordingTitle>הקלטת שיעור</RecordingTitle>
+              <StatusIndicator className={recordingState}>
+                <StatusDot className={recordingState} />
+                {getRecordingStatusText()}
+              </StatusIndicator>
+            </RecordingHeader>
+
+            {!isRecordingInitialized ? (
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                <div>טוען מערכת הקלטה...</div>
+              </div>
+            ) : (
+              <ControlsSection>
+                <MainControls>
+                  {recordingState === 'stopped' && (
+                    <ControlButton 
+                      className="primary" 
+                      onClick={startRecording}
+                      disabled={!isRecordingInitialized}
+                    >
+                      התחל הקלטה
+                    </ControlButton>
+                  )}
+                  
+                  {recordingState === 'recording' && (
+                    <>
+                      <ControlButton 
+                        className="warning" 
+                        onClick={pauseRecording}
+                      >
+                        השהה
+                      </ControlButton>
+                      <ControlButton 
+                        className="secondary" 
+                        onClick={stopRecording}
+                      >
+                        עצור
+                      </ControlButton>
+                    </>
+                  )}
+                  
+                  {recordingState === 'paused' && (
+                    <>
+                      <ControlButton 
+                        className="success" 
+                        onClick={resumeRecording}
+                      >
+                        המשך
+                      </ControlButton>
+                      <ControlButton 
+                        className="secondary" 
+                        onClick={stopRecording}
+                      >
+                        עצור
+                      </ControlButton>
+                    </>
+                  )}
+                </MainControls>
+
+                <InfoSection>
+                  <InfoItem>
+                    <InfoItemLabel>משך הקלטה</InfoItemLabel>
+                    <InfoItemValue>{formatRecordingDuration(recordingDuration)}</InfoItemValue>
+                  </InfoItem>
+                  
+                  <InfoItem>
+                    <InfoItemLabel>מכשיר הקלטה</InfoItemLabel>
+                    <DeviceSelector 
+                      value={selectedRecordingDevice} 
+                      onChange={(e) => setSelectedRecordingDevice(e.target.value)}
+                      disabled={recordingState !== 'stopped'}
+                    >
+                      {recordingDevices.map(device => (
+                        <option key={device.deviceId} value={device.deviceId}>
+                          {device.label}
+                        </option>
+                      ))}
+                    </DeviceSelector>
+                  </InfoItem>
+                  
+                  <InfoItem>
+                    <InfoItemLabel>רמת אודיו</InfoItemLabel>
+                    <div>
+                      <AudioLevelMeter>
+                        <AudioLevelBar level={audioLevel} />
+                      </AudioLevelMeter>
+                      <div style={{ fontSize: '0.8rem', marginTop: '0.25rem', color: audioLevel > 0.8 || audioLevel < 0.1 ? '#e74c3c' : '#27ae60' }}>
+                        {getAudioLevelText()}
+                      </div>
+                    </div>
+                  </InfoItem>
+                </InfoSection>
+
+                <MetadataForm>
+                  <RecordingFormGroup>
+                    <RecordingLabel>שם השיעור</RecordingLabel>
+                    <RecordingInput
+                      type="text"
+                      value={recordingMetadata.lessonName}
+                      onChange={(e) => setRecordingMetadata({...recordingMetadata, lessonName: e.target.value})}
+                      placeholder="הכנס שם לשיעור"
+                    />
+                  </RecordingFormGroup>
+                  
+                  <RecordingFormGroup>
+                    <RecordingLabel>מקצוע</RecordingLabel>
+                    <RecordingInput
+                      type="text"
+                      value={recordingMetadata.subject}
+                      onChange={(e) => setRecordingMetadata({...recordingMetadata, subject: e.target.value})}
+                      placeholder="מקצוע"
+                    />
+                  </RecordingFormGroup>
+                  
+                  <RecordingFormGroup>
+                    <RecordingLabel>כיתה</RecordingLabel>
+                    <RecordingInput
+                      type="text"
+                      value={recordingMetadata.classLevel}
+                      onChange={(e) => setRecordingMetadata({...recordingMetadata, classLevel: e.target.value})}
+                      placeholder="כיתה"
+                    />
+                  </RecordingFormGroup>
+                  
+                  <RecordingFormGroup>
+                    <RecordingLabel>תכנית לימודים</RecordingLabel>
+                    <RecordingInput
+                      type="text"
+                      value={recordingMetadata.curriculum}
+                      onChange={(e) => setRecordingMetadata({...recordingMetadata, curriculum: e.target.value})}
+                      placeholder="תכנית לימודים"
+                    />
+                  </RecordingFormGroup>
+                  
+                  <RecordingCheckboxGroup>
+                    <AIOptionsTitle>אפשרויות AI</AIOptionsTitle>
+                    <RecordingCheckboxItem>
+                      <input
+                        type="checkbox"
+                        checked={recordingAiOptions.generateSummary}
+                        onChange={(e) => setRecordingAiOptions({...recordingAiOptions, generateSummary: e.target.checked})}
+                      />
+                      צור סיכום אוטומטי
+                    </RecordingCheckboxItem>
+                    <RecordingCheckboxItem>
+                      <input
+                        type="checkbox"
+                        checked={recordingAiOptions.generateTest}
+                        onChange={(e) => setRecordingAiOptions({...recordingAiOptions, generateTest: e.target.checked})}
+                      />
+                      צור שאלות בחינה
+                    </RecordingCheckboxItem>
+                  </RecordingCheckboxGroup>
+                </MetadataForm>
+
+                {recordingError && (
+                  <RecordingErrorMessage>
+                    {recordingError}
+                  </RecordingErrorMessage>
+                )}
+              </ControlsSection>
+            )}
+
+            <ActionButtons style={{ marginTop: '2rem', justifyContent: 'center' }}>
+              <ActionButton 
+                className="secondary"
+                onClick={() => {
+                  setRecordingModal(false);
+                  resetRecordingState();
+                }}
+                disabled={recordingState === 'recording'}
+              >
+                {recordingState === 'recording' ? 'עצור הקלטה לפני סגירה' : 'סגור'}
+              </ActionButton>
+            </ActionButtons>
+          </RecordingModalContent>
+        </RecordingModalContainer>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <DeleteModal>
+          <DeleteModalContent>
+            <ModalTitle>מחיקת שיעור</ModalTitle>
+            <p>האם אתה בטוח שברצונך למחוק את השיעור "{deleteModal.metadata?.lessonName || `הקלטה ${deleteModal.id}`}"?</p>
+            <p style={{ color: '#e74c3c', fontSize: '0.9rem' }}>
+              פעולה זו אינה ניתנת לביטול ותמחק את כל התוכן הקשור לשיעור.
+            </p>
+            
+            <ActionButtons>
+              <DeleteButton
+                onClick={() => handleDeleteLesson(deleteModal)}
+                disabled={deleting}
+              >
+                {deleting ? 'מוחק...' : 'מחק'}
+              </DeleteButton>
+              <ActionButton 
+                className="secondary"
+                onClick={() => setDeleteModal(null)}
+                disabled={deleting}
+              >
+                ביטול
+              </ActionButton>
+            </ActionButtons>
+          </DeleteModalContent>
+        </DeleteModal>
+      )}
+
+      {/* Audio Player Integration */}
+      {audioPlayerData && (
+        <div style={{ 
+          position: 'fixed', 
+          bottom: '20px', 
+          left: '20px', 
+          right: '20px', 
+          zIndex: 1000,
+          background: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          padding: '1rem'
+        }}>
+          <AudioPlayer
+            audioUrl={audioPlayerData.audioUrl}
+            title={audioPlayerData.title}
+            onClose={() => {
+              setAudioPlayerData(null);
+              setCurrentlyPlaying(null);
+            }}
+          />
+        </div>
       )}
     </>
   );

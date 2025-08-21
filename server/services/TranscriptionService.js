@@ -108,7 +108,7 @@ class TranscriptionService {
   }
 
   /**
-   * Transcribe using OpenAI Whisper
+   * Transcribe using OpenAI Whisper with retry logic
    * @param {string} filePath - Path to audio file
    * @returns {Promise<Object>} OpenAI transcription result
    */
@@ -118,37 +118,130 @@ class TranscriptionService {
     }
 
     const config = MODEL_CONFIGS.transcription.openai;
+    const maxRetries = 3;
+    const baseDelay = 1000; // 1 second
     
-    try {
-      // Create file stream
-      const audioFile = fs.createReadStream(filePath);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      let audioFile = null;
       
-      // Call OpenAI Whisper API
-      const response = await openaiClient.audio.transcriptions.create({
-        file: audioFile,
-        model: config.model,
-        language: config.language,
-        response_format: config.response_format,
-        temperature: config.temperature
-      });
+      try {
+        console.log(`OpenAI transcription attempt ${attempt}/${maxRetries} for file: ${path.basename(filePath)}`);
+        
+        // Create file stream
+        audioFile = fs.createReadStream(filePath);
+        
+        // Set up timeout promise
+        const timeoutMs = 300000; // 5 minutes timeout
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
+        });
+        
+        // Call OpenAI transcription API with timeout using the new gpt-4o-transcribe model
+        const transcriptionPromise = openaiClient.audio.transcriptions.create({
+          file: audioFile,
+          model: config.model, // Now uses 'gpt-4o-transcribe'
+          language: config.language,
+          response_format: config.response_format,
+          temperature: config.temperature
+        });
 
-      // Close file stream
-      audioFile.destroy();
+        const response = await Promise.race([transcriptionPromise, timeoutPromise]);
 
-      return {
-        text: response.text,
-        language: response.language,
-        duration: response.duration,
-        segments: response.segments || [],
-        words: response.words || null,
-        model: config.model,
-        task: response.task || 'transcribe'
-      };
+        // Close file stream
+        if (audioFile) {
+          audioFile.destroy();
+        }
 
-    } catch (error) {
-      console.error('OpenAI transcription error:', error);
-      throw new Error(`OpenAI transcription failed: ${error.message}`);
+        console.log(`OpenAI transcription successful on attempt ${attempt}`);
+        return {
+          text: response.text,
+          language: response.language,
+          duration: response.duration,
+          segments: response.segments || [],
+          words: response.words || null,
+          model: config.model,
+          task: response.task || 'transcribe'
+        };
+
+      } catch (error) {
+        // Close file stream if it exists
+        if (audioFile) {
+          audioFile.destroy();
+        }
+
+        console.error(`OpenAI transcription attempt ${attempt} failed:`, error.message);
+        
+        // Check if this is a retryable error
+        const isRetryable = this.isRetryableError(error);
+        
+        if (attempt === maxRetries || !isRetryable) {
+          // Last attempt or non-retryable error
+          let errorMessage = error.message;
+          
+          if (error.message.includes('Request timed out')) {
+            errorMessage = 'Request timed out - the audio file may be too long or the service is overloaded';
+          } else if (error.status === 429 || error.message.includes('429')) {
+            errorMessage = 'Rate limit exceeded - too many requests. Please try again later';
+          } else if (error.status === 413 || error.message.includes('413')) {
+            errorMessage = 'File too large for transcription service';
+          } else if (error.status === 400 || error.message.includes('400')) {
+            errorMessage = 'Invalid audio file format or corrupted file';
+          } else if (error.status >= 500) {
+            errorMessage = 'OpenAI service temporarily unavailable';
+          }
+          
+          throw new Error(`OpenAI transcription failed: ${errorMessage}`);
+        }
+        
+        // Calculate delay with exponential backoff
+        const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
+        console.log(`Retrying in ${Math.round(delay)}ms...`);
+        await this.sleep(delay);
+      }
     }
+  }
+
+  /**
+   * Check if an error is retryable
+   * @param {Error} error - The error to check
+   * @returns {boolean} Whether the error is retryable
+   */
+  isRetryableError(error) {
+    // Rate limiting (429)
+    if (error.status === 429 || error.message.includes('429')) {
+      return true;
+    }
+    
+    // Server errors (5xx)
+    if (error.status >= 500) {
+      return true;
+    }
+    
+    // Timeout errors
+    if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
+      return true;
+    }
+    
+    // Network errors
+    if (error.code === 'ECONNRESET' || error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+      return true;
+    }
+    
+    // OpenAI specific retryable errors
+    if (error.message.includes('overloaded') || error.message.includes('temporarily unavailable')) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Sleep for specified milliseconds
+   * @param {number} ms - Milliseconds to sleep
+   * @returns {Promise} Promise that resolves after delay
+   */
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
