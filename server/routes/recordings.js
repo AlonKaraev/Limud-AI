@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const { authenticate } = require('../middleware/auth');
+const AudioProcessingService = require('../services/AudioProcessingService');
 
 const router = express.Router();
 
@@ -20,7 +21,25 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     // Generate unique filename
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname) || '.webm';
+    let ext = path.extname(file.originalname);
+    
+    // If no extension, determine from mimetype
+    if (!ext) {
+      if (file.mimetype === 'audio/mpeg' || file.mimetype === 'audio/mp3') {
+        ext = '.mp3';
+      } else if (file.mimetype === 'audio/webm') {
+        ext = '.webm';
+      } else if (file.mimetype === 'audio/wav') {
+        ext = '.wav';
+      } else if (file.mimetype === 'audio/ogg') {
+        ext = '.ogg';
+      } else if (file.mimetype === 'audio/m4a' || file.mimetype === 'audio/mp4') {
+        ext = '.m4a';
+      } else {
+        ext = '.webm'; // fallback
+      }
+    }
+    
     cb(null, `recording-${uniqueSuffix}${ext}`);
   }
 });
@@ -383,8 +402,32 @@ router.get('/:id/download', authenticate, async (req, res) => {
       });
     }
 
+    // Determine content type based on file extension
+    const fileExt = path.extname(recording.filename).toLowerCase();
+    let contentType = 'audio/webm'; // default
+    
+    switch (fileExt) {
+      case '.mp3':
+        contentType = 'audio/mpeg';
+        break;
+      case '.wav':
+        contentType = 'audio/wav';
+        break;
+      case '.ogg':
+        contentType = 'audio/ogg';
+        break;
+      case '.m4a':
+        contentType = 'audio/mp4';
+        break;
+      case '.webm':
+        contentType = 'audio/webm';
+        break;
+      default:
+        contentType = 'audio/webm';
+    }
+
     // Set appropriate headers
-    res.setHeader('Content-Type', 'audio/webm');
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${recording.filename}"`);
     res.setHeader('Content-Length', recording.file_size);
 

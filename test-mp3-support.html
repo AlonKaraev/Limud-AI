@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MP3 Support Test - Limud AI</title>
+    <style>
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .file-info {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        audio {
+            width: 100%;
+            margin: 10px 0;
+        }
+        .supported-formats {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .test-results {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>בדיקת תמיכה ב-MP3 - Limud AI</h1>
+        <p>דף זה בודק את התמיכה בקבצי MP3 במערכת Limud AI</p>
+
+        <div class="test-section">
+            <h3>1. בדיקת תמיכת הדפדפן ב-MP3</h3>
+            <div id="browserSupport"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. פורמטים נתמכים</h3>
+            <div class="supported-formats">
+                <strong>פורמטי אודיו נתמכים במערכת:</strong>
+                <ul>
+                    <li>MP3 (.mp3) - audio/mpeg, audio/mp3</li>
+                    <li>WAV (.wav) - audio/wav</li>
+                    <li>WebM (.webm) - audio/webm</li>
+                    <li>OGG (.ogg) - audio/ogg</li>
+                    <li>M4A (.m4a) - audio/m4a, audio/mp4, audio/x-m4a</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. בדיקת העלאת קובץ MP3</h3>
+            <input type="file" id="fileInput" accept="audio/*" />
+            <button onclick="testFileUpload()">בדוק קובץ</button>
+            <div id="fileTestResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. בדיקת נגינת MP3</h3>
+            <button onclick="testAudioPlayback()">צור קובץ MP3 לדוגמה ונגן</button>
+            <div id="audioTestResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>5. בדיקת MediaRecorder API</h3>
+            <button onclick="testMediaRecorder()">בדוק תמיכה בהקלטה</button>
+            <div id="mediaRecorderResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>6. תוצאות הבדיקה</h3>
+            <div class="test-results" id="finalResults">
+טוען בדיקות...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            browserSupport: false,
+            fileUpload: false,
+            audioPlayback: false,
+            mediaRecorder: false
+        };
+
+        // Test browser MP3 support
+        function testBrowserSupport() {
+            const audio = document.createElement('audio');
+            const mp3Support = audio.canPlayType('audio/mpeg');
+            const mp3AltSupport = audio.canPlayType('audio/mp3');
+            
+            const supportDiv = document.getElementById('browserSupport');
+            
+            if (mp3Support === 'probably' || mp3Support === 'maybe' || mp3AltSupport === 'probably' || mp3AltSupport === 'maybe') {
+                supportDiv.innerHTML = '<div class="status success">✓ הדפדפן תומך בנגינת MP3</div>';
+                testResults.browserSupport = true;
+            } else {
+                supportDiv.innerHTML = '<div class="status error">✗ הדפדפן אינו תומך בנגינת MP3</div>';
+            }
+            
+            supportDiv.innerHTML += `
+                <div class="status info">
+                    <strong>פרטי תמיכה:</strong><br>
+                    audio/mpeg: ${mp3Support || 'לא נתמך'}<br>
+                    audio/mp3: ${mp3AltSupport || 'לא נתמך'}
+                </div>
+            `;
+            
+            updateFinalResults();
+        }
+
+        // Test file upload validation
+        function testFileUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const resultsDiv = document.getElementById('fileTestResults');
+            
+            if (!fileInput.files.length) {
+                resultsDiv.innerHTML = '<div class="status error">אנא בחר קובץ לבדיקה</div>';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const supportedTypes = [
+                'audio/mpeg',     // MP3
+                'audio/mp3',      // MP3 (alternative)
+                'audio/wav',      // WAV
+                'audio/webm',     // WebM
+                'audio/ogg',      // OGG
+                'audio/m4a',      // M4A
+                'audio/mp4',      // MP4 audio
+                'audio/x-m4a'     // M4A (alternative)
+            ];
+            
+            const fileName = file.name.toLowerCase();
+            const supportedExtensions = ['.mp3', '.wav', '.webm', '.ogg', '.m4a', '.mp4'];
+            const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
+            
+            const isValidType = file.type.startsWith('audio/') || supportedTypes.includes(file.type);
+            const isValidSize = file.size <= 100 * 1024 * 1024; // 100MB
+            
+            let resultHTML = `
+                <div class="file-info">
+                    <strong>פרטי הקובץ:</strong><br>
+                    שם: ${file.name}<br>
+                    סוג: ${file.type}<br>
+                    גודל: ${(file.size / 1024 / 1024).toFixed(2)} MB<br>
+                    סיומת תקינה: ${hasValidExtension ? 'כן' : 'לא'}<br>
+                    סוג תקין: ${isValidType ? 'כן' : 'לא'}<br>
+                    גודל תקין: ${isValidSize ? 'כן' : 'לא'}
+                </div>
+            `;
+            
+            if (isValidType && hasValidExtension && isValidSize) {
+                resultHTML += '<div class="status success">✓ הקובץ תקין ויכול להיות מועלה</div>';
+                testResults.fileUpload = true;
+                
+                // Try to create audio element for playback test
+                const audio = document.createElement('audio');
+                audio.controls = true;
+                audio.src = URL.createObjectURL(file);
+                audio.style.width = '100%';
+                audio.style.marginTop = '10px';
+                
+                audio.addEventListener('loadedmetadata', () => {
+                    resultHTML += `<div class="status info">משך הקובץ: ${Math.round(audio.duration)} שניות</div>`;
+                    resultsDiv.innerHTML = resultHTML;
+                    resultsDiv.appendChild(audio);
+                });
+                
+                audio.addEventListener('error', (e) => {
+                    resultHTML += '<div class="status error">שגיאה בטעינת הקובץ לנגינה</div>';
+                    resultsDiv.innerHTML = resultHTML;
+                });
+                
+            } else {
+                resultHTML += '<div class="status error">✗ הקובץ אינו תקין או אינו נתמך</div>';
+                testResults.fileUpload = false;
+            }
+            
+            resultsDiv.innerHTML = resultHTML;
+            updateFinalResults();
+        }
+
+        // Test audio playback
+        function testAudioPlayback() {
+            const resultsDiv = document.getElementById('audioTestResults');
+            resultsDiv.innerHTML = '<div class="status info">יוצר קובץ אודיו לדוגמה...</div>';
+            
+            try {
+                // Create a simple audio context and generate a tone
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 note
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 1); // 1 second tone
+                
+                resultsDiv.innerHTML = '<div class="status success">✓ Web Audio API פועל תקין</div>';
+                testResults.audioPlayback = true;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="status error">✗ שגיאה ב-Web Audio API: ${error.message}</div>`;
+                testResults.audioPlayback = false;
+            }
+            
+            updateFinalResults();
+        }
+
+        // Test MediaRecorder API
+        function testMediaRecorder() {
+            const resultsDiv = document.getElementById('mediaRecorderResults');
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                resultsDiv.innerHTML = '<div class="status error">✗ getUserMedia לא נתמך</div>';
+                testResults.mediaRecorder = false;
+                updateFinalResults();
+                return;
+            }
+            
+            if (!window.MediaRecorder) {
+                resultsDiv.innerHTML = '<div class="status error">✗ MediaRecorder API לא נתמך</div>';
+                testResults.mediaRecorder = false;
+                updateFinalResults();
+                return;
+            }
+            
+            // Test supported MIME types
+            const types = [
+                'audio/webm;codecs=opus',
+                'audio/webm',
+                'audio/mp4',
+                'audio/ogg;codecs=opus',
+                'audio/wav'
+            ];
+            
+            let supportedTypes = [];
+            types.forEach(type => {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    supportedTypes.push(type);
+                }
+            });
+            
+            let resultHTML = `
+                <div class="status success">✓ MediaRecorder API נתמך</div>
+                <div class="status info">
+                    <strong>פורמטי הקלטה נתמכים:</strong><br>
+                    ${supportedTypes.length > 0 ? supportedTypes.join('<br>') : 'אין פורמטים נתמכים'}
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = resultHTML;
+            testResults.mediaRecorder = supportedTypes.length > 0;
+            updateFinalResults();
+        }
+
+        // Update final results
+        function updateFinalResults() {
+            const resultsDiv = document.getElementById('finalResults');
+            const passedTests = Object.values(testResults).filter(result => result).length;
+            const totalTests = Object.keys(testResults).length;
+            
+            let resultText = `תוצאות הבדיקה: ${passedTests}/${totalTests} בדיקות עברו בהצלחה\n\n`;
+            
+            resultText += `✓ תמיכת דפדפן ב-MP3: ${testResults.browserSupport ? 'כן' : 'לא'}\n`;
+            resultText += `✓ בדיקת העלאת קבצים: ${testResults.fileUpload ? 'כן' : 'לא'}\n`;
+            resultText += `✓ נגינת אודיו: ${testResults.audioPlayback ? 'כן' : 'לא'}\n`;
+            resultText += `✓ הקלטת אודיו: ${testResults.mediaRecorder ? 'כן' : 'לא'}\n\n`;
+            
+            if (passedTests === totalTests) {
+                resultText += '🎉 כל הבדיקות עברו בהצלחה! המערכת תומכת במלואה בקבצי MP3.';
+            } else if (passedTests >= totalTests * 0.75) {
+                resultText += '⚠️ רוב הבדיקות עברו בהצלחה. יש תמיכה חלקית ב-MP3.';
+            } else {
+                resultText += '❌ חלק מהבדיקות נכשלו. ייתכן שיש בעיות תאימות.';
+            }
+            
+            resultsDiv.textContent = resultText;
+        }
+
+        // Run initial tests
+        window.addEventListener('load', () => {
+            testBrowserSupport();
+            testMediaRecorder();
+        });
+    </script>
+</body>
+</html>

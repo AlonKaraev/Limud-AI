@@ -43,6 +43,14 @@ const UploadButton = styled.button`
     background-color: #bdc3c7;
     cursor: not-allowed;
   }
+
+  &.record {
+    background-color: #e74c3c;
+    
+    &:hover {
+      background-color: #c0392b;
+    }
+  }
 `;
 
 const Title = styled.h2`
@@ -308,6 +316,115 @@ const StatusDetails = styled.div`
   font-size: 0.85rem;
   color: #666;
   margin-top: 0.5rem;
+`;
+
+const AIStagesList = styled.div`
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const AIStage = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.25rem 0;
+`;
+
+const StageIcon = styled.div`
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  
+  &.success {
+    background-color: #27ae60;
+    color: white;
+  }
+  
+  &.failed {
+    background-color: #e74c3c;
+    color: white;
+  }
+  
+  &.processing {
+    background-color: #f39c12;
+    color: white;
+    animation: pulse 1.5s infinite;
+  }
+  
+  &.pending {
+    background-color: #bdc3c7;
+    color: white;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+`;
+
+const StageText = styled.span`
+  color: #2c3e50;
+  
+  &.success {
+    color: #27ae60;
+  }
+  
+  &.failed {
+    color: #e74c3c;
+  }
+  
+  &.processing {
+    color: #f39c12;
+  }
+`;
+
+const ViewButton = styled.button`
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  
+  &.available {
+    background-color: #3498db;
+    color: white;
+    
+    &:hover {
+      background-color: #2980b9;
+    }
+  }
+  
+  &.unavailable {
+    background-color: #ecf0f1;
+    color: #95a5a6;
+    cursor: not-allowed;
+  }
+  
+  &.error {
+    background-color: #e74c3c;
+    color: white;
+    
+    &:hover {
+      background-color: #c0392b;
+    }
+  }
+`;
+
+const ViewButtonsRow = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
 `;
 
 const ErrorDetails = styled.div`
@@ -1533,6 +1650,30 @@ const LessonsManager = ({ t }) => {
 
   const renderAIStatusSection = (lesson) => {
     const statusInfo = getAIStatusInfo(lesson);
+    const { aiContent } = lesson;
+    const job = processingJobs[lesson.id];
+    
+    // Determine stage statuses
+    const getStageStatus = (contentType) => {
+      if (job && job.job_type === contentType) {
+        if (job.status === 'processing') return 'processing';
+        if (job.status === 'failed') return 'failed';
+      }
+      
+      if (!aiContent) return 'pending';
+      
+      const content = aiContent[contentType];
+      if (content?.error) return 'failed';
+      if (content && (contentType === 'questions' ? content.length > 0 : content.transcription_text || content.summary_text)) {
+        return 'success';
+      }
+      
+      return 'pending';
+    };
+
+    const transcriptionStatus = getStageStatus('transcription');
+    const summaryStatus = getStageStatus('summary');
+    const questionsStatus = getStageStatus('questions');
     
     return (
       <AIStatusSection>
@@ -1546,6 +1687,111 @@ const LessonsManager = ({ t }) => {
         <StatusDetails>
           {statusInfo.details}
         </StatusDetails>
+
+        {/* AI Processing Stages */}
+        <AIStagesList>
+          <AIStage>
+            <StageIcon className={transcriptionStatus}>
+              {transcriptionStatus === 'success' ? '✓' : transcriptionStatus === 'failed' ? '✗' : transcriptionStatus === 'processing' ? '⟳' : '○'}
+            </StageIcon>
+            <StageText className={transcriptionStatus}>תמליל</StageText>
+          </AIStage>
+          
+          <AIStage>
+            <StageIcon className={summaryStatus}>
+              {summaryStatus === 'success' ? '✓' : summaryStatus === 'failed' ? '✗' : summaryStatus === 'processing' ? '⟳' : '○'}
+            </StageIcon>
+            <StageText className={summaryStatus}>סיכום</StageText>
+          </AIStage>
+          
+          <AIStage>
+            <StageIcon className={questionsStatus}>
+              {questionsStatus === 'success' ? '✓' : questionsStatus === 'failed' ? '✗' : questionsStatus === 'processing' ? '⟳' : '○'}
+            </StageIcon>
+            <StageText className={questionsStatus}>שאלות בחינה</StageText>
+          </AIStage>
+        </AIStagesList>
+
+        {/* View Buttons Row */}
+        <ViewButtonsRow>
+          <ViewButton 
+            className={aiContent?.transcription?.transcription_text ? 'available' : 'unavailable'}
+            onClick={() => {
+              if (aiContent?.transcription?.transcription_text) {
+                alert(aiContent.transcription.transcription_text);
+              }
+            }}
+            disabled={!aiContent?.transcription?.transcription_text}
+          >
+            צפה בתמליל
+          </ViewButton>
+          
+          <ViewButton 
+            className={aiContent?.summary?.summary_text ? 'available' : 'unavailable'}
+            onClick={() => {
+              if (aiContent?.summary?.summary_text) {
+                alert(aiContent.summary.summary_text);
+              }
+            }}
+            disabled={!aiContent?.summary?.summary_text}
+          >
+            צפה בסיכום
+          </ViewButton>
+          
+          <ViewButton 
+            className={aiContent?.questions?.length > 0 ? 'available' : 'unavailable'}
+            onClick={() => {
+              if (aiContent?.questions?.length > 0) {
+                const questionsText = aiContent.questions
+                  .filter(q => q && q.question_text)
+                  .map((q, i) => {
+                    let questionText = `שאלה ${i + 1}: ${q.question_text}\n`;
+                    
+                    if (q.answer_options && Array.isArray(q.answer_options)) {
+                      questionText += q.answer_options.map((opt, j) => 
+                        `${String.fromCharCode(97 + j)}) ${opt}`
+                      ).join('\n') + '\n';
+                    }
+                    
+                    if (q.correct_answer) {
+                      questionText += `תשובה נכונה: ${q.correct_answer}\n`;
+                    }
+                    
+                    return questionText;
+                  })
+                  .join('\n---\n');
+                
+                if (questionsText.trim()) {
+                  alert(questionsText);
+                } else {
+                  alert('אין שאלות זמינות');
+                }
+              }
+            }}
+            disabled={!aiContent?.questions?.length}
+          >
+            צפה במבחן
+          </ViewButton>
+          
+          {/* View Error Button - only show if there are errors */}
+          {statusInfo.showError && (
+            <ViewButton 
+              className="error"
+              onClick={() => {
+                let errorText = statusInfo.details;
+                if (statusInfo.errors) {
+                  errorText += '\n\nפירוט שגיאות:\n' + statusInfo.errors.join('\n');
+                }
+                if (statusInfo.configIssues) {
+                  errorText += '\n\nבעיות תצורה:\n' + statusInfo.configIssues.join('\n');
+                }
+                alert(errorText);
+              }}
+            >
+              צפה בשגיאה
+            </ViewButton>
+          )}
+        </ViewButtonsRow>
 
         {statusInfo.showError && (
           <ErrorDetails>
@@ -1582,9 +1828,32 @@ const LessonsManager = ({ t }) => {
     setUploadError('');
     setUploadSuccess('');
     
-    // Validate file type
-    if (!file.type.startsWith('audio/')) {
-      setUploadError('אנא בחר קובץ אודיו תקין (MP3, WAV, M4A וכו\')');
+    // Validate file type - be more specific about supported formats
+    const supportedTypes = [
+      'audio/mpeg',     // MP3
+      'audio/mp3',      // MP3 (alternative)
+      'audio/wav',      // WAV
+      'audio/webm',     // WebM
+      'audio/ogg',      // OGG
+      'audio/m4a',      // M4A
+      'audio/mp4',      // MP4 audio
+      'audio/x-m4a'     // M4A (alternative)
+    ];
+    
+    const isValidType = file.type.startsWith('audio/') || supportedTypes.includes(file.type);
+    
+    if (!isValidType) {
+      setUploadError('אנא בחר קובץ אודיו תקין (MP3, WAV, WebM, M4A, OGG)');
+      return;
+    }
+
+    // Additional validation for file extensions
+    const fileName = file.name.toLowerCase();
+    const supportedExtensions = ['.mp3', '.wav', '.webm', '.ogg', '.m4a', '.mp4'];
+    const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!hasValidExtension) {
+      setUploadError('אנא בחר קובץ עם סיומת תקינה: MP3, WAV, WebM, M4A, OGG');
       return;
     }
 
@@ -1592,6 +1861,12 @@ const LessonsManager = ({ t }) => {
     if (file.size > 100 * 1024 * 1024) {
       setUploadError('גודל הקובץ חייב להיות קטן מ-100MB');
       return;
+    }
+
+    // Warn about large files that might cause transcription timeouts
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > 15) {
+      console.warn(`Large file detected: ${fileSizeMB.toFixed(1)}MB. Transcription may take longer.`);
     }
 
     setSelectedFile(file);
@@ -1840,7 +2115,7 @@ const LessonsManager = ({ t }) => {
         <Header>
           <Title>שיעורים</Title>
           <HeaderButtons>
-            <UploadButton onClick={() => setRecordingModal(true)}>
+            <UploadButton className="record" onClick={() => setRecordingModal(true)}>
               הקלט שיעור
             </UploadButton>
             <UploadButton onClick={() => setUploadModal(true)}>
@@ -1959,17 +2234,48 @@ const LessonsManager = ({ t }) => {
                   <ActionButtons>
                     <ActionButton 
                       className="primary"
-                      onClick={() => {
-                        setCurrentlyPlaying(lesson.id);
-                        setAudioPlayerData({
-                          id: lesson.id,
-                          title: lesson.metadata?.lessonName || `הקלטה ${lesson.id}`,
-                          audioUrl: `/api/recordings/${lesson.id}/download`,
-                          duration: lesson.metadata?.duration || 0
-                        });
+                      onClick={async () => {
+                        try {
+                          setCurrentlyPlaying(lesson.id);
+                          
+                          // Show loading state
+                          setAudioPlayerData({
+                            id: lesson.id,
+                            title: lesson.metadata?.lessonName || `הקלטה ${lesson.id}`,
+                            loading: true
+                          });
+                          
+                          // Fetch audio data and convert to blob
+                          const token = localStorage.getItem('token');
+                          const response = await fetch(`/api/recordings/${lesson.id}/download`, {
+                            headers: {
+                              'Authorization': `Bearer ${token}`
+                            }
+                          });
+                          
+                          if (!response.ok) {
+                            throw new Error(`Failed to fetch audio: ${response.status}`);
+                          }
+                          
+                          const audioBlob = await response.blob();
+                          
+                          setAudioPlayerData({
+                            id: lesson.id,
+                            title: lesson.metadata?.lessonName || `הקלטה ${lesson.id}`,
+                            audioBlob: audioBlob,
+                            metadata: lesson.metadata || {},
+                            loading: false
+                          });
+                        } catch (error) {
+                          console.error('Error loading audio:', error);
+                          alert('שגיאה בטעינת הקובץ השמע: ' + error.message);
+                          setAudioPlayerData(null);
+                          setCurrentlyPlaying(null);
+                        }
                       }}
+                      disabled={currentlyPlaying === lesson.id && audioPlayerData?.loading}
                     >
-                      השמע
+                      {currentlyPlaying === lesson.id && audioPlayerData?.loading ? 'טוען...' : 'השמע'}
                     </ActionButton>
 
                     {/* Debug: Always show status info */}
@@ -2488,7 +2794,7 @@ const LessonsManager = ({ t }) => {
       )}
 
       {/* Audio Player Integration */}
-      {audioPlayerData && (
+      {audioPlayerData && !audioPlayerData.loading && (
         <div style={{ 
           position: 'fixed', 
           bottom: '20px', 
@@ -2501,13 +2807,51 @@ const LessonsManager = ({ t }) => {
           padding: '1rem'
         }}>
           <AudioPlayer
-            audioUrl={audioPlayerData.audioUrl}
+            audioBlob={audioPlayerData.audioBlob}
             title={audioPlayerData.title}
+            metadata={audioPlayerData.metadata}
+            t={(key) => key} // Simple translation function fallback
             onClose={() => {
               setAudioPlayerData(null);
               setCurrentlyPlaying(null);
             }}
           />
+        </div>
+      )}
+      
+      {/* Loading indicator for audio player */}
+      {audioPlayerData && audioPlayerData.loading && (
+        <div style={{ 
+          position: 'fixed', 
+          bottom: '20px', 
+          left: '20px', 
+          right: '20px', 
+          zIndex: 1000,
+          background: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          padding: '1rem',
+          textAlign: 'center'
+        }}>
+          <div>טוען נגן שמע...</div>
+          <div style={{ marginTop: '0.5rem' }}>
+            <button 
+              onClick={() => {
+                setAudioPlayerData(null);
+                setCurrentlyPlaying(null);
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#e74c3c',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              ביטול
+            </button>
+          </div>
         </div>
       )}
     </>

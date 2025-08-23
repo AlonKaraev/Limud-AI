@@ -3,6 +3,7 @@ const path = require('path');
 const FormData = require('form-data');
 const { openaiClient, AI_PROVIDERS, MODEL_CONFIGS, calculateEstimatedCost } = require('../config/ai-services');
 const { run, query } = require('../config/database-sqlite');
+const AudioProcessingService = require('./AudioProcessingService');
 
 /**
  * Hebrew Transcription Service
@@ -15,13 +16,14 @@ class TranscriptionService {
   }
 
   /**
-   * Transcribe audio file to Hebrew text
+   * Transcribe audio file to Hebrew text with enhanced processing
    * @param {Object} options - Transcription options
    * @param {string} options.filePath - Path to audio file
    * @param {number} options.recordingId - Recording ID
    * @param {number} options.userId - User ID
    * @param {number} options.jobId - Processing job ID
    * @param {string} options.provider - AI provider (default: openai)
+   * @param {boolean} options.useEnhancedProcessing - Use compression and segmentation (default: true)
    * @returns {Promise<Object>} Transcription result
    */
   async transcribeAudio(options) {
@@ -30,7 +32,8 @@ class TranscriptionService {
       recordingId,
       userId,
       jobId,
-      provider = AI_PROVIDERS.OPENAI
+      provider = AI_PROVIDERS.OPENAI,
+      useEnhancedProcessing = true
     } = options;
 
     const startTime = Date.now();
@@ -39,14 +42,20 @@ class TranscriptionService {
       // Validate file
       await this.validateAudioFile(filePath);
 
-      // Perform transcription based on provider
       let transcriptionResult;
-      switch (provider) {
-        case AI_PROVIDERS.OPENAI:
-          transcriptionResult = await this.transcribeWithOpenAI(filePath);
-          break;
-        default:
-          throw new Error(`Unsupported AI provider: ${provider}`);
+      
+      if (useEnhancedProcessing) {
+        // Use enhanced processing with compression and segmentation
+        transcriptionResult = await this.transcribeWithEnhancedProcessing(filePath, provider);
+      } else {
+        // Use original single-file transcription
+        switch (provider) {
+          case AI_PROVIDERS.OPENAI:
+            transcriptionResult = await this.transcribeWithOpenAI(filePath);
+            break;
+          default:
+            throw new Error(`Unsupported AI provider: ${provider}`);
+        }
       }
 
       const processingDuration = Date.now() - startTime;
@@ -69,7 +78,9 @@ class TranscriptionService {
         metadata: {
           duration: transcriptionResult.duration,
           words: transcriptionResult.words || null,
-          task: transcriptionResult.task || 'transcribe'
+          task: transcriptionResult.task || 'transcribe',
+          enhancedProcessing: useEnhancedProcessing,
+          audioProcessing: transcriptionResult.audioProcessing || null
         }
       });
 
@@ -83,7 +94,8 @@ class TranscriptionService {
         metadata: {
           model: transcriptionResult.model,
           file_size: await this.getFileSize(filePath),
-          language: transcriptionResult.language
+          language: transcriptionResult.language,
+          enhanced_processing: useEnhancedProcessing
         }
       });
 
@@ -92,7 +104,8 @@ class TranscriptionService {
         transcription,
         processingTime: processingDuration,
         confidenceScore,
-        provider
+        provider,
+        enhancedProcessing: useEnhancedProcessing
       };
 
     } catch (error) {
@@ -105,6 +118,283 @@ class TranscriptionService {
 
       throw new Error(`Transcription failed: ${error.message}`);
     }
+  }
+
+  /**
+   * Transcribe audio with enhanced processing (compression + segmentation)
+   * @param {string} filePath - Path to audio file
+   * @param {string} provider - AI provider
+   * @returns {Promise<Object>} Enhanced transcription result
+   */
+  async transcribeWithEnhancedProcessing(filePath, provider = AI_PROVIDERS.OPENAI) {
+    console.log('Starting enhanced audio transcription with compression and segmentation');
+    
+    try {
+      // Step 1: Process audio (compress and segment)
+      const audioProcessingResult = await AudioProcessingService.processAudioFile(filePath, {
+        enableCompression: true,
+        enableSegmentation: true,
+        segmentDuration: 30,
+        overlapDuration: 2
+      });
+
+      if (!audioProcessingResult.success) {
+        throw new Error('Audio processing failed');
+      }
+
+      console.log(`Audio processing completed: ${audioProcessingResult.segments.length} segments created`);
+
+      // Step 2: Transcribe segments
+      const segmentTranscriptions = await this.transcribeSegments(audioProcessingResult.segments, provider);
+
+      // Step 3: Merge transcriptions with overlap handling
+      const mergedTranscription = await this.mergeSegmentTranscriptions(segmentTranscriptions, audioProcessingResult.segments);
+
+      // Step 4: Cleanup processing files
+      await AudioProcessingService.cleanupProcessingFiles(audioProcessingResult.processingId);
+
+      return {
+        text: mergedTranscription.text,
+        language: mergedTranscription.language,
+        duration: mergedTranscription.duration,
+        segments: mergedTranscription.segments,
+        words: mergedTranscription.words,
+        model: mergedTranscription.model,
+        task: 'transcribe',
+        audioProcessing: {
+          compression: audioProcessingResult.compression,
+          segmentCount: audioProcessingResult.segments.length,
+          processingTime: audioProcessingResult.processingTime
+        }
+      };
+
+    } catch (error) {
+      console.error('Enhanced transcription error:', error);
+      throw new Error(`Enhanced transcription failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Transcribe multiple audio segments
+   * @param {Array} segments - Array of segment objects
+   * @param {string} provider - AI provider
+   * @returns {Promise<Array>} Array of transcription results
+   */
+  async transcribeSegments(segments, provider = AI_PROVIDERS.OPENAI) {
+    const transcriptions = [];
+    const maxConcurrent = 3; // Limit concurrent requests to avoid rate limiting
+    
+    console.log(`Transcribing ${segments.length} segments with max ${maxConcurrent} concurrent requests`);
+
+    // Process segments in batches
+    for (let i = 0; i < segments.length; i += maxConcurrent) {
+      const batch = segments.slice(i, i + maxConcurrent);
+      const batchPromises = batch.map(async (segment) => {
+        try {
+          console.log(`Transcribing segment ${segment.index + 1}/${segments.length}: ${segment.filename}`);
+          
+          let segmentResult;
+          switch (provider) {
+            case AI_PROVIDERS.OPENAI:
+              segmentResult = await this.transcribeWithOpenAI(segment.path);
+              break;
+            default:
+              throw new Error(`Unsupported AI provider: ${provider}`);
+          }
+
+          return {
+            segmentIndex: segment.index,
+            startTime: segment.startTime,
+            endTime: segment.endTime,
+            duration: segment.duration,
+            transcription: segmentResult,
+            filename: segment.filename
+          };
+        } catch (error) {
+          console.error(`Error transcribing segment ${segment.index}:`, error);
+          return {
+            segmentIndex: segment.index,
+            startTime: segment.startTime,
+            endTime: segment.endTime,
+            duration: segment.duration,
+            transcription: null,
+            error: error.message,
+            filename: segment.filename
+          };
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      transcriptions.push(...batchResults);
+
+      // Add delay between batches to avoid rate limiting
+      if (i + maxConcurrent < segments.length) {
+        console.log('Waiting 2 seconds before next batch to avoid rate limiting...');
+        await this.sleep(2000);
+      }
+    }
+
+    console.log(`Segment transcription completed: ${transcriptions.filter(t => t.transcription).length}/${transcriptions.length} successful`);
+    return transcriptions;
+  }
+
+  /**
+   * Merge segment transcriptions with overlap handling
+   * @param {Array} segmentTranscriptions - Array of segment transcription results
+   * @param {Array} segments - Original segment information
+   * @returns {Promise<Object>} Merged transcription result
+   */
+  async mergeSegmentTranscriptions(segmentTranscriptions, segments) {
+    console.log('Merging segment transcriptions with overlap handling');
+
+    // Filter successful transcriptions and sort by segment index
+    const validTranscriptions = segmentTranscriptions
+      .filter(st => st.transcription && st.transcription.text)
+      .sort((a, b) => a.segmentIndex - b.segmentIndex);
+
+    if (validTranscriptions.length === 0) {
+      throw new Error('No valid segment transcriptions found');
+    }
+
+    let mergedText = '';
+    let totalDuration = 0;
+    let allSegments = [];
+    let allWords = [];
+    let language = validTranscriptions[0].transcription.language || 'he';
+    let model = validTranscriptions[0].transcription.model;
+
+    for (let i = 0; i < validTranscriptions.length; i++) {
+      const current = validTranscriptions[i];
+      const transcription = current.transcription;
+      
+      if (!transcription.text.trim()) {
+        continue;
+      }
+
+      let segmentText = transcription.text.trim();
+
+      // Handle overlap with previous segment
+      if (i > 0 && segments.length > 1) {
+        const previous = validTranscriptions[i - 1];
+        const overlapDuration = 2; // 2 seconds overlap
+        
+        // Remove overlapping content by comparing with previous segment
+        segmentText = this.removeOverlapFromText(segmentText, previous.transcription.text, overlapDuration);
+      }
+
+      // Add segment text
+      if (segmentText) {
+        if (mergedText && !mergedText.endsWith(' ') && !segmentText.startsWith(' ')) {
+          mergedText += ' ';
+        }
+        mergedText += segmentText;
+      }
+
+      // Adjust segment timestamps to global timeline
+      if (transcription.segments) {
+        const adjustedSegments = transcription.segments.map(seg => ({
+          ...seg,
+          start: seg.start + current.startTime,
+          end: seg.end + current.startTime
+        }));
+        allSegments.push(...adjustedSegments);
+      }
+
+      // Adjust word timestamps to global timeline
+      if (transcription.words) {
+        const adjustedWords = transcription.words.map(word => ({
+          ...word,
+          start: word.start + current.startTime,
+          end: word.end + current.startTime
+        }));
+        allWords.push(...adjustedWords);
+      }
+
+      totalDuration = Math.max(totalDuration, current.endTime);
+    }
+
+    // Clean up merged text
+    mergedText = this.cleanupMergedText(mergedText);
+
+    console.log(`Transcription merging completed: ${mergedText.length} characters, ${totalDuration}s duration`);
+
+    return {
+      text: mergedText,
+      language,
+      duration: totalDuration,
+      segments: allSegments,
+      words: allWords.length > 0 ? allWords : null,
+      model
+    };
+  }
+
+  /**
+   * Remove overlapping content from segment text
+   * @param {string} currentText - Current segment text
+   * @param {string} previousText - Previous segment text
+   * @param {number} overlapDuration - Overlap duration in seconds
+   * @returns {string} Text with overlap removed
+   */
+  removeOverlapFromText(currentText, previousText, overlapDuration) {
+    if (!previousText || !currentText) {
+      return currentText;
+    }
+
+    // Simple approach: remove first few words that might be overlapping
+    // This is a heuristic approach - in a production system, you might want
+    // to use more sophisticated text similarity algorithms
+    const currentWords = currentText.split(' ');
+    const previousWords = previousText.split(' ');
+    
+    if (currentWords.length < 3 || previousWords.length < 3) {
+      return currentText;
+    }
+
+    // Check if first few words of current segment match last few words of previous segment
+    const wordsToCheck = Math.min(5, Math.floor(currentWords.length / 3));
+    const currentStart = currentWords.slice(0, wordsToCheck).join(' ').toLowerCase();
+    const previousEnd = previousWords.slice(-wordsToCheck).join(' ').toLowerCase();
+
+    // If there's significant overlap, remove the overlapping words from current segment
+    if (this.calculateTextSimilarity(currentStart, previousEnd) > 0.6) {
+      console.log(`Detected overlap, removing ${wordsToCheck} words from segment start`);
+      return currentWords.slice(wordsToCheck).join(' ');
+    }
+
+    return currentText;
+  }
+
+  /**
+   * Calculate text similarity between two strings
+   * @param {string} text1 - First text
+   * @param {string} text2 - Second text
+   * @returns {number} Similarity score (0-1)
+   */
+  calculateTextSimilarity(text1, text2) {
+    if (!text1 || !text2) return 0;
+    
+    const words1 = text1.toLowerCase().split(' ');
+    const words2 = text2.toLowerCase().split(' ');
+    
+    const commonWords = words1.filter(word => words2.includes(word));
+    const totalWords = Math.max(words1.length, words2.length);
+    
+    return totalWords > 0 ? commonWords.length / totalWords : 0;
+  }
+
+  /**
+   * Clean up merged transcription text
+   * @param {string} text - Text to clean up
+   * @returns {string} Cleaned text
+   */
+  cleanupMergedText(text) {
+    if (!text) return '';
+
+    return text
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .replace(/\s+([.,!?;:])/g, '$1') // Remove spaces before punctuation
+      .replace(/([.!?])\s*([a-zA-Zא-ת])/g, '$1 $2') // Ensure space after sentence endings
+      .trim();
   }
 
   /**
@@ -130,16 +420,22 @@ class TranscriptionService {
         // Create file stream
         audioFile = fs.createReadStream(filePath);
         
-        // Set up timeout promise
-        const timeoutMs = 300000; // 5 minutes timeout
+        // Set up timeout promise - longer timeout for larger files
+        const stats = fs.statSync(filePath);
+        const fileSizeMB = stats.size / (1024 * 1024);
+        const baseTimeout = 120000; // 2 minutes base
+        const timeoutMs = Math.min(600000, baseTimeout + (fileSizeMB * 30000)); // Add 30s per MB, max 10 minutes
+        
+        console.log(`Setting timeout to ${Math.round(timeoutMs/1000)}s for ${fileSizeMB.toFixed(1)}MB file`);
+        
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
         });
         
-        // Call OpenAI transcription API with timeout using the new gpt-4o-transcribe model
+        // Call OpenAI transcription API with timeout using Whisper model
         const transcriptionPromise = openaiClient.audio.transcriptions.create({
           file: audioFile,
-          model: config.model, // Now uses 'gpt-4o-transcribe'
+          model: config.model, // Uses 'whisper-1'
           language: config.language,
           response_format: config.response_format,
           temperature: config.temperature
@@ -263,10 +559,36 @@ class TranscriptionService {
 
       // Check file size
       const stats = fs.statSync(filePath);
+      const fileSizeMB = stats.size / (1024 * 1024);
+      
       if (stats.size > this.maxFileSize) {
-        throw new Error(`File too large: ${Math.round(stats.size / 1024 / 1024)}MB. Maximum size: ${this.maxFileSize / 1024 / 1024}MB`);
+        throw new Error(`File too large: ${fileSizeMB.toFixed(1)}MB. Maximum size: ${this.maxFileSize / 1024 / 1024}MB`);
+      }
+      
+      // Warn about large files that might timeout
+      if (fileSizeMB > 15) {
+        console.warn(`Large file detected (${fileSizeMB.toFixed(1)}MB). Transcription may take longer and could timeout. Consider compressing the audio file.`);
       }
 
+      // Additional validation for MP3 files
+      if (ext === '.mp3') {
+        // Check if file is actually readable
+        try {
+          const buffer = fs.readFileSync(filePath, { start: 0, end: 10 });
+          // Check for MP3 header (ID3 tag or MPEG frame sync)
+          const hasId3 = buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33; // "ID3"
+          const hasMpegSync = (buffer[0] === 0xFF && (buffer[1] & 0xE0) === 0xE0); // MPEG frame sync
+          
+          if (!hasId3 && !hasMpegSync) {
+            console.warn(`MP3 file may be corrupted or invalid: ${filePath}`);
+            // Don't throw error, let OpenAI handle it
+          }
+        } catch (readError) {
+          console.warn(`Could not validate MP3 file structure: ${readError.message}`);
+        }
+      }
+
+      console.log(`File validation passed: ${path.basename(filePath)} (${ext}, ${Math.round(stats.size / 1024 / 1024)}MB)`);
       return true;
     } catch (error) {
       throw new Error(`File validation failed: ${error.message}`);

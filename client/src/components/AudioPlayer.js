@@ -456,6 +456,7 @@ const AudioPlayer = ({
     const audio = audioRef.current;
     if (!audio) {
       console.error('Audio element not found');
+      alert('שגיאה: רכיב השמע לא נמצא');
       return;
     }
 
@@ -465,6 +466,7 @@ const AudioPlayer = ({
         audio.pause();
       } catch (error) {
         console.error('Error pausing audio:', error);
+        alert('שגיאה בהשהיית השמע: ' + error.message);
       }
     } else {
       try {
@@ -473,13 +475,14 @@ const AudioPlayer = ({
           readyState: audio.readyState,
           duration: audio.duration,
           currentTime: audio.currentTime,
-          isLoading
+          isLoading,
+          networkState: audio.networkState
         });
 
         // Check if audio source is valid
-        if (!audio.src || audio.src === '') {
-          console.error('No audio source available');
-          alert('אין מקור אודיו זמין');
+        if (!audio.src || audio.src === '' || audio.src === 'blob:') {
+          console.error('No valid audio source available');
+          alert('אין מקור אודיו זמין. אנא נסה לטעון את הקובץ מחדש.');
           return;
         }
 
@@ -498,28 +501,64 @@ const AudioPlayer = ({
             const timeout = setTimeout(() => {
               audio.removeEventListener('canplay', onCanPlay);
               audio.removeEventListener('error', onError);
+              audio.removeEventListener('loadeddata', onLoadedData);
               reject(new Error('Timeout waiting for audio to load'));
-            }, 10000); // 10 second timeout
+            }, 15000); // 15 second timeout
 
             const onCanPlay = () => {
               clearTimeout(timeout);
               audio.removeEventListener('canplay', onCanPlay);
               audio.removeEventListener('error', onError);
+              audio.removeEventListener('loadeddata', onLoadedData);
               console.log('Audio is ready to play');
               setIsLoading(false);
               resolve();
+            };
+
+            const onLoadedData = () => {
+              console.log('Audio data loaded');
+              if (audio.readyState >= 2) {
+                clearTimeout(timeout);
+                audio.removeEventListener('canplay', onCanPlay);
+                audio.removeEventListener('error', onError);
+                audio.removeEventListener('loadeddata', onLoadedData);
+                setIsLoading(false);
+                resolve();
+              }
             };
             
             const onError = (e) => {
               clearTimeout(timeout);
               audio.removeEventListener('canplay', onCanPlay);
               audio.removeEventListener('error', onError);
-              console.error('Audio loading error:', e);
+              audio.removeEventListener('loadeddata', onLoadedData);
+              console.error('Audio loading error:', e, audio.error);
               setIsLoading(false);
-              reject(e);
+              
+              let errorMessage = 'שגיאה בטעינת השמע';
+              if (audio.error) {
+                switch (audio.error.code) {
+                  case 1: // MEDIA_ERR_ABORTED
+                    errorMessage = 'טעינת השמע בוטלה';
+                    break;
+                  case 2: // MEDIA_ERR_NETWORK
+                    errorMessage = 'שגיאת רשת בטעינת השמע';
+                    break;
+                  case 3: // MEDIA_ERR_DECODE
+                    errorMessage = 'שגיאה בפענוח השמע';
+                    break;
+                  case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+                    errorMessage = 'פורמט השמע אינו נתמך';
+                    break;
+                  default:
+                    errorMessage = `שגיאת שמע: ${audio.error.message || 'לא ידועה'}`;
+                }
+              }
+              reject(new Error(errorMessage));
             };
             
             audio.addEventListener('canplay', onCanPlay);
+            audio.addEventListener('loadeddata', onLoadedData);
             audio.addEventListener('error', onError);
             
             // Force reload if needed
@@ -536,6 +575,7 @@ const AudioPlayer = ({
         
       } catch (error) {
         console.error('Error playing audio:', error);
+        setIsLoading(false);
         
         // Provide user-friendly error messages
         if (error.name === 'NotAllowedError') {
@@ -546,9 +586,12 @@ const AudioPlayer = ({
           alert('פורמט השמע אינו נתמך בדפדפן זה.');
         } else if (error.name === 'AbortError') {
           console.error('Audio playback aborted');
+          alert('הפעלת השמע בוטלה.');
+        } else if (error.message && error.message.includes('Timeout')) {
+          alert('זמן הטעינה פג. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
         } else {
           console.error('Unknown playback error:', error);
-          alert('שגיאה בהפעלת השמע: ' + error.message);
+          alert('שגיאה בהפעלת השמע: ' + (error.message || 'שגיאה לא ידועה'));
         }
       }
     }
