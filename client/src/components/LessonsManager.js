@@ -267,8 +267,8 @@ const AIActionsButton = styled(TextActionButton)`
   }
 `;
 
-// AI Status Button - Dynamic Styling Based on Status
-const AIStatusButton = styled(TextActionButton)`
+// AI Expanded Menu Button - Dynamic Styling Based on Status
+const AIExpandedMenuButton = styled(TextActionButton)`
   min-width: 140px;
   display: flex;
   align-items: center;
@@ -429,17 +429,41 @@ const AIStatusToggle = styled.div`
 
 const AIStatusContent = styled.div`
   padding: ${props => props.expanded ? '1.5rem' : '0'};
-  max-height: ${props => props.expanded ? '500px' : '0'};
-  overflow: hidden;
+  max-height: ${props => props.expanded ? '400px' : '0'};
+  overflow-y: ${props => props.expanded ? 'auto' : 'hidden'};
+  overflow-x: hidden;
   transition: all 0.3s ease;
   background: white;
+  
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+    
+    &:hover {
+      background: #a8a8a8;
+    }
+  }
 `;
 
 const AIStagesGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
   margin-bottom: 1.5rem;
+  
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const AIStageCard = styled.div`
@@ -451,10 +475,23 @@ const AIStageCard = styled.div`
   border: 1px solid #f0f0f0;
   border-radius: 8px;
   transition: all 0.2s ease;
+  font-family: 'Heebo', sans-serif;
+  text-align: right;
+  width: 100%;
   
-  &:hover {
+  &:hover:not(:disabled) {
     background: #f5f6fa;
     border-color: #e9ecef;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+  }
+  
+  &:not(:disabled) {
+    cursor: pointer;
   }
 `;
 
@@ -1697,6 +1734,88 @@ const CloseButton = styled.button`
   }
 `;
 
+// Summary Modal Components (reuse TranscriptionModal styling)
+const SummaryModal = styled(TranscriptionModal)``;
+const SummaryModalContent = styled(TranscriptionModalContent)``;
+const SummaryHeader = styled(TranscriptionHeader)``;
+const SummaryTitle = styled(TranscriptionTitle)``;
+const SummaryContent = styled(TranscriptionContent)``;
+
+// Test Modal Components
+const TestModal = styled(TranscriptionModal)``;
+const TestModalContent = styled(TranscriptionModalContent)``;
+const TestHeader = styled(TranscriptionHeader)``;
+const TestTitle = styled(TranscriptionTitle)``;
+
+const TestContent = styled.div`
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.5rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #2c3e50;
+  max-height: 60vh;
+  overflow-y: auto;
+  direction: rtl;
+`;
+
+const QuestionItem = styled.div`
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+`;
+
+const QuestionNumber = styled.div`
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #3498db;
+`;
+
+const QuestionText = styled.div`
+  font-size: 1rem;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+  font-weight: 500;
+`;
+
+const AnswerOptions = styled.div`
+  margin: 1rem 0;
+`;
+
+const AnswerOption = styled.div`
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: #2c3e50;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: #e9ecef;
+  }
+`;
+
+const CorrectAnswer = styled.div`
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #d5f4e6;
+  border: 1px solid #a9dfbf;
+  border-radius: 6px;
+  color: #27ae60;
+  font-weight: 600;
+  font-size: 0.95rem;
+`;
+
 // Toggle Button for Error Details
 const ToggleErrorButton = styled.button`
   padding: 0.4rem 0.8rem;
@@ -1778,17 +1897,54 @@ const AIActionCardIcon = styled.div`
   flex-shrink: 0;
   background-color: #3498db;
   color: white;
+  transition: all 0.3s ease;
   
   &.available {
     background-color: #27ae60;
+    
+    &:hover {
+      background-color: #229954;
+      transform: scale(1.05);
+    }
   }
   
   &.unavailable {
     background-color: #bdc3c7;
+    opacity: 0.6;
   }
   
   &.generate {
     background-color: #f39c12;
+    animation: generatePulse 2s infinite;
+    
+    &:hover {
+      background-color: #e67e22;
+      transform: scale(1.05);
+    }
+  }
+  
+  &.processing {
+    background-color: #f39c12;
+    animation: processingRotate 1.5s linear infinite;
+  }
+  
+  &.failed {
+    background-color: #e74c3c;
+    
+    &:hover {
+      background-color: #c0392b;
+      transform: scale(1.05);
+    }
+  }
+  
+  @keyframes generatePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  
+  @keyframes processingRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 `;
 
@@ -1846,6 +2002,10 @@ const LessonsManager = ({ t }) => {
   // New state for transcription modal
   const [transcriptionModal, setTranscriptionModal] = useState(null);
 
+  // New state for summary and test modals
+  const [summaryModal, setSummaryModal] = useState(null);
+  const [testModal, setTestModal] = useState(null);
+
   // Recording functionality state
   const [recordingService] = useState(() => new AudioRecordingService());
   const [isRecordingInitialized, setIsRecordingInitialized] = useState(false);
@@ -1884,8 +2044,7 @@ const LessonsManager = ({ t }) => {
   // New UI state for improved lesson cards
   const [tooltips, setTooltips] = useState({});
   const [visibleErrors, setVisibleErrors] = useState({});
-  const [expandedAIActions, setExpandedAIActions] = useState({});
-  const [expandedAIStatus, setExpandedAIStatus] = useState({});
+  const [expandedAIMenu, setExpandedAIMenu] = useState({});
 
   const durationIntervalRef = useRef(null);
 
@@ -1941,12 +2100,9 @@ const LessonsManager = ({ t }) => {
         ].filter(Boolean).length;
         
         if (availableCount === 0) {
-          return 'תפריט AI (אין תוכן זמין)';
+          return `תפריט AI - ${statusInfo.text} (אין תוכן זמין)`;
         }
-        return `תפריט AI (${availableCount} פריטים זמינים)`;
-
-      case 'ai-status':
-        return `${statusInfo.text} - לחץ לפרטים נוספים`;
+        return `תפריט AI - ${statusInfo.text} (${availableCount} פריטים זמינים)`;
 
       case 'transcript':
         if (aiContent?.transcription?.transcription_text) {
@@ -2582,16 +2738,9 @@ const LessonsManager = ({ t }) => {
     const job = processingJobs[lesson.id];
     const { aiContent } = lesson;
     
-    // Check if there's an active processing job
+    // Priority 1: Check if there's an active processing job (including retries)
     if (job) {
-      if (job.status === 'failed') {
-        return {
-          status: 'failed',
-          text: 'נכשל',
-          details: job.error_message || 'עיבוד AI נכשל',
-          showError: true
-        };
-      } else if (job.status === 'processing') {
+      if (job.status === 'processing') {
         return {
           status: 'processing',
           text: 'בעיבוד',
@@ -2608,7 +2757,60 @@ const LessonsManager = ({ t }) => {
       }
     }
 
-    // Check AI content status
+    // Priority 2: Check AI content status (successful content overrides failed jobs)
+    if (aiContent) {
+      const { transcription, summary, questions } = aiContent;
+      
+      // Check for errors in content
+      const hasErrors = (transcription?.error) || (summary?.error) || (questions?.error);
+      if (hasErrors) {
+        const errors = [];
+        if (transcription?.error) errors.push(`תמליל: ${transcription.error}`);
+        if (summary?.error) errors.push(`סיכום: ${summary.error}`);
+        if (questions?.error) errors.push(`שאלות: ${questions.error}`);
+        
+        return {
+          status: 'failed',
+          text: 'נכשל חלקית',
+          details: 'חלק מהעיבוד נכשל',
+          showError: true,
+          errors
+        };
+      }
+      
+      // Check completion status
+      if (transcription && summary && questions?.length > 0) {
+        return {
+          status: 'completed',
+          text: 'הושלם',
+          details: `תמליל, סיכום ו-${questions.length} שאלות`
+        };
+      } else if (transcription || summary || questions?.length > 0) {
+        const completed = [];
+        if (transcription) completed.push('תמליל');
+        if (summary) completed.push('סיכום');
+        if (questions?.length > 0) completed.push(`${questions.length} שאלות`);
+        
+        return {
+          status: 'completed',
+          text: 'הושלם חלקית',
+          details: `הושלם: ${completed.join(', ')}`,
+          showWarning: true
+        };
+      }
+    }
+
+    // Priority 3: Check for failed jobs (only if no successful content exists)
+    if (job && job.status === 'failed') {
+      return {
+        status: 'failed',
+        text: 'נכשל',
+        details: job.error_message || 'עיבוד AI נכשל',
+        showError: true
+      };
+    }
+
+    // Priority 4: Default pending state
     if (!aiContent) {
       // Check if AI service is healthy
       if (aiServiceHealth && !aiServiceHealth.configuration.valid) {
@@ -2624,46 +2826,6 @@ const LessonsManager = ({ t }) => {
         status: 'pending',
         text: 'ממתין',
         details: 'לא הופק תוכן AI עדיין'
-      };
-    }
-
-    const { transcription, summary, questions } = aiContent;
-    
-    // Check for errors in content
-    const hasErrors = (transcription?.error) || (summary?.error) || (questions?.error);
-    if (hasErrors) {
-      const errors = [];
-      if (transcription?.error) errors.push(`תמליל: ${transcription.error}`);
-      if (summary?.error) errors.push(`סיכום: ${summary.error}`);
-      if (questions?.error) errors.push(`שאלות: ${questions.error}`);
-      
-      return {
-        status: 'failed',
-        text: 'נכשל חלקית',
-        details: 'חלק מהעיבוד נכשל',
-        showError: true,
-        errors
-      };
-    }
-    
-    // Check completion status
-    if (transcription && summary && questions?.length > 0) {
-      return {
-        status: 'completed',
-        text: 'הושלם',
-        details: `תמליל, סיכום ו-${questions.length} שאלות`
-      };
-    } else if (transcription || summary || questions?.length > 0) {
-      const completed = [];
-      if (transcription) completed.push('תמליל');
-      if (summary) completed.push('סיכום');
-      if (questions?.length > 0) completed.push(`${questions.length} שאלות`);
-      
-      return {
-        status: 'processing',
-        text: 'הושלם חלקית',
-        details: `הושלם: ${completed.join(', ')}`,
-        showWarning: true
       };
     }
 
@@ -3296,154 +3458,205 @@ const LessonsManager = ({ t }) => {
                       </Tooltip>
                     </TooltipContainer>
 
-                    {/* AI Actions Button */}
+                    {/* Merged AI Menu Button */}
                     <TooltipContainer>
-                      <AIActionsButton
-                        onMouseEnter={() => showTooltip(lesson.id, 'ai-actions', 'פעולות AI')}
-                        onMouseLeave={() => hideTooltip(lesson.id, 'ai-actions')}
-                        onClick={() => {
-                          setExpandedAIActions(prev => ({
-                            ...prev,
-                            [lesson.id]: !prev[lesson.id]
-                          }));
-                        }}
-                      >
-                        AI
-                      </AIActionsButton>
-                      <Tooltip show={tooltips[`${lesson.id}-ai-actions`]}>
-                        {tooltips[`${lesson.id}-ai-actions`]}
-                      </Tooltip>
-                    </TooltipContainer>
-
-                    {/* AI Status Button */}
-                    <TooltipContainer>
-                      <AIStatusButton
+                      <AIExpandedMenuButton
                         className={getAIButtonClass(statusInfo)}
-                        onMouseEnter={() => showTooltip(lesson.id, 'ai-status', getTooltipText(lesson, 'ai-status'))}
-                        onMouseLeave={() => hideTooltip(lesson.id, 'ai-status')}
+                        onMouseEnter={() => showTooltip(lesson.id, 'ai-menu', getTooltipText(lesson, 'ai-menu'))}
+                        onMouseLeave={() => hideTooltip(lesson.id, 'ai-menu')}
                         onClick={() => {
-                          setExpandedAIStatus(prev => ({
+                          setExpandedAIMenu(prev => ({
                             ...prev,
                             [lesson.id]: !prev[lesson.id]
                           }));
                         }}
                       >
                         <AIStatusButtonIcon>{getAIButtonIcon(statusInfo)}</AIStatusButtonIcon>
-                        <AIStatusButtonText>{statusInfo.text}</AIStatusButtonText>
-                      </AIStatusButton>
-                      <Tooltip show={tooltips[`${lesson.id}-ai-status`]}>
-                        {tooltips[`${lesson.id}-ai-status`]}
+                        <AIStatusButtonText>AI - {statusInfo.text}</AIStatusButtonText>
+                      </AIExpandedMenuButton>
+                      <Tooltip show={tooltips[`${lesson.id}-ai-menu`]}>
+                        {tooltips[`${lesson.id}-ai-menu`]}
                       </Tooltip>
                     </TooltipContainer>
                   </ButtonsRow>
 
-                  {/* Row 4 - Expandable AI Status */}
-                  <ExpandableAIStatus>
-                    <AIStatusHeader
-                      status={statusInfo.status}
-                      expanded={expandedAIStatus[lesson.id]}
-                      onClick={() => {
-                        setExpandedAIStatus(prev => ({
-                          ...prev,
-                          [lesson.id]: !prev[lesson.id]
-                        }));
-                      }}
-                    >
-                      <AIStatusHeaderContent>
-                        <AIStatusIcon status={statusInfo.status}>
-                          {getAIStatusIcon(statusInfo.status)}
-                        </AIStatusIcon>
-                        <AIStatusText>
-                          <AIStatusTitle>סטטוס AI: {statusInfo.text}</AIStatusTitle>
-                          <AIStatusSubtitle>{statusInfo.details}</AIStatusSubtitle>
-                        </AIStatusText>
-                      </AIStatusHeaderContent>
-                      <AIStatusToggle expanded={expandedAIStatus[lesson.id]}>
-                        ▼
-                      </AIStatusToggle>
-                    </AIStatusHeader>
-                    
-                    <AIStatusContent expanded={expandedAIStatus[lesson.id]}>
-                      <AIStagesGrid>
-                        <AIStageCard>
-                          <AIStageCardIcon className={getAIStageStatus(lesson, 'transcription')}>
-                            {getAIStageIcon(getAIStageStatus(lesson, 'transcription'))}
-                          </AIStageCardIcon>
-                          <AIStageCardContent>
-                            <AIStageCardTitle>תמליל</AIStageCardTitle>
-                            <AIStageCardStatus>
-                              {getAIStageStatus(lesson, 'transcription') === 'success' ? 'הושלם בהצלחה' :
-                               getAIStageStatus(lesson, 'transcription') === 'processing' ? 'בעיבוד...' :
-                               getAIStageStatus(lesson, 'transcription') === 'failed' ? 'נכשל' : 'ממתין'}
-                            </AIStageCardStatus>
-                            {aiContent?.transcription?.transcription_text && (
-                              <AIStageCardMeta>
-                                <span>{Math.round(aiContent.transcription.transcription_text.length / 100)} מילים</span>
-                                <span>•</span>
-                                <span>זמין לצפייה</span>
-                              </AIStageCardMeta>
-                            )}
-                          </AIStageCardContent>
-                        </AIStageCard>
-
-                        <AIStageCard>
-                          <AIStageCardIcon className={getAIStageStatus(lesson, 'summary')}>
-                            {getAIStageIcon(getAIStageStatus(lesson, 'summary'))}
-                          </AIStageCardIcon>
-                          <AIStageCardContent>
-                            <AIStageCardTitle>סיכום</AIStageCardTitle>
-                            <AIStageCardStatus>
-                              {getAIStageStatus(lesson, 'summary') === 'success' ? 'הושלם בהצלחה' :
-                               getAIStageStatus(lesson, 'summary') === 'processing' ? 'בעיבוד...' :
-                               getAIStageStatus(lesson, 'summary') === 'failed' ? 'נכשל' : 'ממתין'}
-                            </AIStageCardStatus>
-                            {aiContent?.summary?.summary_text && (
-                              <AIStageCardMeta>
-                                <span>{Math.round(aiContent.summary.summary_text.length / 50)} מילים</span>
-                                <span>•</span>
-                                <span>זמין לצפייה</span>
-                              </AIStageCardMeta>
-                            )}
-                          </AIStageCardContent>
-                        </AIStageCard>
-
-                        <AIStageCard>
-                          <AIStageCardIcon className={getAIStageStatus(lesson, 'questions')}>
-                            {getAIStageIcon(getAIStageStatus(lesson, 'questions'))}
-                          </AIStageCardIcon>
-                          <AIStageCardContent>
-                            <AIStageCardTitle>שאלות בחינה</AIStageCardTitle>
-                            <AIStageCardStatus>
-                              {getAIStageStatus(lesson, 'questions') === 'success' ? `${aiContent?.questions?.length || 0} שאלות` :
-                               getAIStageStatus(lesson, 'questions') === 'processing' ? 'בעיבוד...' :
-                               getAIStageStatus(lesson, 'questions') === 'failed' ? 'נכשל' : 'ממתין'}
-                            </AIStageCardStatus>
-                            {aiContent?.questions?.length > 0 && (
-                              <AIStageCardMeta>
-                                <span>{aiContent.questions.length} שאלות</span>
-                                <span>•</span>
-                                <span>זמין לצפייה</span>
-                              </AIStageCardMeta>
-                            )}
-                          </AIStageCardContent>
-                        </AIStageCard>
-                      </AIStagesGrid>
-
-                      {/* Error Details Section */}
-                      {statusInfo.showError && (
-                        <ErrorExpandSection>
-                          <ErrorExpandHeader
+                  {/* Row 4 - Merged AI Menu */}
+                  {expandedAIMenu[lesson.id] && (
+                    <ExpandableAIStatus>
+                      <AIStatusContent expanded={true}>
+                        {/* Merged AI Stages with Action Buttons - Two Column Grid */}
+                        <AIStagesGrid style={{ marginBottom: '1.5rem' }}>
+                          {/* Transcription Stage-Action Card */}
+                          <AIStageCard
+                            as="button"
+                            disabled={!aiContent?.transcription?.transcription_text && getAIStageStatus(lesson, 'transcription') !== 'processing'}
                             onClick={() => {
-                              setVisibleErrors(prev => ({
-                                ...prev,
-                                [lesson.id]: !prev[lesson.id]
-                              }));
+                              if (aiContent?.transcription?.transcription_text) {
+                                setTranscriptionModal({
+                                  title: `תמליל - ${lesson.metadata?.lessonName || `הקלטה ${lesson.id}`}`,
+                                  content: aiContent.transcription.transcription_text
+                                });
+                                setExpandedAIMenu(prev => ({
+                                  ...prev,
+                                  [lesson.id]: false
+                                }));
+                              }
+                            }}
+                            style={{ 
+                              cursor: aiContent?.transcription?.transcription_text ? 'pointer' : 'default',
+                              opacity: !aiContent?.transcription?.transcription_text && getAIStageStatus(lesson, 'transcription') !== 'processing' ? 0.6 : 1
                             }}
                           >
-                            <span>פרטי שגיאה</span>
-                            <span>{visibleErrors[lesson.id] ? '▼' : '▶'}</span>
+                            <AIStageCardIcon className={getAIStageStatus(lesson, 'transcription')}>
+                              {getAIStageIcon(getAIStageStatus(lesson, 'transcription'))}
+                            </AIStageCardIcon>
+                            <AIStageCardContent>
+                              <AIStageCardTitle>תמליל</AIStageCardTitle>
+                              <AIStageCardStatus>
+                                {getAIStageStatus(lesson, 'transcription') === 'success' ? 'הושלם בהצלחה - לחץ לצפייה' :
+                                 getAIStageStatus(lesson, 'transcription') === 'processing' ? 'בעיבוד...' :
+                                 getAIStageStatus(lesson, 'transcription') === 'failed' ? 'נכשל' : 'ממתין'}
+                              </AIStageCardStatus>
+                              {aiContent?.transcription?.transcription_text && (
+                                <AIStageCardMeta>
+                                  <span>{Math.round(aiContent.transcription.transcription_text.length / 100)} מילים</span>
+                                  <span>•</span>
+                                  <span>זמין לצפייה</span>
+                                </AIStageCardMeta>
+                              )}
+                            </AIStageCardContent>
+                          </AIStageCard>
+
+                          {/* Summary Stage-Action Card */}
+                          <AIStageCard
+                            as="button"
+                            disabled={!aiContent?.summary?.summary_text && getAIStageStatus(lesson, 'summary') !== 'processing'}
+                            onClick={() => {
+                              if (aiContent?.summary?.summary_text) {
+                                setSummaryModal({
+                                  title: `סיכום - ${lesson.metadata?.lessonName || `הקלטה ${lesson.id}`}`,
+                                  content: aiContent.summary.summary_text
+                                });
+                                setExpandedAIMenu(prev => ({
+                                  ...prev,
+                                  [lesson.id]: false
+                                }));
+                              }
+                            }}
+                            style={{ 
+                              cursor: aiContent?.summary?.summary_text ? 'pointer' : 'default',
+                              opacity: !aiContent?.summary?.summary_text && getAIStageStatus(lesson, 'summary') !== 'processing' ? 0.6 : 1
+                            }}
+                          >
+                            <AIStageCardIcon className={getAIStageStatus(lesson, 'summary')}>
+                              {getAIStageIcon(getAIStageStatus(lesson, 'summary'))}
+                            </AIStageCardIcon>
+                            <AIStageCardContent>
+                              <AIStageCardTitle>סיכום</AIStageCardTitle>
+                              <AIStageCardStatus>
+                                {getAIStageStatus(lesson, 'summary') === 'success' ? 'הושלם בהצלחה - לחץ לצפייה' :
+                                 getAIStageStatus(lesson, 'summary') === 'processing' ? 'בעיבוד...' :
+                                 getAIStageStatus(lesson, 'summary') === 'failed' ? 'נכשל' : 'ממתין'}
+                              </AIStageCardStatus>
+                              {aiContent?.summary?.summary_text && (
+                                <AIStageCardMeta>
+                                  <span>{Math.round(aiContent.summary.summary_text.length / 50)} מילים</span>
+                                  <span>•</span>
+                                  <span>זמין לצפייה</span>
+                                </AIStageCardMeta>
+                              )}
+                            </AIStageCardContent>
+                          </AIStageCard>
+
+                          {/* Questions Stage-Action Card */}
+                          <AIStageCard
+                            as="button"
+                            disabled={!aiContent?.questions?.length && getAIStageStatus(lesson, 'questions') !== 'processing'}
+                            onClick={() => {
+                              if (aiContent?.questions?.length > 0) {
+                                setTestModal({
+                                  title: `מבחן - ${lesson.metadata?.lessonName || `הקלטה ${lesson.id}`} (${aiContent.questions.length} שאלות)`,
+                                  questions: aiContent.questions.filter(q => q && q.question_text)
+                                });
+                                setExpandedAIMenu(prev => ({
+                                  ...prev,
+                                  [lesson.id]: false
+                                }));
+                              }
+                            }}
+                            style={{ 
+                              cursor: aiContent?.questions?.length > 0 ? 'pointer' : 'default',
+                              opacity: !aiContent?.questions?.length && getAIStageStatus(lesson, 'questions') !== 'processing' ? 0.6 : 1
+                            }}
+                          >
+                            <AIStageCardIcon className={getAIStageStatus(lesson, 'questions')}>
+                              {getAIStageIcon(getAIStageStatus(lesson, 'questions'))}
+                            </AIStageCardIcon>
+                            <AIStageCardContent>
+                              <AIStageCardTitle>שאלות בחינה</AIStageCardTitle>
+                              <AIStageCardStatus>
+                                {getAIStageStatus(lesson, 'questions') === 'success' ? `${aiContent?.questions?.length || 0} שאלות - לחץ לצפייה` :
+                                 getAIStageStatus(lesson, 'questions') === 'processing' ? 'בעיבוד...' :
+                                 getAIStageStatus(lesson, 'questions') === 'failed' ? 'נכשל' : 'ממתין'}
+                              </AIStageCardStatus>
+                              {aiContent?.questions?.length > 0 && (
+                                <AIStageCardMeta>
+                                  <span>{aiContent.questions.length} שאלות</span>
+                                  <span>•</span>
+                                  <span>זמין לצפייה</span>
+                                </AIStageCardMeta>
+                              )}
+                            </AIStageCardContent>
+                          </AIStageCard>
+
+                          {/* Generate/Regenerate AI Content Card */}
+                          <AIStageCard
+                            as="button"
+                            onClick={() => {
+                              setProcessingModal(lesson);
+                              setExpandedAIMenu(prev => ({
+                                ...prev,
+                                [lesson.id]: false
+                              }));
+                            }}
+                            style={{ 
+                              cursor: 'pointer',
+                              background: statusInfo.status === 'pending' ? 'linear-gradient(135deg, #f39c12, #e67e22)' : 
+                                         statusInfo.status === 'failed' ? 'linear-gradient(135deg, #e74c3c, #c0392b)' :
+                                         'linear-gradient(135deg, #3498db, #2980b9)',
+                              color: 'white',
+                              border: 'none'
+                            }}
+                          >
+                            <AIStageCardIcon style={{ 
+                              background: 'rgba(255,255,255,0.2)', 
+                              color: 'white',
+                              animation: statusInfo.status === 'pending' ? 'generatePulse 2s infinite' : 'none'
+                            }}>
+                              {statusInfo.status === 'pending' ? '+' : 
+                               statusInfo.status === 'failed' ? '🔄' : '🔄'}
+                            </AIStageCardIcon>
+                            <AIStageCardContent>
+                              <AIStageCardTitle style={{ color: 'white' }}>
+                                {statusInfo.status === 'pending' ? 'צור תוכן AI' :
+                                 statusInfo.status === 'failed' ? 'נסה שוב' : 'צור מחדש'}
+                              </AIStageCardTitle>
+                              <AIStageCardStatus style={{ color: 'rgba(255,255,255,0.9)' }}>
+                                {statusInfo.status === 'pending' ? 'צור תמליל, סיכום ושאלות בחינה' :
+                                 statusInfo.status === 'failed' ? 'נסה שוב ליצור תוכן AI' :
+                                 'צור מחדש תמליל, סיכום ושאלות'}
+                              </AIStageCardStatus>
+                            </AIStageCardContent>
+                          </AIStageCard>
+                        </AIStagesGrid>
+
+                      {/* Error Details Section - Always visible when there are errors */}
+                      {statusInfo.showError && (
+                        <ErrorExpandSection>
+                          <ErrorExpandHeader>
+                            <span>⚠️ פרטי שגיאה</span>
                           </ErrorExpandHeader>
-                          <ErrorExpandContent expanded={visibleErrors[lesson.id]}>
+                          <ErrorExpandContent expanded={true}>
                             <div><strong>שגיאה:</strong> {statusInfo.details}</div>
                             {statusInfo.errors && statusInfo.errors.map((error, index) => (
                               <div key={index} style={{ marginTop: '0.5rem' }}>• {error}</div>
@@ -3456,202 +3669,16 @@ const LessonsManager = ({ t }) => {
                                 ))}
                               </div>
                             )}
+                            {/* Retry suggestion */}
+                            <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#f8f9fa', borderRadius: '4px', border: '1px solid #e9ecef' }}>
+                              <strong>💡 הצעה:</strong> נסה ליצור תוכן AI מחדש או בדוק את הגדרות השירות
+                            </div>
                           </ErrorExpandContent>
                         </ErrorExpandSection>
                       )}
                     </AIStatusContent>
                   </ExpandableAIStatus>
 
-                  {/* Expandable AI Actions */}
-                  {expandedAIActions[lesson.id] && (
-                    <ExpandableAIActions>
-                      <AIActionsContent expanded={expandedAIActions[lesson.id]}>
-                        <AIActionsGrid>
-                          {/* Generate AI Content Action */}
-                          {(statusInfo.status === 'pending' || statusInfo.status === 'failed') && (
-                            <AIActionCard
-                              onClick={() => {
-                                setProcessingModal(lesson);
-                                setExpandedAIActions(prev => ({
-                                  ...prev,
-                                  [lesson.id]: false
-                                }));
-                              }}
-                            >
-                              <AIActionCardIcon className="generate">
-                                +
-                              </AIActionCardIcon>
-                              <AIActionCardContent>
-                                <AIActionCardTitle>צור תוכן AI</AIActionCardTitle>
-                                <AIActionCardDescription>
-                                  {statusInfo.status === 'failed' ? 'נסה שוב ליצור תמליל, סיכום ושאלות' : 'צור תמליל, סיכום ושאלות בחינה'}
-                                </AIActionCardDescription>
-                              </AIActionCardContent>
-                            </AIActionCard>
-                          )}
-
-                          {/* View Transcription Action */}
-                          <AIActionCard
-                            disabled={!aiContent?.transcription?.transcription_text}
-                            onClick={() => {
-                              if (aiContent?.transcription?.transcription_text) {
-                                setTranscriptionModal({
-                                  title: `תמליל - ${lesson.metadata?.lessonName || `הקלטה ${lesson.id}`}`,
-                                  content: aiContent.transcription.transcription_text
-                                });
-                                setExpandedAIActions(prev => ({
-                                  ...prev,
-                                  [lesson.id]: false
-                                }));
-                              }
-                            }}
-                          >
-                            <AIActionCardIcon className={aiContent?.transcription?.transcription_text ? 'available' : 'unavailable'}>
-                              📄
-                            </AIActionCardIcon>
-                            <AIActionCardContent>
-                              <AIActionCardTitle>צפה בתמליל</AIActionCardTitle>
-                              <AIActionCardDescription>
-                                {aiContent?.transcription?.transcription_text ? 'תמליל מלא של השיעור זמין' : 'תמליל לא זמין'}
-                              </AIActionCardDescription>
-                              {aiContent?.transcription?.transcription_text && (
-                                <AIActionCardBadge>
-                                  {Math.round(aiContent.transcription.transcription_text.length / 100)} מילים
-                                </AIActionCardBadge>
-                              )}
-                            </AIActionCardContent>
-                          </AIActionCard>
-
-                          {/* View Summary Action */}
-                          <AIActionCard
-                            disabled={!aiContent?.summary?.summary_text}
-                            onClick={() => {
-                              if (aiContent?.summary?.summary_text) {
-                                alert(aiContent.summary.summary_text);
-                                setExpandedAIActions(prev => ({
-                                  ...prev,
-                                  [lesson.id]: false
-                                }));
-                              }
-                            }}
-                          >
-                            <AIActionCardIcon className={aiContent?.summary?.summary_text ? 'available' : 'unavailable'}>
-                              📋
-                            </AIActionCardIcon>
-                            <AIActionCardContent>
-                              <AIActionCardTitle>צפה בסיכום</AIActionCardTitle>
-                              <AIActionCardDescription>
-                                {aiContent?.summary?.summary_text ? 'סיכום השיעור זמין' : 'סיכום לא זמין'}
-                              </AIActionCardDescription>
-                              {aiContent?.summary?.summary_text && (
-                                <AIActionCardBadge>
-                                  {Math.round(aiContent.summary.summary_text.length / 50)} מילים
-                                </AIActionCardBadge>
-                              )}
-                            </AIActionCardContent>
-                          </AIActionCard>
-
-                          {/* View Test Action */}
-                          <AIActionCard
-                            disabled={!aiContent?.questions?.length}
-                            onClick={() => {
-                              if (aiContent?.questions?.length > 0) {
-                                const questionsText = aiContent.questions
-                                  .filter(q => q && q.question_text)
-                                  .map((q, i) => {
-                                    let questionText = `שאלה ${i + 1}: ${q.question_text}\n`;
-                                    
-                                    if (q.answer_options && Array.isArray(q.answer_options)) {
-                                      questionText += q.answer_options.map((opt, j) => 
-                                        `${String.fromCharCode(97 + j)}) ${opt}`
-                                      ).join('\n') + '\n';
-                                    }
-                                    
-                                    if (q.correct_answer) {
-                                      questionText += `תשובה נכונה: ${q.correct_answer}\n`;
-                                    }
-                                    
-                                    return questionText;
-                                  })
-                                  .join('\n---\n');
-                                
-                                if (questionsText.trim()) {
-                                  alert(questionsText);
-                                } else {
-                                  alert('אין שאלות זמינות');
-                                }
-                                setExpandedAIActions(prev => ({
-                                  ...prev,
-                                  [lesson.id]: false
-                                }));
-                              }
-                            }}
-                          >
-                            <AIActionCardIcon className={aiContent?.questions?.length > 0 ? 'available' : 'unavailable'}>
-                              📝
-                            </AIActionCardIcon>
-                            <AIActionCardContent>
-                              <AIActionCardTitle>צפה במבחן</AIActionCardTitle>
-                              <AIActionCardDescription>
-                                {aiContent?.questions?.length > 0 ? 'שאלות בחינה זמינות' : 'מבחן לא זמין'}
-                              </AIActionCardDescription>
-                              {aiContent?.questions?.length > 0 && (
-                                <AIActionCardBadge>
-                                  {aiContent.questions.length} שאלות
-                                </AIActionCardBadge>
-                              )}
-                            </AIActionCardContent>
-                          </AIActionCard>
-
-                          {/* Regenerate AI Content Action */}
-                          {(statusInfo.status === 'completed' || statusInfo.status === 'failed') && (
-                            <AIActionCard
-                              onClick={() => {
-                                setProcessingModal(lesson);
-                                setExpandedAIActions(prev => ({
-                                  ...prev,
-                                  [lesson.id]: false
-                                }));
-                              }}
-                            >
-                              <AIActionCardIcon className="generate">
-                                🔄
-                              </AIActionCardIcon>
-                              <AIActionCardContent>
-                                <AIActionCardTitle>צור תוכן AI מחדש</AIActionCardTitle>
-                                <AIActionCardDescription>
-                                  צור מחדש תמליל, סיכום ושאלות בחינה
-                                </AIActionCardDescription>
-                              </AIActionCardContent>
-                            </AIActionCard>
-                          )}
-                        </AIActionsGrid>
-                      </AIActionsContent>
-                    </ExpandableAIActions>
-                  )}
-
-                  {/* Row 5 - Lesson Metadata (if available) */}
-                  {lesson.metadata && (lesson.metadata.subject || lesson.metadata.classLevel || lesson.metadata.curriculum) && (
-                    <LessonInfo>
-                      {lesson.metadata.subject && (
-                        <InfoRow>
-                          <InfoLabel>מקצוע:</InfoLabel>
-                          <InfoValue>{lesson.metadata.subject}</InfoValue>
-                        </InfoRow>
-                      )}
-                      {lesson.metadata.classLevel && (
-                        <InfoRow>
-                          <InfoLabel>כיתה:</InfoLabel>
-                          <InfoValue>{lesson.metadata.classLevel}</InfoValue>
-                        </InfoRow>
-                      )}
-                      {lesson.metadata.curriculum && (
-                        <InfoRow>
-                          <InfoLabel>תכנית לימודים:</InfoLabel>
-                          <InfoValue>{lesson.metadata.curriculum}</InfoValue>
-                        </InfoRow>
-                      )}
-                    </LessonInfo>
                   )}
                 </LessonCard>
               );
@@ -4132,6 +4159,51 @@ const LessonsManager = ({ t }) => {
             </TranscriptionContent>
           </TranscriptionModalContent>
         </TranscriptionModal>
+      )}
+
+      {/* Summary Modal */}
+      {summaryModal && (
+        <SummaryModal>
+          <SummaryModalContent>
+            <SummaryHeader>
+              <SummaryTitle>{summaryModal.title}</SummaryTitle>
+              <CloseButton onClick={() => setSummaryModal(null)}>✕</CloseButton>
+            </SummaryHeader>
+            <SummaryContent>{summaryModal.content}</SummaryContent>
+          </SummaryModalContent>
+        </SummaryModal>
+      )}
+
+      {/* Test Modal */}
+      {testModal && (
+        <TestModal>
+          <TestModalContent>
+            <TestHeader>
+              <TestTitle>{testModal.title}</TestTitle>
+              <CloseButton onClick={() => setTestModal(null)}>✕</CloseButton>
+            </TestHeader>
+            <TestContent>
+              {testModal.questions.map((question, index) => (
+                <QuestionItem key={index}>
+                  <QuestionNumber>שאלה {index + 1}</QuestionNumber>
+                  <QuestionText>{question.question_text}</QuestionText>
+                  {question.answer_options && (
+                    <AnswerOptions>
+                      {question.answer_options.map((option, optIndex) => (
+                        <AnswerOption key={optIndex}>
+                          {String.fromCharCode(97 + optIndex)}) {option}
+                        </AnswerOption>
+                      ))}
+                    </AnswerOptions>
+                  )}
+                  {question.correct_answer && (
+                    <CorrectAnswer>תשובה נכונה: {question.correct_answer}</CorrectAnswer>
+                  )}
+                </QuestionItem>
+              ))}
+            </TestContent>
+          </TestModalContent>
+        </TestModal>
       )}
     </>
   );
