@@ -1,5 +1,6 @@
 const { openaiClient, AI_PROVIDERS, MODEL_CONFIGS, calculateEstimatedCost } = require('../config/ai-services');
 const { run, query } = require('../config/database-sqlite');
+const { validateContentForProcessing, optimizeMaxTokens, getContextWindowSize } = require('../utils/TokenCounter');
 
 /**
  * Content Summary Generation Service
@@ -187,13 +188,40 @@ class SummaryService {
         prompt += `\nרמת כיתה: ${context.gradeLevel}`;
       }
 
+      // Validate context window fit
+      const systemMessage = 'אתה מומחה חינוכי המתמחה בניתוח תוכן לימודי בעברית. אתה יוצר סיכומים ברורים, מובנים ומועילים למורים ותלמידים.';
+      const fullPrompt = systemMessage + '\n\n' + prompt;
+      
+      const validation = validateContentForProcessing(
+        fullPrompt, 
+        '', 
+        config.model, 
+        config.max_tokens
+      );
+
+      if (!validation.valid) {
+        console.warn('Content may exceed context window:', validation.analysis);
+        console.warn('Recommendations:', validation.recommendations);
+        
+        // Optimize max_tokens for available space
+        const optimizedMaxTokens = optimizeMaxTokens(
+          fullPrompt,
+          '',
+          config.max_tokens,
+          getContextWindowSize(config.model)
+        );
+        
+        console.log(`Optimized max_tokens from ${config.max_tokens} to ${optimizedMaxTokens}`);
+        config.max_tokens = optimizedMaxTokens;
+      }
+
       // Call OpenAI API
       const response = await openaiClient.chat.completions.create({
         model: config.model,
         messages: [
           {
             role: 'system',
-            content: 'אתה מומחה חינוכי המתמחה בניתוח תוכן לימודי בעברית. אתה יוצר סיכומים ברורים, מובנים ומועילים למורים ותלמידים.'
+            content: systemMessage
           },
           {
             role: 'user',
@@ -211,12 +239,21 @@ class SummaryService {
         text: summaryText,
         model: config.model,
         usage: response.usage,
-        confidence: this.calculateSummaryConfidence(summaryText, transcriptionText)
+        confidence: this.calculateSummaryConfidence(summaryText, transcriptionText),
+        contextAnalysis: validation.analysis
       };
 
     } catch (error) {
       console.error('OpenAI summary generation error:', error);
-      throw new Error(`OpenAI summary generation failed: ${error.message}`);
+      
+      // Enhanced error handling for context window issues
+      if (error.message.includes('context_length_exceeded') || error.message.includes('maximum context length')) {
+        throw new Error(`Content too large for context window. Consider using shorter transcription or chunking the content. Error: ${error.message}`);
+      } else if (error.message.includes('rate_limit_exceeded')) {
+        throw new Error(`Rate limit exceeded. Please try again later. Error: ${error.message}`);
+      } else {
+        throw new Error(`OpenAI summary generation failed: ${error.message}`);
+      }
     }
   }
 

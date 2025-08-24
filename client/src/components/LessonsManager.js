@@ -185,6 +185,625 @@ const ContentPreview = styled.div`
   line-height: 1.4;
 `;
 
+// New UI Components for improved lesson card layout
+
+// Row 2 - Recording Details
+const RecordingDetailsRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #2c3e50;
+`;
+
+const RecordingDetail = styled.span`
+  font-weight: 500;
+`;
+
+// Enhanced Text-Based Action Buttons
+const TextActionButton = styled.button`
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+  min-width: 100px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  }
+  
+  &.play {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #2980b9, #1f5f8b);
+    }
+  }
+  
+  &.delete {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #c0392b, #a93226);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    
+    &:hover {
+      transform: none;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+  }
+`;
+
+// AI Actions Button - Static Blue Styling
+const AIActionsButton = styled(TextActionButton)`
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  min-width: 80px;
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2980b9, #1f5f8b);
+  }
+`;
+
+// AI Status Button - Dynamic Styling Based on Status
+const AIStatusButton = styled(TextActionButton)`
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  
+  &.ai-completed {
+    background: linear-gradient(135deg, #27ae60, #229954);
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #229954, #1e8449);
+    }
+  }
+  
+  &.ai-processing {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+    animation: aiPulse 2s infinite;
+    
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #e67e22, #d35400);
+    }
+  }
+  
+  &.ai-failed {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #c0392b, #a93226);
+    }
+  }
+  
+  &.ai-pending {
+    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #7f8c8d, #6c7b7d);
+    }
+  }
+  
+  @keyframes aiPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+`;
+
+const AIStatusButtonIcon = styled.span`
+  font-size: 1rem;
+  font-weight: bold;
+`;
+
+const AIStatusButtonText = styled.span`
+  font-size: 0.85rem;
+  font-weight: 600;
+`;
+
+// Expandable AI Status Components
+const ExpandableAIStatus = styled.div`
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  overflow: hidden;
+  transition: all 0.3s ease;
+`;
+
+const AIStatusHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  cursor: pointer;
+  background: ${props => {
+    switch (props.status) {
+      case 'completed': return 'linear-gradient(135deg, #d5f4e6, #c8e6c9)';
+      case 'processing': return 'linear-gradient(135deg, #fef9e7, #fff3cd)';
+      case 'failed': return 'linear-gradient(135deg, #fadbd8, #f8d7da)';
+      default: return 'linear-gradient(135deg, #ebf3fd, #d1ecf1)';
+    }
+  }};
+  border-bottom: ${props => props.expanded ? '1px solid #e9ecef' : 'none'};
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: ${props => {
+      switch (props.status) {
+        case 'completed': return 'linear-gradient(135deg, #c8e6c9, #a5d6a7)';
+        case 'processing': return 'linear-gradient(135deg, #fff3cd, #ffe082)';
+        case 'failed': return 'linear-gradient(135deg, #f8d7da, #f5c6cb)';
+        default: return 'linear-gradient(135deg, #d1ecf1, #b3e5fc)';
+      }
+    }};
+  }
+`;
+
+const AIStatusHeaderContent = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const AIStatusIcon = styled.div`
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
+  background: ${props => {
+    switch (props.status) {
+      case 'completed': return '#27ae60';
+      case 'processing': return '#f39c12';
+      case 'failed': return '#e74c3c';
+      default: return '#3498db';
+    }
+  }};
+  
+  ${props => props.status === 'processing' && `
+    animation: statusPulse 2s infinite;
+  `}
+  
+  @keyframes statusPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+  }
+`;
+
+const AIStatusText = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+const AIStatusTitle = styled.span`
+  font-weight: 600;
+  font-size: 1rem;
+  color: #2c3e50;
+`;
+
+const AIStatusSubtitle = styled.span`
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+`;
+
+const AIStatusToggle = styled.div`
+  font-size: 1.2rem;
+  color: #666;
+  transition: transform 0.3s ease;
+  transform: ${props => props.expanded ? 'rotate(180deg)' : 'rotate(0deg)'};
+`;
+
+const AIStatusContent = styled.div`
+  padding: ${props => props.expanded ? '1.5rem' : '0'};
+  max-height: ${props => props.expanded ? '500px' : '0'};
+  overflow: hidden;
+  transition: all 0.3s ease;
+  background: white;
+`;
+
+const AIStagesGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const AIStageCard = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fafbfc;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: #f5f6fa;
+    border-color: #e9ecef;
+  }
+`;
+
+const AIStageCardIcon = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  flex-shrink: 0;
+  
+  &.success {
+    background-color: #27ae60;
+    color: white;
+  }
+  
+  &.failed {
+    background-color: #e74c3c;
+    color: white;
+  }
+  
+  &.processing {
+    background-color: #f39c12;
+    color: white;
+    animation: stagePulse 1.5s infinite;
+  }
+  
+  &.pending {
+    background-color: #bdc3c7;
+    color: white;
+  }
+  
+  @keyframes stagePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
+  }
+`;
+
+const AIStageCardContent = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+const AIStageCardTitle = styled.span`
+  font-weight: 600;
+  font-size: 1rem;
+  color: #2c3e50;
+`;
+
+const AIStageCardStatus = styled.span`
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+`;
+
+const AIStageCardMeta = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #999;
+`;
+
+const ErrorExpandSection = styled.div`
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 8px;
+`;
+
+const ErrorExpandHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  color: #e74c3c;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+`;
+
+const ErrorExpandContent = styled.div`
+  max-height: ${props => props.expanded ? '200px' : '0'};
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  color: #c53030;
+  font-size: 0.85rem;
+  line-height: 1.4;
+`;
+
+// Row 3 - Text Buttons
+const ButtonsRow = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
+`;
+
+const AIMenuHeader = styled.div`
+  padding: 1rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+`;
+
+const AIMenuHeaderTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+`;
+
+const AIMenuHeaderStatus = styled.div`
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+`;
+
+const AIMenuStages = styled.div`
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f0f0f0;
+`;
+
+const AIMenuStagesHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2c3e50;
+  
+  &:hover {
+    color: #3498db;
+  }
+`;
+
+const AIMenuStagesList = styled.div`
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const AIMenuStageItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  padding: 0.5rem;
+  background: #fafbfc;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
+`;
+
+const AIMenuStageIcon = styled.div`
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  flex-shrink: 0;
+  
+  &.success {
+    background-color: #27ae60;
+    color: white;
+  }
+  
+  &.failed {
+    background-color: #e74c3c;
+    color: white;
+  }
+  
+  &.processing {
+    background-color: #f39c12;
+    color: white;
+    animation: pulse 1.5s infinite;
+  }
+  
+  &.pending {
+    background-color: #bdc3c7;
+    color: white;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+`;
+
+const AIMenuStageText = styled.span`
+  flex: 1;
+  color: #2c3e50;
+  font-weight: 500;
+`;
+
+const AIMenuStageStatus = styled.span`
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 400;
+`;
+
+const AIMenuActions = styled.div`
+  padding: 0.5rem 0;
+`;
+
+const AIMenuActionItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.9rem;
+  color: #2c3e50;
+  transition: background-color 0.2s;
+  text-align: right;
+  
+  &:hover:not(:disabled) {
+    background: #f8f9fa;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: #999;
+  }
+`;
+
+const AIMenuActionIcon = styled.span`
+  font-size: 1.1rem;
+  width: 20px;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+`;
+
+const AIMenuActionText = styled.span`
+  flex: 1;
+  font-weight: 500;
+`;
+
+const AIMenuActionBadge = styled.span`
+  background: #e9ecef;
+  color: #666;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  flex-shrink: 0;
+`;
+
+const AIDropdownMenu = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  min-width: 180px;
+  padding: 0.5rem 0;
+  margin-top: 0.25rem;
+`;
+
+const AIDropdownItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.9rem;
+  color: #2c3e50;
+  transition: background-color 0.2s;
+  text-align: right;
+  
+  &:hover:not(:disabled) {
+    background: #f8f9fa;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: #999;
+  }
+`;
+
+const AIDropdownIcon = styled.span`
+  font-size: 1.1rem;
+  width: 20px;
+  display: flex;
+  justify-content: center;
+`;
+
+// Tooltip Component
+const TooltipContainer = styled.div`
+  position: relative;
+  display: inline-block;
+`;
+
+const Tooltip = styled.div`
+  position: absolute;
+  background: #2c3e50;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  z-index: 1001;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.5rem;
+  opacity: ${props => props.show ? 1 : 0};
+  visibility: ${props => props.show ? 'visible' : 'hidden'};
+  transition: opacity 0.2s, visibility 0.2s;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #2c3e50;
+  }
+`;
+
 const ActionButtons = styled.div`
   display: flex;
   gap: 0.5rem;
@@ -1004,6 +1623,205 @@ const DeleteButton = styled.button`
   }
 `;
 
+// Transcription Modal Components
+const TranscriptionModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const TranscriptionModalContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  direction: rtl;
+`;
+
+const TranscriptionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #ecf0f1;
+`;
+
+const TranscriptionTitle = styled.h2`
+  color: #2c3e50;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+`;
+
+const TranscriptionContent = styled.div`
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.5rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #2c3e50;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 60vh;
+  overflow-y: auto;
+`;
+
+const CloseButton = styled.button`
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #5a6268;
+  }
+`;
+
+// Toggle Button for Error Details
+const ToggleErrorButton = styled.button`
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  background-color: #e74c3c;
+  color: white;
+  margin-top: 0.5rem;
+  
+  &:hover {
+    background-color: #c0392b;
+  }
+`;
+
+// AI Actions Expandable Content
+const ExpandableAIActions = styled.div`
+  margin-top: 1rem;
+  border-radius: 8px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  overflow: hidden;
+  transition: all 0.3s ease;
+`;
+
+const AIActionsContent = styled.div`
+  padding: ${props => props.expanded ? '1.5rem' : '0'};
+  max-height: ${props => props.expanded ? '400px' : '0'};
+  overflow: hidden;
+  transition: all 0.3s ease;
+  background: white;
+`;
+
+const AIActionsGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+`;
+
+const AIActionCard = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fafbfc;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  text-align: right;
+  width: 100%;
+  
+  &:hover:not(:disabled) {
+    background: #f5f6fa;
+    border-color: #e9ecef;
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f8f9fa;
+  }
+`;
+
+const AIActionCardIcon = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  flex-shrink: 0;
+  background-color: #3498db;
+  color: white;
+  
+  &.available {
+    background-color: #27ae60;
+  }
+  
+  &.unavailable {
+    background-color: #bdc3c7;
+  }
+  
+  &.generate {
+    background-color: #f39c12;
+  }
+`;
+
+const AIActionCardContent = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-end;
+`;
+
+const AIActionCardTitle = styled.span`
+  font-weight: 600;
+  font-size: 1rem;
+  color: #2c3e50;
+`;
+
+const AIActionCardDescription = styled.span`
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+`;
+
+const AIActionCardBadge = styled.span`
+  background: #e9ecef;
+  color: #666;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
+`;
+
 const LessonsManager = ({ t }) => {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1024,6 +1842,9 @@ const LessonsManager = ({ t }) => {
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState('');
   const [retryCount, setRetryCount] = useState(0);
+
+  // New state for transcription modal
+  const [transcriptionModal, setTranscriptionModal] = useState(null);
 
   // Recording functionality state
   const [recordingService] = useState(() => new AudioRecordingService());
@@ -1060,7 +1881,212 @@ const LessonsManager = ({ t }) => {
   const [deleteModal, setDeleteModal] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // New UI state for improved lesson cards
+  const [tooltips, setTooltips] = useState({});
+  const [visibleErrors, setVisibleErrors] = useState({});
+  const [expandedAIActions, setExpandedAIActions] = useState({});
+  const [expandedAIStatus, setExpandedAIStatus] = useState({});
+
   const durationIntervalRef = useRef(null);
+
+  // Helper functions for tooltips and UI interactions
+  const showTooltip = (lessonId, buttonType, text) => {
+    setTooltips(prev => ({
+      ...prev,
+      [`${lessonId}-${buttonType}`]: text
+    }));
+  };
+
+  const hideTooltip = (lessonId, buttonType) => {
+    setTooltips(prev => {
+      const newTooltips = { ...prev };
+      delete newTooltips[`${lessonId}-${buttonType}`];
+      return newTooltips;
+    });
+  };
+
+
+  const getTooltipText = (lesson, buttonType) => {
+    const statusInfo = getAIStatusInfo(lesson);
+    const { aiContent } = lesson;
+
+    switch (buttonType) {
+      case 'play':
+        if (currentlyPlaying === lesson.id && audioPlayerData?.loading) {
+          return 'טוען נגן שמע...';
+        }
+        return 'השמע הקלטה';
+
+      case 'generate':
+        if (statusInfo.status === 'pending') {
+          return 'צור תוכן AI (סיכום ושאלות)';
+        } else if (statusInfo.status === 'failed') {
+          return 'נסה שוב ליצור תוכן AI';
+        } else if (statusInfo.status === 'processing') {
+          return 'עיבוד AI בתהליך...';
+        }
+        return 'תוכן AI כבר קיים';
+
+      case 'delete':
+        if (deleting) {
+          return 'מוחק שיעור...';
+        }
+        return 'מחק שיעור';
+
+      case 'ai-menu':
+        const availableCount = [
+          aiContent?.transcription?.transcription_text,
+          aiContent?.summary?.summary_text,
+          aiContent?.questions?.length > 0
+        ].filter(Boolean).length;
+        
+        if (availableCount === 0) {
+          return 'תפריט AI (אין תוכן זמין)';
+        }
+        return `תפריט AI (${availableCount} פריטים זמינים)`;
+
+      case 'ai-status':
+        return `${statusInfo.text} - לחץ לפרטים נוספים`;
+
+      case 'transcript':
+        if (aiContent?.transcription?.transcription_text) {
+          return 'צפה בתמליל המלא';
+        } else if (statusInfo.status === 'processing') {
+          return 'תמליל בעיבוד...';
+        } else if (statusInfo.status === 'failed') {
+          return 'יצירת תמליל נכשלה';
+        }
+        return 'תמליל לא זמין - צור תוכן AI תחילה';
+
+      case 'summary':
+        if (aiContent?.summary?.summary_text) {
+          return 'צפה בסיכום השיעור';
+        } else if (statusInfo.status === 'processing') {
+          return 'סיכום בעיבוד...';
+        } else if (statusInfo.status === 'failed') {
+          return 'יצירת סיכום נכשלה';
+        }
+        return 'סיכום לא זמין - צור תוכן AI תחילה';
+
+      case 'test':
+        if (aiContent?.questions?.length > 0) {
+          return `צפה במבחן (${aiContent.questions.length} שאלות)`;
+        } else if (statusInfo.status === 'processing') {
+          return 'שאלות בחינה בעיבוד...';
+        } else if (statusInfo.status === 'failed') {
+          return 'יצירת שאלות נכשלה';
+        }
+        return 'מבחן לא זמין - צור תוכן AI תחילה';
+
+      default:
+        return '';
+    }
+  };
+
+  const getAIStatusIcon = (status) => {
+    switch (status) {
+      case 'completed':
+        return '✅';
+      case 'processing':
+        return '⏳';
+      case 'failed':
+        return '❌';
+      case 'pending':
+      default:
+        return '⏸️';
+    }
+  };
+
+  // Enhanced AI Button Helper Functions
+  const getAIButtonClass = (statusInfo) => {
+    switch (statusInfo.status) {
+      case 'completed': return 'ai-completed';
+      case 'processing': return 'ai-processing';
+      case 'failed': return 'ai-failed';
+      case 'pending': 
+      default: return 'ai-pending';
+    }
+  };
+
+  const getAIButtonIcon = (statusInfo) => {
+    switch (statusInfo.status) {
+      case 'completed': return '✓';
+      case 'processing': return '⟳';
+      case 'failed': return '✗';
+      case 'pending': 
+      default: return '○';
+    }
+  };
+
+  const getAIMenuHeaderText = (statusInfo) => {
+    switch (statusInfo.status) {
+      case 'completed': return 'עיבוד AI הושלם';
+      case 'processing': return 'עיבוד AI בתהליך';
+      case 'failed': return 'עיבוד AI נכשל';
+      case 'pending': 
+      default: return 'עיבוד AI ממתין';
+    }
+  };
+
+  const getAIStageDisplayText = (lesson, contentType) => {
+    const status = getAIStageStatus(lesson, contentType);
+    const count = getAIStageCount(lesson, contentType);
+    
+    switch (contentType) {
+      case 'transcription':
+        return status === 'success' ? 'תמליל - Completed' : 'תמליל';
+      case 'summary':
+        return status === 'success' ? 'סיכום - Completed' : 'סיכום';
+      case 'questions':
+        if (status === 'success' && count > 0) {
+          return `שאלות בחינה - ${count} questions`;
+        }
+        return 'שאלות בחינה';
+      default:
+        return contentType;
+    }
+  };
+
+  const getAIStageStatus = (lesson, contentType) => {
+    const job = processingJobs[lesson.id];
+    const { aiContent } = lesson;
+    
+    if (job && job.job_type === contentType) {
+      if (job.status === 'processing') return 'processing';
+      if (job.status === 'failed') return 'failed';
+    }
+    
+    if (!aiContent) return 'pending';
+    
+    const content = aiContent[contentType];
+    if (content?.error) return 'failed';
+    if (content && (contentType === 'questions' ? content.length > 0 : content.transcription_text || content.summary_text)) {
+      return 'success';
+    }
+    
+    return 'pending';
+  };
+
+  const getAIStageIcon = (status) => {
+    switch (status) {
+      case 'success': return '✓';
+      case 'failed': return '✗';
+      case 'processing': return '⟳';
+      case 'pending': 
+      default: return '○';
+    }
+  };
+
+  const getAIStageCount = (lesson, contentType) => {
+    const { aiContent } = lesson;
+    if (!aiContent) return null;
+    
+    if (contentType === 'questions') {
+      return aiContent.questions?.length || 0;
+    }
+    
+    return null;
+  };
 
   useEffect(() => {
     fetchLessons();
@@ -1652,6 +2678,7 @@ const LessonsManager = ({ t }) => {
     const statusInfo = getAIStatusInfo(lesson);
     const { aiContent } = lesson;
     const job = processingJobs[lesson.id];
+    const isErrorVisible = visibleErrors[lesson.id] || false;
     
     // Determine stage statuses
     const getStageStatus = (contentType) => {
@@ -1718,7 +2745,10 @@ const LessonsManager = ({ t }) => {
             className={aiContent?.transcription?.transcription_text ? 'available' : 'unavailable'}
             onClick={() => {
               if (aiContent?.transcription?.transcription_text) {
-                alert(aiContent.transcription.transcription_text);
+                setTranscriptionModal({
+                  title: `תמליל - ${lesson.metadata?.lessonName || `הקלטה ${lesson.id}`}`,
+                  content: aiContent.transcription.transcription_text
+                });
               }
             }}
             disabled={!aiContent?.transcription?.transcription_text}
@@ -1773,27 +2803,23 @@ const LessonsManager = ({ t }) => {
             צפה במבחן
           </ViewButton>
           
-          {/* View Error Button - only show if there are errors */}
+          {/* Toggle Error Button - only show if there are errors */}
           {statusInfo.showError && (
-            <ViewButton 
-              className="error"
+            <ToggleErrorButton
               onClick={() => {
-                let errorText = statusInfo.details;
-                if (statusInfo.errors) {
-                  errorText += '\n\nפירוט שגיאות:\n' + statusInfo.errors.join('\n');
-                }
-                if (statusInfo.configIssues) {
-                  errorText += '\n\nבעיות תצורה:\n' + statusInfo.configIssues.join('\n');
-                }
-                alert(errorText);
+                setVisibleErrors(prev => ({
+                  ...prev,
+                  [lesson.id]: !prev[lesson.id]
+                }));
               }}
             >
-              צפה בשגיאה
-            </ViewButton>
+              {isErrorVisible ? 'הסתר שגיאה' : 'הצג שגיאה'}
+            </ToggleErrorButton>
           )}
         </ViewButtonsRow>
 
-        {statusInfo.showError && (
+        {/* Show error details only when toggled on */}
+        {statusInfo.showError && isErrorVisible && (
           <ErrorDetails>
             <strong>שגיאה:</strong> {statusInfo.details}
             {statusInfo.errors && (
@@ -2180,6 +3206,7 @@ const LessonsManager = ({ t }) => {
 
               return (
                 <LessonCard key={lesson.id}>
+                  {/* Row 1 - Header (Time, Date, Lesson Name) */}
                   <LessonHeader>
                     <LessonTitle>
                       {lesson.metadata?.lessonName || `הקלטה ${lesson.id}`}
@@ -2187,210 +3214,445 @@ const LessonsManager = ({ t }) => {
                     <LessonDate>{formatDate(lesson.created_at)}</LessonDate>
                   </LessonHeader>
 
-                  <LessonInfo>
-                    <InfoRow>
-                      <InfoLabel>משך:</InfoLabel>
-                      <InfoValue>{formatDuration(lesson.metadata?.duration || 0)}</InfoValue>
-                    </InfoRow>
-                    <InfoRow>
-                      <InfoLabel>גודל קובץ:</InfoLabel>
-                      <InfoValue>{formatFileSize(lesson.file_size)}</InfoValue>
-                    </InfoRow>
-                  </LessonInfo>
+                  {/* Row 2 - Recording Details */}
+                  <RecordingDetailsRow>
+                    <RecordingDetail>
+                      משך: {formatDuration(lesson.metadata?.duration || 0)}
+                    </RecordingDetail>
+                    <RecordingDetail>
+                      גודל: {formatFileSize(lesson.file_size)}
+                    </RecordingDetail>
+                  </RecordingDetailsRow>
 
-                  {/* Enhanced AI Status Section */}
-                  {renderAIStatusSection(lesson)}
-
-                  {aiContent?.transcription && aiContent.transcription.transcription_text && (
-                    <ContentSection>
-                      <ContentTitle>תמליל</ContentTitle>
-                      <ContentPreview>
-                        {aiContent.transcription.transcription_text.substring(0, 150)}
-                        {aiContent.transcription.transcription_text.length > 150 && '...'}
-                      </ContentPreview>
-                    </ContentSection>
-                  )}
-
-                  {aiContent?.summary && aiContent.summary.summary_text && (
-                    <ContentSection>
-                      <ContentTitle>סיכום</ContentTitle>
-                      <ContentPreview>
-                        {aiContent.summary.summary_text.substring(0, 150)}
-                        {aiContent.summary.summary_text.length > 150 && '...'}
-                      </ContentPreview>
-                    </ContentSection>
-                  )}
-
-                  {aiContent?.questions && Array.isArray(aiContent.questions) && aiContent.questions.length > 0 && (
-                    <ContentSection>
-                      <ContentTitle>שאלות ({aiContent.questions.length})</ContentTitle>
-                      <ContentPreview>
-                        <strong>שאלה לדוגמה:</strong><br />
-                        {aiContent.questions[0]?.question_text || 'שאלה לא זמינה'}
-                      </ContentPreview>
-                    </ContentSection>
-                  )}
-
-                  <ActionButtons>
-                    <ActionButton 
-                      className="primary"
-                      onClick={async () => {
-                        try {
-                          setCurrentlyPlaying(lesson.id);
-                          
-                          // Show loading state
-                          setAudioPlayerData({
-                            id: lesson.id,
-                            title: lesson.metadata?.lessonName || `הקלטה ${lesson.id}`,
-                            loading: true
-                          });
-                          
-                          // Fetch audio data and convert to blob
-                          const token = localStorage.getItem('token');
-                          const response = await fetch(`/api/recordings/${lesson.id}/download`, {
-                            headers: {
-                              'Authorization': `Bearer ${token}`
-                            }
-                          });
-                          
-                          if (!response.ok) {
-                            throw new Error(`Failed to fetch audio: ${response.status}`);
-                          }
-                          
-                          const audioBlob = await response.blob();
-                          
-                          setAudioPlayerData({
-                            id: lesson.id,
-                            title: lesson.metadata?.lessonName || `הקלטה ${lesson.id}`,
-                            audioBlob: audioBlob,
-                            metadata: lesson.metadata || {},
-                            loading: false
-                          });
-                        } catch (error) {
-                          console.error('Error loading audio:', error);
-                          alert('שגיאה בטעינת הקובץ השמע: ' + error.message);
-                          setAudioPlayerData(null);
-                          setCurrentlyPlaying(null);
-                        }
-                      }}
-                      disabled={currentlyPlaying === lesson.id && audioPlayerData?.loading}
-                    >
-                      {currentlyPlaying === lesson.id && audioPlayerData?.loading ? 'טוען...' : 'השמע'}
-                    </ActionButton>
-
-                    {/* Debug: Always show status info */}
-                    {console.log('Lesson status debug:', {
-                      lessonId: lesson.id,
-                      statusInfo: statusInfo,
-                      aiContent: lesson.aiContent,
-                      processingJob: processingJobs[lesson.id]
-                    })}
-
-                    {statusInfo.status === 'pending' && (
-                      <ActionButton 
-                        className="success"
-                        onClick={() => {
-                          console.log('Create AI content button clicked for lesson:', lesson.id);
-                          setProcessingModal(lesson);
-                        }}
-                      >
-                        צור תוכן AI
-                      </ActionButton>
-                    )}
-
-                    {statusInfo.status === 'failed' && (
-                      <ActionButton 
-                        className="success"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          console.log('AI retry button clicked for lesson:', lesson.id, 'statusInfo:', statusInfo);
-                          setProcessingModal(lesson);
-                        }}
-                      >
-                        נסה שוב
-                      </ActionButton>
-                    )}
-
-                    <DeleteButton
-                      onClick={() => setDeleteModal(lesson)}
-                    >
-                      מחק
-                    </DeleteButton>
-
-                    {aiContent?.transcription && aiContent.transcription.transcription_text && (
-                      <ActionButton 
-                        className="secondary"
-                        onClick={() => {
-                          // View full transcription
+                  {/* Row 3 - Text-Based Action Buttons */}
+                  <ButtonsRow>
+                    {/* Play Button */}
+                    <TooltipContainer>
+                      <TextActionButton
+                        className="play"
+                        disabled={currentlyPlaying === lesson.id && audioPlayerData?.loading}
+                        onMouseEnter={() => showTooltip(lesson.id, 'play', getTooltipText(lesson, 'play'))}
+                        onMouseLeave={() => hideTooltip(lesson.id, 'play')}
+                        onClick={async () => {
                           try {
-                            alert(aiContent.transcription.transcription_text || 'תמליל לא זמין');
-                          } catch (error) {
-                            console.error('Error displaying transcription:', error);
-                            alert('שגיאה בהצגת התמליל');
-                          }
-                        }}
-                      >
-                        תמליל מלא
-                      </ActionButton>
-                    )}
-
-                    {aiContent?.summary && aiContent.summary.summary_text && (
-                      <ActionButton 
-                        className="secondary"
-                        onClick={() => {
-                          // View full summary
-                          try {
-                            alert(aiContent.summary.summary_text || 'סיכום לא זמין');
-                          } catch (error) {
-                            console.error('Error displaying summary:', error);
-                            alert('שגיאה בהצגת הסיכום');
-                          }
-                        }}
-                      >
-                        סיכום מלא
-                      </ActionButton>
-                    )}
-
-                    {aiContent?.questions && Array.isArray(aiContent.questions) && aiContent.questions.length > 0 && (
-                      <ActionButton 
-                        className="secondary"
-                        onClick={() => {
-                          // View all questions
-                          try {
-                            const questionsText = aiContent.questions
-                              .filter(q => q && q.question_text) // Filter out invalid questions
-                              .map((q, i) => {
-                                let questionText = `שאלה ${i + 1}: ${q.question_text}\n`;
-                                
-                                if (q.answer_options && Array.isArray(q.answer_options)) {
-                                  questionText += q.answer_options.map((opt, j) => 
-                                    `${String.fromCharCode(97 + j)}) ${opt}`
-                                  ).join('\n') + '\n';
-                                }
-                                
-                                if (q.correct_answer) {
-                                  questionText += `תשובה נכונה: ${q.correct_answer}\n`;
-                                }
-                                
-                                return questionText;
-                              })
-                              .join('\n---\n');
+                            setCurrentlyPlaying(lesson.id);
                             
-                            if (questionsText.trim()) {
-                              alert(questionsText);
-                            } else {
-                              alert('אין שאלות זמינות');
+                            // Show loading state
+                            setAudioPlayerData({
+                              id: lesson.id,
+                              title: lesson.metadata?.lessonName || `הקלטה ${lesson.id}`,
+                              loading: true
+                            });
+                            
+                            // Fetch audio data and convert to blob
+                            const token = localStorage.getItem('token');
+                            const response = await fetch(`/api/recordings/${lesson.id}/download`, {
+                              headers: {
+                                'Authorization': `Bearer ${token}`
+                              }
+                            });
+                            
+                            if (!response.ok) {
+                              throw new Error(`Failed to fetch audio: ${response.status}`);
                             }
+                            
+                            const audioBlob = await response.blob();
+                            
+                            setAudioPlayerData({
+                              id: lesson.id,
+                              title: lesson.metadata?.lessonName || `הקלטה ${lesson.id}`,
+                              audioBlob: audioBlob,
+                              metadata: lesson.metadata || {},
+                              loading: false
+                            });
                           } catch (error) {
-                            console.error('Error displaying questions:', error);
-                            alert('שגיאה בהצגת השאלות');
+                            console.error('Error loading audio:', error);
+                            alert('שגיאה בטעינת הקובץ השמע: ' + error.message);
+                            setAudioPlayerData(null);
+                            setCurrentlyPlaying(null);
                           }
                         }}
                       >
-                        כל השאלות
-                      </ActionButton>
-                    )}
-                  </ActionButtons>
+                        {currentlyPlaying === lesson.id && audioPlayerData?.loading ? 'טוען...' : 'השמע'}
+                      </TextActionButton>
+                      <Tooltip show={tooltips[`${lesson.id}-play`]}>
+                        {tooltips[`${lesson.id}-play`]}
+                      </Tooltip>
+                    </TooltipContainer>
+
+                    {/* Delete Button */}
+                    <TooltipContainer>
+                      <TextActionButton
+                        className="delete"
+                        disabled={deleting}
+                        onMouseEnter={() => showTooltip(lesson.id, 'delete', getTooltipText(lesson, 'delete'))}
+                        onMouseLeave={() => hideTooltip(lesson.id, 'delete')}
+                        onClick={() => setDeleteModal(lesson)}
+                      >
+                        {deleting ? 'מוחק...' : 'מחק'}
+                      </TextActionButton>
+                      <Tooltip show={tooltips[`${lesson.id}-delete`]}>
+                        {tooltips[`${lesson.id}-delete`]}
+                      </Tooltip>
+                    </TooltipContainer>
+
+                    {/* AI Actions Button */}
+                    <TooltipContainer>
+                      <AIActionsButton
+                        onMouseEnter={() => showTooltip(lesson.id, 'ai-actions', 'פעולות AI')}
+                        onMouseLeave={() => hideTooltip(lesson.id, 'ai-actions')}
+                        onClick={() => {
+                          setExpandedAIActions(prev => ({
+                            ...prev,
+                            [lesson.id]: !prev[lesson.id]
+                          }));
+                        }}
+                      >
+                        AI
+                      </AIActionsButton>
+                      <Tooltip show={tooltips[`${lesson.id}-ai-actions`]}>
+                        {tooltips[`${lesson.id}-ai-actions`]}
+                      </Tooltip>
+                    </TooltipContainer>
+
+                    {/* AI Status Button */}
+                    <TooltipContainer>
+                      <AIStatusButton
+                        className={getAIButtonClass(statusInfo)}
+                        onMouseEnter={() => showTooltip(lesson.id, 'ai-status', getTooltipText(lesson, 'ai-status'))}
+                        onMouseLeave={() => hideTooltip(lesson.id, 'ai-status')}
+                        onClick={() => {
+                          setExpandedAIStatus(prev => ({
+                            ...prev,
+                            [lesson.id]: !prev[lesson.id]
+                          }));
+                        }}
+                      >
+                        <AIStatusButtonIcon>{getAIButtonIcon(statusInfo)}</AIStatusButtonIcon>
+                        <AIStatusButtonText>{statusInfo.text}</AIStatusButtonText>
+                      </AIStatusButton>
+                      <Tooltip show={tooltips[`${lesson.id}-ai-status`]}>
+                        {tooltips[`${lesson.id}-ai-status`]}
+                      </Tooltip>
+                    </TooltipContainer>
+                  </ButtonsRow>
+
+                  {/* Row 4 - Expandable AI Status */}
+                  <ExpandableAIStatus>
+                    <AIStatusHeader
+                      status={statusInfo.status}
+                      expanded={expandedAIStatus[lesson.id]}
+                      onClick={() => {
+                        setExpandedAIStatus(prev => ({
+                          ...prev,
+                          [lesson.id]: !prev[lesson.id]
+                        }));
+                      }}
+                    >
+                      <AIStatusHeaderContent>
+                        <AIStatusIcon status={statusInfo.status}>
+                          {getAIStatusIcon(statusInfo.status)}
+                        </AIStatusIcon>
+                        <AIStatusText>
+                          <AIStatusTitle>סטטוס AI: {statusInfo.text}</AIStatusTitle>
+                          <AIStatusSubtitle>{statusInfo.details}</AIStatusSubtitle>
+                        </AIStatusText>
+                      </AIStatusHeaderContent>
+                      <AIStatusToggle expanded={expandedAIStatus[lesson.id]}>
+                        ▼
+                      </AIStatusToggle>
+                    </AIStatusHeader>
+                    
+                    <AIStatusContent expanded={expandedAIStatus[lesson.id]}>
+                      <AIStagesGrid>
+                        <AIStageCard>
+                          <AIStageCardIcon className={getAIStageStatus(lesson, 'transcription')}>
+                            {getAIStageIcon(getAIStageStatus(lesson, 'transcription'))}
+                          </AIStageCardIcon>
+                          <AIStageCardContent>
+                            <AIStageCardTitle>תמליל</AIStageCardTitle>
+                            <AIStageCardStatus>
+                              {getAIStageStatus(lesson, 'transcription') === 'success' ? 'הושלם בהצלחה' :
+                               getAIStageStatus(lesson, 'transcription') === 'processing' ? 'בעיבוד...' :
+                               getAIStageStatus(lesson, 'transcription') === 'failed' ? 'נכשל' : 'ממתין'}
+                            </AIStageCardStatus>
+                            {aiContent?.transcription?.transcription_text && (
+                              <AIStageCardMeta>
+                                <span>{Math.round(aiContent.transcription.transcription_text.length / 100)} מילים</span>
+                                <span>•</span>
+                                <span>זמין לצפייה</span>
+                              </AIStageCardMeta>
+                            )}
+                          </AIStageCardContent>
+                        </AIStageCard>
+
+                        <AIStageCard>
+                          <AIStageCardIcon className={getAIStageStatus(lesson, 'summary')}>
+                            {getAIStageIcon(getAIStageStatus(lesson, 'summary'))}
+                          </AIStageCardIcon>
+                          <AIStageCardContent>
+                            <AIStageCardTitle>סיכום</AIStageCardTitle>
+                            <AIStageCardStatus>
+                              {getAIStageStatus(lesson, 'summary') === 'success' ? 'הושלם בהצלחה' :
+                               getAIStageStatus(lesson, 'summary') === 'processing' ? 'בעיבוד...' :
+                               getAIStageStatus(lesson, 'summary') === 'failed' ? 'נכשל' : 'ממתין'}
+                            </AIStageCardStatus>
+                            {aiContent?.summary?.summary_text && (
+                              <AIStageCardMeta>
+                                <span>{Math.round(aiContent.summary.summary_text.length / 50)} מילים</span>
+                                <span>•</span>
+                                <span>זמין לצפייה</span>
+                              </AIStageCardMeta>
+                            )}
+                          </AIStageCardContent>
+                        </AIStageCard>
+
+                        <AIStageCard>
+                          <AIStageCardIcon className={getAIStageStatus(lesson, 'questions')}>
+                            {getAIStageIcon(getAIStageStatus(lesson, 'questions'))}
+                          </AIStageCardIcon>
+                          <AIStageCardContent>
+                            <AIStageCardTitle>שאלות בחינה</AIStageCardTitle>
+                            <AIStageCardStatus>
+                              {getAIStageStatus(lesson, 'questions') === 'success' ? `${aiContent?.questions?.length || 0} שאלות` :
+                               getAIStageStatus(lesson, 'questions') === 'processing' ? 'בעיבוד...' :
+                               getAIStageStatus(lesson, 'questions') === 'failed' ? 'נכשל' : 'ממתין'}
+                            </AIStageCardStatus>
+                            {aiContent?.questions?.length > 0 && (
+                              <AIStageCardMeta>
+                                <span>{aiContent.questions.length} שאלות</span>
+                                <span>•</span>
+                                <span>זמין לצפייה</span>
+                              </AIStageCardMeta>
+                            )}
+                          </AIStageCardContent>
+                        </AIStageCard>
+                      </AIStagesGrid>
+
+                      {/* Error Details Section */}
+                      {statusInfo.showError && (
+                        <ErrorExpandSection>
+                          <ErrorExpandHeader
+                            onClick={() => {
+                              setVisibleErrors(prev => ({
+                                ...prev,
+                                [lesson.id]: !prev[lesson.id]
+                              }));
+                            }}
+                          >
+                            <span>פרטי שגיאה</span>
+                            <span>{visibleErrors[lesson.id] ? '▼' : '▶'}</span>
+                          </ErrorExpandHeader>
+                          <ErrorExpandContent expanded={visibleErrors[lesson.id]}>
+                            <div><strong>שגיאה:</strong> {statusInfo.details}</div>
+                            {statusInfo.errors && statusInfo.errors.map((error, index) => (
+                              <div key={index} style={{ marginTop: '0.5rem' }}>• {error}</div>
+                            ))}
+                            {statusInfo.configIssues && (
+                              <div style={{ marginTop: '0.5rem' }}>
+                                <strong>בעיות תצורה:</strong>
+                                {statusInfo.configIssues.map((issue, index) => (
+                                  <div key={index}>• {issue}</div>
+                                ))}
+                              </div>
+                            )}
+                          </ErrorExpandContent>
+                        </ErrorExpandSection>
+                      )}
+                    </AIStatusContent>
+                  </ExpandableAIStatus>
+
+                  {/* Expandable AI Actions */}
+                  {expandedAIActions[lesson.id] && (
+                    <ExpandableAIActions>
+                      <AIActionsContent expanded={expandedAIActions[lesson.id]}>
+                        <AIActionsGrid>
+                          {/* Generate AI Content Action */}
+                          {(statusInfo.status === 'pending' || statusInfo.status === 'failed') && (
+                            <AIActionCard
+                              onClick={() => {
+                                setProcessingModal(lesson);
+                                setExpandedAIActions(prev => ({
+                                  ...prev,
+                                  [lesson.id]: false
+                                }));
+                              }}
+                            >
+                              <AIActionCardIcon className="generate">
+                                +
+                              </AIActionCardIcon>
+                              <AIActionCardContent>
+                                <AIActionCardTitle>צור תוכן AI</AIActionCardTitle>
+                                <AIActionCardDescription>
+                                  {statusInfo.status === 'failed' ? 'נסה שוב ליצור תמליל, סיכום ושאלות' : 'צור תמליל, סיכום ושאלות בחינה'}
+                                </AIActionCardDescription>
+                              </AIActionCardContent>
+                            </AIActionCard>
+                          )}
+
+                          {/* View Transcription Action */}
+                          <AIActionCard
+                            disabled={!aiContent?.transcription?.transcription_text}
+                            onClick={() => {
+                              if (aiContent?.transcription?.transcription_text) {
+                                setTranscriptionModal({
+                                  title: `תמליל - ${lesson.metadata?.lessonName || `הקלטה ${lesson.id}`}`,
+                                  content: aiContent.transcription.transcription_text
+                                });
+                                setExpandedAIActions(prev => ({
+                                  ...prev,
+                                  [lesson.id]: false
+                                }));
+                              }
+                            }}
+                          >
+                            <AIActionCardIcon className={aiContent?.transcription?.transcription_text ? 'available' : 'unavailable'}>
+                              📄
+                            </AIActionCardIcon>
+                            <AIActionCardContent>
+                              <AIActionCardTitle>צפה בתמליל</AIActionCardTitle>
+                              <AIActionCardDescription>
+                                {aiContent?.transcription?.transcription_text ? 'תמליל מלא של השיעור זמין' : 'תמליל לא זמין'}
+                              </AIActionCardDescription>
+                              {aiContent?.transcription?.transcription_text && (
+                                <AIActionCardBadge>
+                                  {Math.round(aiContent.transcription.transcription_text.length / 100)} מילים
+                                </AIActionCardBadge>
+                              )}
+                            </AIActionCardContent>
+                          </AIActionCard>
+
+                          {/* View Summary Action */}
+                          <AIActionCard
+                            disabled={!aiContent?.summary?.summary_text}
+                            onClick={() => {
+                              if (aiContent?.summary?.summary_text) {
+                                alert(aiContent.summary.summary_text);
+                                setExpandedAIActions(prev => ({
+                                  ...prev,
+                                  [lesson.id]: false
+                                }));
+                              }
+                            }}
+                          >
+                            <AIActionCardIcon className={aiContent?.summary?.summary_text ? 'available' : 'unavailable'}>
+                              📋
+                            </AIActionCardIcon>
+                            <AIActionCardContent>
+                              <AIActionCardTitle>צפה בסיכום</AIActionCardTitle>
+                              <AIActionCardDescription>
+                                {aiContent?.summary?.summary_text ? 'סיכום השיעור זמין' : 'סיכום לא זמין'}
+                              </AIActionCardDescription>
+                              {aiContent?.summary?.summary_text && (
+                                <AIActionCardBadge>
+                                  {Math.round(aiContent.summary.summary_text.length / 50)} מילים
+                                </AIActionCardBadge>
+                              )}
+                            </AIActionCardContent>
+                          </AIActionCard>
+
+                          {/* View Test Action */}
+                          <AIActionCard
+                            disabled={!aiContent?.questions?.length}
+                            onClick={() => {
+                              if (aiContent?.questions?.length > 0) {
+                                const questionsText = aiContent.questions
+                                  .filter(q => q && q.question_text)
+                                  .map((q, i) => {
+                                    let questionText = `שאלה ${i + 1}: ${q.question_text}\n`;
+                                    
+                                    if (q.answer_options && Array.isArray(q.answer_options)) {
+                                      questionText += q.answer_options.map((opt, j) => 
+                                        `${String.fromCharCode(97 + j)}) ${opt}`
+                                      ).join('\n') + '\n';
+                                    }
+                                    
+                                    if (q.correct_answer) {
+                                      questionText += `תשובה נכונה: ${q.correct_answer}\n`;
+                                    }
+                                    
+                                    return questionText;
+                                  })
+                                  .join('\n---\n');
+                                
+                                if (questionsText.trim()) {
+                                  alert(questionsText);
+                                } else {
+                                  alert('אין שאלות זמינות');
+                                }
+                                setExpandedAIActions(prev => ({
+                                  ...prev,
+                                  [lesson.id]: false
+                                }));
+                              }
+                            }}
+                          >
+                            <AIActionCardIcon className={aiContent?.questions?.length > 0 ? 'available' : 'unavailable'}>
+                              📝
+                            </AIActionCardIcon>
+                            <AIActionCardContent>
+                              <AIActionCardTitle>צפה במבחן</AIActionCardTitle>
+                              <AIActionCardDescription>
+                                {aiContent?.questions?.length > 0 ? 'שאלות בחינה זמינות' : 'מבחן לא זמין'}
+                              </AIActionCardDescription>
+                              {aiContent?.questions?.length > 0 && (
+                                <AIActionCardBadge>
+                                  {aiContent.questions.length} שאלות
+                                </AIActionCardBadge>
+                              )}
+                            </AIActionCardContent>
+                          </AIActionCard>
+
+                          {/* Regenerate AI Content Action */}
+                          {(statusInfo.status === 'completed' || statusInfo.status === 'failed') && (
+                            <AIActionCard
+                              onClick={() => {
+                                setProcessingModal(lesson);
+                                setExpandedAIActions(prev => ({
+                                  ...prev,
+                                  [lesson.id]: false
+                                }));
+                              }}
+                            >
+                              <AIActionCardIcon className="generate">
+                                🔄
+                              </AIActionCardIcon>
+                              <AIActionCardContent>
+                                <AIActionCardTitle>צור תוכן AI מחדש</AIActionCardTitle>
+                                <AIActionCardDescription>
+                                  צור מחדש תמליל, סיכום ושאלות בחינה
+                                </AIActionCardDescription>
+                              </AIActionCardContent>
+                            </AIActionCard>
+                          )}
+                        </AIActionsGrid>
+                      </AIActionsContent>
+                    </ExpandableAIActions>
+                  )}
+
+                  {/* Row 5 - Lesson Metadata (if available) */}
+                  {lesson.metadata && (lesson.metadata.subject || lesson.metadata.classLevel || lesson.metadata.curriculum) && (
+                    <LessonInfo>
+                      {lesson.metadata.subject && (
+                        <InfoRow>
+                          <InfoLabel>מקצוע:</InfoLabel>
+                          <InfoValue>{lesson.metadata.subject}</InfoValue>
+                        </InfoRow>
+                      )}
+                      {lesson.metadata.classLevel && (
+                        <InfoRow>
+                          <InfoLabel>כיתה:</InfoLabel>
+                          <InfoValue>{lesson.metadata.classLevel}</InfoValue>
+                        </InfoRow>
+                      )}
+                      {lesson.metadata.curriculum && (
+                        <InfoRow>
+                          <InfoLabel>תכנית לימודים:</InfoLabel>
+                          <InfoValue>{lesson.metadata.curriculum}</InfoValue>
+                        </InfoRow>
+                      )}
+                    </LessonInfo>
+                  )}
                 </LessonCard>
               );
             })}
@@ -2853,6 +4115,23 @@ const LessonsManager = ({ t }) => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Transcription Modal */}
+      {transcriptionModal && (
+        <TranscriptionModal>
+          <TranscriptionModalContent>
+            <TranscriptionHeader>
+              <TranscriptionTitle>{transcriptionModal.title}</TranscriptionTitle>
+              <CloseButton onClick={() => setTranscriptionModal(null)}>
+                ✕
+              </CloseButton>
+            </TranscriptionHeader>
+            <TranscriptionContent>
+              {transcriptionModal.content}
+            </TranscriptionContent>
+          </TranscriptionModalContent>
+        </TranscriptionModal>
       )}
     </>
   );

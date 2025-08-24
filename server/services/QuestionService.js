@@ -1,5 +1,6 @@
 const { openaiClient, AI_PROVIDERS, MODEL_CONFIGS, calculateEstimatedCost } = require('../config/ai-services');
 const { run, query } = require('../config/database-sqlite');
+const { validateContentForProcessing, optimizeMaxTokens, getContextWindowSize } = require('../utils/TokenCounter');
 
 /**
  * Question Generation Service
@@ -249,13 +250,40 @@ class QuestionService {
         prompt = prompt.replace('10', questionCount.toString());
       }
 
+      // Validate context window fit
+      const systemMessage = 'אתה מומחה חינוכי המתמחה ביצירת שאלות בחינה איכותיות בעברית. אתה יוצר שאלות ברורות, מדויקות ומתאימות לרמת התלמידים.';
+      const fullPrompt = systemMessage + '\n\n' + prompt;
+      
+      const validation = validateContentForProcessing(
+        fullPrompt, 
+        '', 
+        config.model, 
+        config.max_tokens
+      );
+
+      if (!validation.valid) {
+        console.warn('Content may exceed context window:', validation.analysis);
+        console.warn('Recommendations:', validation.recommendations);
+        
+        // Optimize max_tokens for available space
+        const optimizedMaxTokens = optimizeMaxTokens(
+          fullPrompt,
+          '',
+          config.max_tokens,
+          getContextWindowSize(config.model)
+        );
+        
+        console.log(`Optimized max_tokens from ${config.max_tokens} to ${optimizedMaxTokens}`);
+        config.max_tokens = optimizedMaxTokens;
+      }
+
       // Call OpenAI API
       const response = await openaiClient.chat.completions.create({
         model: config.model,
         messages: [
           {
             role: 'system',
-            content: 'אתה מומחה חינוכי המתמחה ביצירת שאלות בחינה איכותיות בעברית. אתה יוצר שאלות ברורות, מדויקות ומתאימות לרמת התלמידים.'
+            content: systemMessage
           },
           {
             role: 'user',
@@ -274,12 +302,21 @@ class QuestionService {
         questions: parsedQuestions,
         model: config.model,
         usage: response.usage,
-        raw_text: questionsText
+        raw_text: questionsText,
+        contextAnalysis: validation.analysis
       };
 
     } catch (error) {
       console.error('OpenAI question generation error:', error);
-      throw new Error(`OpenAI question generation failed: ${error.message}`);
+      
+      // Enhanced error handling for context window issues
+      if (error.message.includes('context_length_exceeded') || error.message.includes('maximum context length')) {
+        throw new Error(`Content too large for context window. Consider using shorter content or chunking. Error: ${error.message}`);
+      } else if (error.message.includes('rate_limit_exceeded')) {
+        throw new Error(`Rate limit exceeded. Please try again later. Error: ${error.message}`);
+      } else {
+        throw new Error(`OpenAI question generation failed: ${error.message}`);
+      }
     }
   }
 

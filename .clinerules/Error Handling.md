@@ -1,0 +1,1 @@
+All code must have very efficient and detailed error handling, in console and in the GUI.

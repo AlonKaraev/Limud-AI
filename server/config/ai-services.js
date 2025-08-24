@@ -42,9 +42,9 @@ const MODEL_CONFIGS = {
   },
   text_generation: {
     openai: {
-      model: 'gpt-4',
+      model: 'gpt-4-turbo',
       temperature: 0.7,
-      max_tokens: 2000,
+      max_tokens: 4000,
       top_p: 1,
       frequency_penalty: 0,
       presence_penalty: 0
@@ -52,17 +52,17 @@ const MODEL_CONFIGS = {
   },
   summary_generation: {
     openai: {
-      model: 'gpt-4',
+      model: 'gpt-4-turbo',
       temperature: 0.3,
-      max_tokens: 1500,
+      max_tokens: 3000,
       top_p: 0.9
     }
   },
   question_generation: {
     openai: {
-      model: 'gpt-4',
+      model: 'gpt-4-turbo',
       temperature: 0.5,
-      max_tokens: 2500,
+      max_tokens: 4000,
       top_p: 0.95
     }
   }
@@ -72,7 +72,7 @@ const MODEL_CONFIGS = {
 const RATE_LIMITS = {
   openai: {
     requests_per_minute: 50,
-    tokens_per_minute: 40000,
+    tokens_per_minute: 150000, // Increased for GPT-4 Turbo's 128K context window
     requests_per_day: 1000
   }
 };
@@ -82,6 +82,10 @@ const COST_ESTIMATES = {
   openai: {
     'whisper-1': {
       per_minute: 0.006 // $0.006 per minute of audio
+    },
+    'gpt-4-turbo': {
+      input_tokens: 0.00001, // $0.01 per 1K tokens
+      output_tokens: 0.00003 // $0.03 per 1K tokens
     },
     'gpt-4': {
       input_tokens: 0.00003, // $0.03 per 1K tokens
