@@ -1,1 +1,0 @@
-Design should be user friendly, easy to use and suitable for children and old indviduals.

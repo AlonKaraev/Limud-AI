@@ -1747,6 +1747,253 @@ const TestModalContent = styled(TranscriptionModalContent)``;
 const TestHeader = styled(TranscriptionHeader)``;
 const TestTitle = styled(TranscriptionTitle)``;
 
+// Share Modal Components
+const ShareModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ShareModalContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  direction: rtl;
+`;
+
+const ShareModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #ecf0f1;
+`;
+
+const ShareModalTitle = styled.h2`
+  color: #2c3e50;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+`;
+
+const ShareSection = styled.div`
+  margin-bottom: 2rem;
+`;
+
+const ShareSectionTitle = styled.h3`
+  color: #2c3e50;
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+`;
+
+const ContentTypeGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const ContentTypeCard = styled.div`
+  border: 2px solid ${props => props.selected ? '#27ae60' : '#e9ecef'};
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: ${props => props.selected ? '#f8fff8' : 'white'};
+  
+  &:hover {
+    border-color: ${props => props.selected ? '#27ae60' : '#3498db'};
+    background: ${props => props.selected ? '#f8fff8' : '#f8f9fa'};
+  }
+  
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f8f9fa;
+    border-color: #e9ecef;
+  }
+`;
+
+const ContentTypeHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+`;
+
+const ContentTypeIcon = styled.div`
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
+  background: ${props => {
+    if (props.available) return '#27ae60';
+    if (props.processing) return '#f39c12';
+    if (props.failed) return '#e74c3c';
+    return '#bdc3c7';
+  }};
+`;
+
+const ContentTypeTitle = styled.span`
+  font-weight: 600;
+  font-size: 1rem;
+  color: #2c3e50;
+`;
+
+const ContentTypeDescription = styled.p`
+  margin: 0;
+  font-size: 0.85rem;
+  color: #666;
+  line-height: 1.4;
+`;
+
+const ContentTypeStatus = styled.div`
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: ${props => {
+    if (props.available) return '#27ae60';
+    if (props.processing) return '#f39c12';
+    if (props.failed) return '#e74c3c';
+    return '#7f8c8d';
+  }};
+  font-weight: 500;
+`;
+
+const ClassSelectionGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const ClassCard = styled.div`
+  border: 2px solid ${props => props.selected ? '#3498db' : '#e9ecef'};
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: ${props => props.selected ? '#f0f8ff' : 'white'};
+  
+  &:hover {
+    border-color: #3498db;
+    background: #f0f8ff;
+  }
+`;
+
+const ClassName = styled.div`
+  font-weight: 600;
+  font-size: 1rem;
+  color: #2c3e50;
+  margin-bottom: 0.25rem;
+`;
+
+const ClassDescription = styled.div`
+  font-size: 0.85rem;
+  color: #666;
+`;
+
+const ScheduleSection = styled.div`
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+`;
+
+const ScheduleGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ScheduleFormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const ScheduleLabel = styled.label`
+  font-weight: 500;
+  color: #2c3e50;
+  font-size: 0.9rem;
+`;
+
+const ScheduleInput = styled.input`
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Heebo', sans-serif;
+  direction: ltr;
+  
+  &:focus {
+    outline: none;
+    border-color: #3498db;
+  }
+`;
+
+const ShareActions = styled.div`
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+`;
+
+const ShareButton = styled.button`
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Heebo', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &.primary {
+    background: linear-gradient(135deg, #27ae60, #229954);
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #229954, #1e8449);
+    }
+  }
+  
+  &.secondary {
+    background: #6c757d;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background: #5a6268;
+    }
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
 const TestContent = styled.div`
   background: #f8f9fa;
   border: 1px solid #e9ecef;
@@ -2046,6 +2293,22 @@ const LessonsManager = ({ t }) => {
   const [visibleErrors, setVisibleErrors] = useState({});
   const [expandedAIMenu, setExpandedAIMenu] = useState({});
 
+  // Content sharing state
+  const [shareModal, setShareModal] = useState(null);
+  const [classes, setClasses] = useState([]);
+  const [shareOptions, setShareOptions] = useState({
+    transcription: false,
+    summary: false,
+    test: false
+  });
+  const [selectedClasses, setSelectedClasses] = useState([]);
+  const [shareSchedule, setShareSchedule] = useState({
+    startDate: '',
+    endDate: ''
+  });
+  const [sharing, setSharing] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+
   const durationIntervalRef = useRef(null);
 
   // Helper functions for tooltips and UI interactions
@@ -2247,6 +2510,8 @@ const LessonsManager = ({ t }) => {
   useEffect(() => {
     fetchLessons();
     fetchAIServiceHealth();
+    fetchUserRole();
+    fetchClasses();
     // Set up periodic refresh for processing jobs
     const interval = setInterval(() => {
       fetchProcessingJobs();
@@ -2667,6 +2932,41 @@ const LessonsManager = ({ t }) => {
       }
     } catch (error) {
       console.error('Error fetching AI service health:', error);
+    }
+  };
+
+  const fetchUserRole = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // Try to decode the JWT token to get user role
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      setUserRole(payload.role || 'student');
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+      setUserRole('student'); // Default to student
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('/api/content-sharing/classes', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setClasses(data.classes || []);
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      setClasses([]);
     }
   };
 
@@ -3280,6 +3580,46 @@ const LessonsManager = ({ t }) => {
     }
   };
 
+  // Content sharing functionality
+  const handleShare = async () => {
+    if (!shareModal || selectedClasses.length === 0 || Object.values(shareOptions).every(v => !v)) {
+      alert('אנא בחר תוכן וכיתות לשיתוף');
+      return;
+    }
+
+    setSharing(true);
+    try {
+      const response = await fetch('/api/content-sharing/share', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          lessonId: shareModal.id,
+          contentTypes: Object.keys(shareOptions).filter(key => shareOptions[key]),
+          targetClasses: selectedClasses,
+          schedule: shareSchedule.startDate || shareSchedule.endDate ? shareSchedule : null
+        })
+      });
+
+      if (response.ok) {
+        alert('התוכן שותף בהצלחה!');
+        setShareModal(null);
+        setShareOptions({ transcription: false, summary: false, test: false });
+        setSelectedClasses([]);
+        setShareSchedule({ startDate: '', endDate: '' });
+      } else {
+        throw new Error('שגיאה בשיתוף התוכן');
+      }
+    } catch (error) {
+      console.error('Error sharing content:', error);
+      alert('שגיאה בשיתוף התוכן');
+    } finally {
+      setSharing(false);
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -3457,6 +3797,23 @@ const LessonsManager = ({ t }) => {
                         {tooltips[`${lesson.id}-delete`]}
                       </Tooltip>
                     </TooltipContainer>
+
+                    {/* Share Button - Only for teachers */}
+                    {userRole === 'teacher' && (
+                      <TooltipContainer>
+                        <TextActionButton
+                          className="success"
+                          onMouseEnter={() => showTooltip(lesson.id, 'share', 'שתף תוכן עם תלמידים')}
+                          onMouseLeave={() => hideTooltip(lesson.id, 'share')}
+                          onClick={() => setShareModal(lesson)}
+                        >
+                          שתף
+                        </TextActionButton>
+                        <Tooltip show={tooltips[`${lesson.id}-share`]}>
+                          {tooltips[`${lesson.id}-share`]}
+                        </Tooltip>
+                      </TooltipContainer>
+                    )}
 
                     {/* Merged AI Menu Button */}
                     <TooltipContainer>
@@ -4204,6 +4561,239 @@ const LessonsManager = ({ t }) => {
             </TestContent>
           </TestModalContent>
         </TestModal>
+      )}
+
+      {/* Share Modal */}
+      {shareModal && (
+        <ShareModal>
+          <ShareModalContent>
+            <ShareModalHeader>
+              <ShareModalTitle>שתף תוכן שיעור - {shareModal.metadata?.lessonName || `הקלטה ${shareModal.id}`}</ShareModalTitle>
+              <CloseButton onClick={() => {
+                setShareModal(null);
+                setShareOptions({ transcription: false, summary: false, test: false });
+                setSelectedClasses([]);
+                setShareSchedule({ startDate: '', endDate: '' });
+              }}>
+                ✕
+              </CloseButton>
+            </ShareModalHeader>
+
+            {/* Content Type Selection */}
+            <ShareSection>
+              <ShareSectionTitle>בחר תוכן לשיתוף</ShareSectionTitle>
+              <ContentTypeGrid>
+                {/* Transcription Card */}
+                <ContentTypeCard
+                  selected={shareOptions.transcription}
+                  className={!shareModal.aiContent?.transcription?.transcription_text ? 'disabled' : ''}
+                  onClick={() => {
+                    if (shareModal.aiContent?.transcription?.transcription_text) {
+                      setShareOptions(prev => ({
+                        ...prev,
+                        transcription: !prev.transcription
+                      }));
+                    }
+                  }}
+                >
+                  <ContentTypeHeader>
+                    <ContentTypeIcon 
+                      available={!!shareModal.aiContent?.transcription?.transcription_text}
+                      processing={getAIStageStatus(shareModal, 'transcription') === 'processing'}
+                      failed={getAIStageStatus(shareModal, 'transcription') === 'failed'}
+                    >
+                      {getAIStageIcon(getAIStageStatus(shareModal, 'transcription'))}
+                    </ContentTypeIcon>
+                    <ContentTypeTitle>תמליל</ContentTypeTitle>
+                  </ContentTypeHeader>
+                  <ContentTypeDescription>
+                    תמליל מלא של השיעור המוקלט
+                  </ContentTypeDescription>
+                  <ContentTypeStatus 
+                    available={!!shareModal.aiContent?.transcription?.transcription_text}
+                    processing={getAIStageStatus(shareModal, 'transcription') === 'processing'}
+                    failed={getAIStageStatus(shareModal, 'transcription') === 'failed'}
+                  >
+                    {getAIStageStatus(shareModal, 'transcription') === 'success' ? 'זמין לשיתוף' :
+                     getAIStageStatus(shareModal, 'transcription') === 'processing' ? 'בעיבוד...' :
+                     getAIStageStatus(shareModal, 'transcription') === 'failed' ? 'נכשל' : 'לא זמין'}
+                  </ContentTypeStatus>
+                </ContentTypeCard>
+
+                {/* Summary Card */}
+                <ContentTypeCard
+                  selected={shareOptions.summary}
+                  className={!shareModal.aiContent?.summary?.summary_text ? 'disabled' : ''}
+                  onClick={() => {
+                    if (shareModal.aiContent?.summary?.summary_text) {
+                      setShareOptions(prev => ({
+                        ...prev,
+                        summary: !prev.summary
+                      }));
+                    }
+                  }}
+                >
+                  <ContentTypeHeader>
+                    <ContentTypeIcon 
+                      available={!!shareModal.aiContent?.summary?.summary_text}
+                      processing={getAIStageStatus(shareModal, 'summary') === 'processing'}
+                      failed={getAIStageStatus(shareModal, 'summary') === 'failed'}
+                    >
+                      {getAIStageIcon(getAIStageStatus(shareModal, 'summary'))}
+                    </ContentTypeIcon>
+                    <ContentTypeTitle>סיכום</ContentTypeTitle>
+                  </ContentTypeHeader>
+                  <ContentTypeDescription>
+                    סיכום מרוכז של נקודות המפתח בשיעור
+                  </ContentTypeDescription>
+                  <ContentTypeStatus 
+                    available={!!shareModal.aiContent?.summary?.summary_text}
+                    processing={getAIStageStatus(shareModal, 'summary') === 'processing'}
+                    failed={getAIStageStatus(shareModal, 'summary') === 'failed'}
+                  >
+                    {getAIStageStatus(shareModal, 'summary') === 'success' ? 'זמין לשיתוף' :
+                     getAIStageStatus(shareModal, 'summary') === 'processing' ? 'בעיבוד...' :
+                     getAIStageStatus(shareModal, 'summary') === 'failed' ? 'נכשל' : 'לא זמין'}
+                  </ContentTypeStatus>
+                </ContentTypeCard>
+
+                {/* Test Card */}
+                <ContentTypeCard
+                  selected={shareOptions.test}
+                  className={!shareModal.aiContent?.questions?.length ? 'disabled' : ''}
+                  onClick={() => {
+                    if (shareModal.aiContent?.questions?.length > 0) {
+                      setShareOptions(prev => ({
+                        ...prev,
+                        test: !prev.test
+                      }));
+                    }
+                  }}
+                >
+                  <ContentTypeHeader>
+                    <ContentTypeIcon 
+                      available={shareModal.aiContent?.questions?.length > 0}
+                      processing={getAIStageStatus(shareModal, 'questions') === 'processing'}
+                      failed={getAIStageStatus(shareModal, 'questions') === 'failed'}
+                    >
+                      {getAIStageIcon(getAIStageStatus(shareModal, 'questions'))}
+                    </ContentTypeIcon>
+                    <ContentTypeTitle>מבחן</ContentTypeTitle>
+                  </ContentTypeHeader>
+                  <ContentTypeDescription>
+                    שאלות בחינה מבוססות על תוכן השיעור
+                  </ContentTypeDescription>
+                  <ContentTypeStatus 
+                    available={shareModal.aiContent?.questions?.length > 0}
+                    processing={getAIStageStatus(shareModal, 'questions') === 'processing'}
+                    failed={getAIStageStatus(shareModal, 'questions') === 'failed'}
+                  >
+                    {getAIStageStatus(shareModal, 'questions') === 'success' ? 
+                      `זמין לשיתוף (${shareModal.aiContent?.questions?.length || 0} שאלות)` :
+                     getAIStageStatus(shareModal, 'questions') === 'processing' ? 'בעיבוד...' :
+                     getAIStageStatus(shareModal, 'questions') === 'failed' ? 'נכשל' : 'לא זמין'}
+                  </ContentTypeStatus>
+                </ContentTypeCard>
+              </ContentTypeGrid>
+            </ShareSection>
+
+            {/* Class Selection */}
+            <ShareSection>
+              <ShareSectionTitle>בחר כיתות לשיתוף</ShareSectionTitle>
+              <ClassSelectionGrid>
+                {classes.map((classItem) => (
+                  <ClassCard
+                    key={classItem.id}
+                    selected={selectedClasses.includes(classItem.id)}
+                    onClick={() => {
+                      setSelectedClasses(prev => 
+                        prev.includes(classItem.id)
+                          ? prev.filter(id => id !== classItem.id)
+                          : [...prev, classItem.id]
+                      );
+                    }}
+                  >
+                    <ClassName>{classItem.name}</ClassName>
+                    <ClassDescription>
+                      {classItem.description || `${classItem.student_count || 0} תלמידים`}
+                    </ClassDescription>
+                  </ClassCard>
+                ))}
+                {classes.length === 0 && (
+                  <div style={{ 
+                    gridColumn: '1 / -1', 
+                    textAlign: 'center', 
+                    color: '#7f8c8d', 
+                    padding: '2rem' 
+                  }}>
+                    אין כיתות זמינות. אנא צור קשר עם המנהל להוספת כיתות.
+                  </div>
+                )}
+              </ClassSelectionGrid>
+            </ShareSection>
+
+            {/* Schedule Section */}
+            <ShareSection>
+              <ShareSectionTitle>תזמון זמינות (אופציונלי)</ShareSectionTitle>
+              <ScheduleSection>
+                <ScheduleGrid>
+                  <ScheduleFormGroup>
+                    <ScheduleLabel>תאריך התחלה</ScheduleLabel>
+                    <ScheduleInput
+                      type="datetime-local"
+                      value={shareSchedule.startDate}
+                      onChange={(e) => setShareSchedule(prev => ({
+                        ...prev,
+                        startDate: e.target.value
+                      }))}
+                    />
+                  </ScheduleFormGroup>
+                  <ScheduleFormGroup>
+                    <ScheduleLabel>תאריך סיום</ScheduleLabel>
+                    <ScheduleInput
+                      type="datetime-local"
+                      value={shareSchedule.endDate}
+                      onChange={(e) => setShareSchedule(prev => ({
+                        ...prev,
+                        endDate: e.target.value
+                      }))}
+                    />
+                  </ScheduleFormGroup>
+                </ScheduleGrid>
+                <p style={{ fontSize: '0.85rem', color: '#666', margin: '0.5rem 0 0 0' }}>
+                  השאר ריק לזמינות מיידית וללא הגבלת זמן
+                </p>
+              </ScheduleSection>
+            </ShareSection>
+
+            {/* Action Buttons */}
+            <ShareActions>
+              <ShareButton 
+                className="secondary"
+                onClick={() => {
+                  setShareModal(null);
+                  setShareOptions({ transcription: false, summary: false, test: false });
+                  setSelectedClasses([]);
+                  setShareSchedule({ startDate: '', endDate: '' });
+                }}
+                disabled={sharing}
+              >
+                ביטול
+              </ShareButton>
+              <ShareButton 
+                className="primary"
+                onClick={handleShare}
+                disabled={
+                  sharing || 
+                  selectedClasses.length === 0 || 
+                  Object.values(shareOptions).every(v => !v)
+                }
+              >
+                {sharing ? 'משתף...' : 'שתף תוכן'}
+              </ShareButton>
+            </ShareActions>
+          </ShareModalContent>
+        </ShareModal>
       )}
     </>
   );

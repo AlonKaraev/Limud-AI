@@ -94,6 +94,91 @@ const authorize = (...roles) => {
   };
 };
 
+// Principal permission authorization middleware
+const authorizePrincipal = (permissionType) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          error: 'נדרש אימות',
+          code: 'AUTHENTICATION_REQUIRED'
+        });
+      }
+
+      if (req.user.role !== 'principal') {
+        return res.status(403).json({
+          error: 'נדרשות הרשאות מנהל',
+          code: 'PRINCIPAL_ROLE_REQUIRED'
+        });
+      }
+
+      // Import PrincipalService here to avoid circular dependency
+      const PrincipalService = require('../services/PrincipalService');
+      
+      const hasPermission = await PrincipalService.hasPrincipalPermission(req.user.id, permissionType);
+      
+      if (!hasPermission) {
+        return res.status(403).json({
+          error: `אין הרשאה ל${permissionType}`,
+          code: 'INSUFFICIENT_PRINCIPAL_PERMISSIONS'
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Principal authorization error:', error);
+      return res.status(500).json({
+        error: 'שגיאה בבדיקת הרשאות מנהל',
+        code: 'PRINCIPAL_AUTH_ERROR'
+      });
+    }
+  };
+};
+
+// Combined authorization for teachers and principals with specific permissions
+const authorizeTeacherOrPrincipal = (principalPermission = null) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          error: 'נדרש אימות',
+          code: 'AUTHENTICATION_REQUIRED'
+        });
+      }
+
+      // Allow teachers
+      if (req.user.role === 'teacher') {
+        return next();
+      }
+
+      // Check principal permissions
+      if (req.user.role === 'principal') {
+        if (!principalPermission) {
+          return next(); // No specific permission required
+        }
+
+        const PrincipalService = require('../services/PrincipalService');
+        const hasPermission = await PrincipalService.hasPrincipalPermission(req.user.id, principalPermission);
+        
+        if (hasPermission) {
+          return next();
+        }
+      }
+
+      return res.status(403).json({
+        error: 'נדרשות הרשאות מורה או מנהל',
+        code: 'TEACHER_OR_PRINCIPAL_REQUIRED'
+      });
+    } catch (error) {
+      console.error('Teacher/Principal authorization error:', error);
+      return res.status(500).json({
+        error: 'שגיאה בבדיקת הרשאות',
+        code: 'AUTHORIZATION_ERROR'
+      });
+    }
+  };
+};
+
 // School-based authorization (users can only access data from their school)
 const authorizeSchool = (req, res, next) => {
   if (!req.user) {
@@ -240,6 +325,8 @@ module.exports = {
   generalLimiter,
   authenticate,
   authorize,
+  authorizePrincipal,
+  authorizeTeacherOrPrincipal,
   authorizeSchool,
   authorizeTeacherForStudent,
   validateRequest,

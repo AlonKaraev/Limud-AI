@@ -4,6 +4,7 @@ import { heTranslations } from './translations';
 import RecordingInterface from './components/RecordingInterface';
 import SessionManager from './components/SessionManager';
 import LessonsManager from './components/LessonsManager';
+import PrincipalDashboard from './components/PrincipalDashboard';
 
 // Create contexts for global state management
 const AuthContext = createContext();
@@ -770,6 +771,11 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [fileStorageService] = useState(() => new (require('./services/FileStorageService').default)());
   const [isProcessingRecording, setIsProcessingRecording] = useState(false);
+
+  // If user is principal, show Principal Dashboard
+  if (user.role === 'principal') {
+    return <PrincipalDashboard />;
+  }
 
   const handleRecordingComplete = async (recordingData) => {
     // Prevent duplicate processing

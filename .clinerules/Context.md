@@ -1,0 +1,1 @@
+We are developing Limud AI - an educational tool designed to automate or streamline teachers' administrative and routine tasks, freeing up more of their time for direct student interaction and personalized instruction.
