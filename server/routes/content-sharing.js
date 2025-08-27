@@ -1,8 +1,85 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { authenticate } = require('../middleware/auth');
+const { query, run } = require('../config/database-sqlite');
 
 const router = express.Router();
+
+// Enhanced error handler for database operations
+const handleDatabaseError = (error, res, operation = 'database operation') => {
+  console.error(`Database error during ${operation}:`, error);
+  
+  if (error.code === 'SQLITE_BUSY') {
+    return res.status(503).json({
+      error: 'מסד הנתונים עמוס כרגע, אנא נסה שוב',
+      code: 'DATABASE_BUSY',
+      retryAfter: 1000
+    });
+  }
+  
+  if (error.code === 'SQLITE_LOCKED') {
+    return res.status(503).json({
+      error: 'מסד הנתונים נעול, אנא נסה שוב',
+      code: 'DATABASE_LOCKED',
+      retryAfter: 500
+    });
+  }
+  
+  if (error.code === 'SQLITE_CONSTRAINT') {
+    return res.status(400).json({
+      error: 'נתונים לא תקינים או כפולים',
+      code: 'DATA_CONSTRAINT_ERROR'
+    });
+  }
+  
+  return res.status(500).json({
+    error: `שגיאה ב${operation}`,
+    code: 'DATABASE_ERROR',
+    details: process.env.NODE_ENV === 'development' ? error.message : undefined
+  });
+};
+
+// Enhanced query wrapper with retry logic
+const executeQuery = async (sql, params = [], maxRetries = 3) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await query(sql, params);
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      if (error.code === 'SQLITE_BUSY' || error.code === 'SQLITE_LOCKED') {
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, attempt * 100));
+        continue;
+      }
+      
+      throw error; // Don't retry for other errors
+    }
+  }
+};
+
+// Enhanced run wrapper with retry logic
+const executeRun = async (sql, params = [], maxRetries = 3) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await run(sql, params);
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      if (error.code === 'SQLITE_BUSY' || error.code === 'SQLITE_LOCKED') {
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, attempt * 100));
+        continue;
+      }
+      
+      throw error; // Don't retry for other errors
+    }
+  }
+};
 
 // Validation schemas
 const shareContentValidation = [

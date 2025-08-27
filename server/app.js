@@ -69,6 +69,7 @@ app.use('/api/recordings', require('./routes/recordings'));
 app.use('/api/ai-content', require('./routes/ai-content'));
 app.use('/api/content-sharing', require('./routes/content-sharing'));
 app.use('/api/principal', require('./routes/principal'));
+app.use('/api/student', require('./routes/student'));
 
 // Serve static files from React app in production
 if (process.env.NODE_ENV === 'production') {

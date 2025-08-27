@@ -5,6 +5,7 @@ import RecordingInterface from './components/RecordingInterface';
 import SessionManager from './components/SessionManager';
 import LessonsManager from './components/LessonsManager';
 import PrincipalDashboard from './components/PrincipalDashboard';
+import StudentDashboard from './components/StudentDashboard';
 
 // Create contexts for global state management
 const AuthContext = createContext();
@@ -775,6 +776,11 @@ const Dashboard = () => {
   // If user is principal, show Principal Dashboard
   if (user.role === 'principal') {
     return <PrincipalDashboard />;
+  }
+
+  // If user is student, show Student Dashboard
+  if (user.role === 'student') {
+    return <StudentDashboard user={user} onLogout={logout} />;
   }
 
   const handleRecordingComplete = async (recordingData) => {

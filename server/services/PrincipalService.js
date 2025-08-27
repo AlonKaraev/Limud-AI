@@ -213,7 +213,7 @@ class PrincipalService {
 
           // Log the action
           await this.logPrincipalAction(principalId, 'student_assigned', 'class', classId, 
-            null, { studentId, studentName: `${student.firstName} ${student.lastName}` });
+            null, { studentId, studentName: `${student.first_name} ${student.last_name}` });
         } catch (error) {
           results.push({ studentId, success: false, error: error.message });
         }
