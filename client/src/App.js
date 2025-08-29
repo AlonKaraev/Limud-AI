@@ -1,8 +1,9 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import styled from 'styled-components';
 import { heTranslations } from './translations';
 import { ThemeProvider, useTheme, ThemeToggleButton } from './contexts/ThemeContext';
 import './styles/theme.css';
+import './styles/components.css';
+import './styles/forms.css';
 import RecordingInterface from './components/RecordingInterface';
 import SessionManager from './components/SessionManager';
 import LessonsManager from './components/LessonsManager';
@@ -12,279 +13,6 @@ import StudentDashboard from './components/StudentDashboard';
 // Create contexts for global state management
 const AuthContext = createContext();
 const LanguageContext = createContext();
-
-// Styled components for Hebrew RTL layout
-const AppContainer = styled.div`
-  direction: rtl;
-  text-align: right;
-  font-family: 'Heebo', sans-serif;
-  min-height: 100vh;
-  background-color: var(--color-background);
-  color: var(--color-text);
-  transition: background-color var(--transition-normal), color var(--transition-normal);
-`;
-
-const Header = styled.header`
-  background-color: var(--color-headerBackground);
-  color: var(--color-textOnDark);
-  padding: 1rem 2rem;
-  box-shadow: 0 2px 4px var(--color-shadowLight);
-  transition: background-color var(--transition-normal), box-shadow var(--transition-normal);
-`;
-
-const HeaderContent = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const Logo = styled.h1`
-  margin: 0;
-  font-size: 1.8rem;
-  font-weight: 600;
-`;
-
-const Nav = styled.nav`
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-`;
-
-const NavButton = styled.button`
-  background: none;
-  border: 1px solid rgba(255,255,255,0.3);
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: 'Heebo', sans-serif;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-
-  &:hover {
-    background-color: rgba(255,255,255,0.1);
-    border-color: rgba(255,255,255,0.5);
-  }
-
-  &.primary {
-    background-color: #3498db;
-    border-color: #3498db;
-  }
-
-  &.primary:hover {
-    background-color: #2980b9;
-  }
-`;
-
-const Main = styled.main`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-`;
-
-const Card = styled.div`
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-radius: var(--radius-md);
-  padding: 2rem;
-  box-shadow: 0 2px 8px var(--color-shadowLight);
-  margin-bottom: 2rem;
-  border: 1px solid var(--color-border);
-  transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
-`;
-
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  max-width: 400px;
-  margin: 0 auto;
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const Label = styled.label`
-  font-weight: 500;
-  color: #2c3e50;
-`;
-
-const Input = styled.input`
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-family: 'Heebo', sans-serif;
-  font-size: 1rem;
-  direction: rtl;
-  text-align: right;
-
-  &:focus {
-    outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-  }
-
-  &.error {
-    border-color: #e74c3c;
-  }
-`;
-
-const Select = styled.select`
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-family: 'Heebo', sans-serif;
-  font-size: 1rem;
-  direction: rtl;
-  background-color: white;
-
-  &:focus {
-    outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-  }
-`;
-
-const Button = styled.button`
-  padding: 0.75rem 1.5rem;
-  background-color: #3498db;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-family: 'Heebo', sans-serif;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: #2980b9;
-  }
-
-  &:disabled {
-    background-color: #bdc3c7;
-    cursor: not-allowed;
-  }
-
-  &.secondary {
-    background-color: #95a5a6;
-  }
-
-  &.secondary:hover {
-    background-color: #7f8c8d;
-  }
-`;
-
-const ErrorMessage = styled.div`
-  color: #e74c3c;
-  font-size: 0.9rem;
-  margin-top: 0.25rem;
-`;
-
-const SuccessMessage = styled.div`
-  color: #27ae60;
-  font-size: 0.9rem;
-  margin-top: 0.25rem;
-`;
-
-const ErrorPopup = styled.div`
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: #fff;
-  border: 3px solid #e74c3c;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 8px 24px rgba(231, 76, 60, 0.3), 0 4px 12px rgba(0,0,0,0.15);
-  z-index: 1000;
-  max-width: 450px;
-  direction: rtl;
-  animation: slideIn 0.3s ease-out;
-  
-  @keyframes slideIn {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
-    background: linear-gradient(45deg, #ffffff, #ffcccb);
-    border-radius: 12px;
-    z-index: -1;
-    animation: pulse 2s infinite;
-  }
-  
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.7;
-    }
-  }
-`;
-
-const ErrorPopupHeader = styled.div`
-  font-weight: 600;
-  color: #000;
-  margin-bottom: 0.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ErrorPopupClose = styled.button`
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  color: #e74c3c;
-  padding: 0;
-  margin-left: 0.5rem;
-`;
-
-const ErrorList = styled.ul`
-  margin: 0;
-  padding-right: 1rem;
-  list-style-type: disc;
-`;
-
-const ErrorListItem = styled.li`
-  margin-bottom: 0.25rem;
-  color: #666;
-`;
-
-const LoadingSpinner = styled.div`
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #3498db;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-left: 10px;
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
 
 // Custom hooks
 const useAuth = () => {
@@ -455,42 +183,48 @@ const LoginForm = () => {
   };
 
   return (
-    <Card>
-      <h2 style={{ textAlign: 'center', marginBottom: '2rem', color: '#2c3e50' }}>
-        {t('auth.login')}
-      </h2>
-      <Form onSubmit={handleSubmit}>
-        <FormGroup>
-          <Label>{t('auth.email')}</Label>
-          <Input
+    <div className="card">
+      <div className="card-header">
+        <h2 className="card-title text-center">
+          {t('auth.login')}
+        </h2>
+      </div>
+      <form className="form" onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label className="form-label">{t('auth.email')}</label>
+          <input
+            className="form-input"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-        </FormGroup>
-        <FormGroup>
-          <Label>{t('auth.password')}</Label>
-          <Input
+        </div>
+        <div className="form-group">
+          <label className="form-label">{t('auth.password')}</label>
+          <input
+            className="form-input"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-        </FormGroup>
-        {error && <ErrorMessage>{error}</ErrorMessage>}
-        <Button type="submit" disabled={loading}>
-          {loading ? (
-            <>
-              {t('auth.login')}
-              <LoadingSpinner />
-            </>
-          ) : (
-            t('auth.login')
-          )}
-        </Button>
-      </Form>
-    </Card>
+        </div>
+        {error && <div className="form-error">{error}</div>}
+        <div className="form-actions form-actions-center">
+          <button className="btn btn-primary" type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                {t('auth.login')}
+                <div className="loading-spinner loading-spinner-small"></div>
+              </>
+            ) : (
+              t('auth.login')
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
 
@@ -643,132 +377,145 @@ const RegisterForm = () => {
   return (
     <>
       {showErrorPopup && (
-        <ErrorPopup>
-          <ErrorPopupHeader>
+        <div className="error-popup">
+          <div className="error-popup-header">
             שגיאות בטופס
-            <ErrorPopupClose onClick={() => setShowErrorPopup(false)}>
+            <button className="error-popup-close" onClick={() => setShowErrorPopup(false)}>
               ×
-            </ErrorPopupClose>
-          </ErrorPopupHeader>
-          <ErrorList>
+            </button>
+          </div>
+          <ul className="error-list">
             {detailedErrors.map((error, index) => (
-              <ErrorListItem key={index}>{error}</ErrorListItem>
+              <li key={index} className="error-list-item">{error}</li>
             ))}
-          </ErrorList>
-        </ErrorPopup>
+          </ul>
+        </div>
       )}
       
-      <Card>
-        <h2 style={{ textAlign: 'center', marginBottom: '2rem', color: '#2c3e50' }}>
-          {t('auth.register')}
-        </h2>
-        <Form onSubmit={handleSubmit}>
-          <FormGroup>
-            <Label>{t('auth.email')}</Label>
-            <Input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className={fieldErrors.email ? 'error' : ''}
-              required
-            />
-            {fieldErrors.email && <ErrorMessage>{fieldErrors.email}</ErrorMessage>}
-          </FormGroup>
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title text-center">
+            {t('auth.register')}
+          </h2>
+        </div>
+        <form className="form" onSubmit={handleSubmit}>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label form-label-required">{t('auth.email')}</label>
+              <input
+                className={`form-input ${fieldErrors.email ? 'error' : ''}`}
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
+              {fieldErrors.email && <div className="form-error">{fieldErrors.email}</div>}
+            </div>
+          </div>
           
-          <FormGroup>
-            <Label>{t('auth.firstName')}</Label>
-            <Input
-              type="text"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              className={fieldErrors.firstName ? 'error' : ''}
-              required
-            />
-            {fieldErrors.firstName && <ErrorMessage>{fieldErrors.firstName}</ErrorMessage>}
-          </FormGroup>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label form-label-required">{t('auth.firstName')}</label>
+              <input
+                className={`form-input ${fieldErrors.firstName ? 'error' : ''}`}
+                type="text"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                required
+              />
+              {fieldErrors.firstName && <div className="form-error">{fieldErrors.firstName}</div>}
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label form-label-required">{t('auth.lastName')}</label>
+              <input
+                className={`form-input ${fieldErrors.lastName ? 'error' : ''}`}
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                required
+              />
+              {fieldErrors.lastName && <div className="form-error">{fieldErrors.lastName}</div>}
+            </div>
+          </div>
           
-          <FormGroup>
-            <Label>{t('auth.lastName')}</Label>
-            <Input
-              type="text"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              className={fieldErrors.lastName ? 'error' : ''}
-              required
-            />
-            {fieldErrors.lastName && <ErrorMessage>{fieldErrors.lastName}</ErrorMessage>}
-          </FormGroup>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label form-label-optional">{t('auth.phone')}</label>
+              <input
+                className={`form-input ${fieldErrors.phone ? 'error' : ''}`}
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="05XXXXXXXX"
+              />
+              {fieldErrors.phone && <div className="form-error">{fieldErrors.phone}</div>}
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label form-label-required">{t('auth.role')}</label>
+              <select
+                className="form-select"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                required
+              >
+                <option value="student">{t('auth.student')}</option>
+                <option value="teacher">{t('auth.teacher')}</option>
+              </select>
+            </div>
+          </div>
           
-          <FormGroup>
-            <Label>{t('auth.phone')}</Label>
-            <Input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              className={fieldErrors.phone ? 'error' : ''}
-              placeholder="05XXXXXXXX"
-            />
-            {fieldErrors.phone && <ErrorMessage>{fieldErrors.phone}</ErrorMessage>}
-          </FormGroup>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label form-label-required">{t('auth.password')}</label>
+              <input
+                className={`form-input ${fieldErrors.password ? 'error' : ''}`}
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+              />
+              {fieldErrors.password && <div className="form-error">{fieldErrors.password}</div>}
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label form-label-required">{t('auth.confirmPassword')}</label>
+              <input
+                className={`form-input ${fieldErrors.confirmPassword ? 'error' : ''}`}
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+              />
+              {fieldErrors.confirmPassword && <div className="form-error">{fieldErrors.confirmPassword}</div>}
+            </div>
+          </div>
           
-          <FormGroup>
-            <Label>{t('auth.role')}</Label>
-            <Select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              required
-            >
-              <option value="student">{t('auth.student')}</option>
-              <option value="teacher">{t('auth.teacher')}</option>
-            </Select>
-          </FormGroup>
+          {error && <div className="form-error">{error}</div>}
+          {success && <div className="form-success">{success}</div>}
           
-          <FormGroup>
-            <Label>{t('auth.password')}</Label>
-            <Input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className={fieldErrors.password ? 'error' : ''}
-              required
-            />
-            {fieldErrors.password && <ErrorMessage>{fieldErrors.password}</ErrorMessage>}
-          </FormGroup>
-          
-          <FormGroup>
-            <Label>{t('auth.confirmPassword')}</Label>
-            <Input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className={fieldErrors.confirmPassword ? 'error' : ''}
-              required
-            />
-            {fieldErrors.confirmPassword && <ErrorMessage>{fieldErrors.confirmPassword}</ErrorMessage>}
-          </FormGroup>
-          
-          {error && <ErrorMessage>{error}</ErrorMessage>}
-          {success && <SuccessMessage>{success}</SuccessMessage>}
-          
-          <Button type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                {t('auth.register')}
-                <LoadingSpinner />
-              </>
-            ) : (
-              t('auth.register')
-            )}
-          </Button>
-        </Form>
-      </Card>
+          <div className="form-actions form-actions-center">
+            <button className="btn btn-primary" type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  {t('auth.register')}
+                  <div className="loading-spinner loading-spinner-small"></div>
+                </>
+              ) : (
+                t('auth.register')
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </>
   );
 };
@@ -867,42 +614,28 @@ const Dashboard = () => {
 
   return (
     <>
-      <Card>
-        <h2 style={{ color: '#2c3e50', marginBottom: '1rem' }}>
-          {user.role === 'teacher' ? t('dashboard.teacherDashboard') : t('dashboard.studentDashboard')}
-        </h2>
-        <p style={{ fontSize: '1.1rem', marginBottom: '2rem' }}>
-          {t('dashboard.welcome')}, {user.firstName} {user.lastName}!
-        </p>
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">
+            {user.role === 'teacher' ? t('dashboard.teacherDashboard') : t('dashboard.studentDashboard')}
+          </h2>
+          <p className="card-subtitle">
+            {t('dashboard.welcome')}, {user.firstName} {user.lastName}!
+          </p>
+        </div>
         
         {user.role === 'teacher' && (
-          <div style={{ marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #ecf0f1' }}>
+          <div className="nav-tabs">
+            <div className="nav-tabs-header">
               <button
+                className={`nav-tab ${activeTab === 'overview' ? 'active' : ''}`}
                 onClick={() => setActiveTab('overview')}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: 'none',
-                  background: activeTab === 'overview' ? '#3498db' : 'transparent',
-                  color: activeTab === 'overview' ? 'white' : '#2c3e50',
-                  borderRadius: '4px 4px 0 0',
-                  cursor: 'pointer',
-                  fontFamily: 'Heebo, sans-serif'
-                }}
               >
                 סקירה כללית
               </button>
               <button
+                className={`nav-tab ${activeTab === 'lessons' ? 'active' : ''}`}
                 onClick={() => setActiveTab('lessons')}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: 'none',
-                  background: activeTab === 'lessons' ? '#3498db' : 'transparent',
-                  color: activeTab === 'lessons' ? 'white' : '#2c3e50',
-                  borderRadius: '4px 4px 0 0',
-                  cursor: 'pointer',
-                  fontFamily: 'Heebo, sans-serif'
-                }}
               >
                 שיעורים
               </button>
@@ -911,38 +644,26 @@ const Dashboard = () => {
         )}
 
         {activeTab === 'overview' && (
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ 
-              background: '#ecf0f1', 
-              padding: '1rem', 
-              borderRadius: '4px', 
-              flex: '1',
-              minWidth: '200px'
-            }}>
-              <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>
+          <div className="d-flex gap-2" style={{ flexWrap: 'wrap' }}>
+            <div className="card" style={{ flex: '1', minWidth: '200px', marginBottom: '1rem' }}>
+              <h3 className="card-title">
                 {t('dashboard.recentActivity')}
               </h3>
-              <p style={{ margin: 0, color: '#7f8c8d' }}>
+              <p className="card-subtitle">
                 {t('forms.noData')}
               </p>
             </div>
-            <div style={{ 
-              background: '#ecf0f1', 
-              padding: '1rem', 
-              borderRadius: '4px', 
-              flex: '1',
-              minWidth: '200px'
-            }}>
-              <h3 style={{ margin: '0 0 0.5rem 0', color: '#2c3e50' }}>
+            <div className="card" style={{ flex: '1', minWidth: '200px', marginBottom: '1rem' }}>
+              <h3 className="card-title">
                 {t('dashboard.quickActions')}
               </h3>
-              <p style={{ margin: 0, color: '#7f8c8d' }}>
+              <p className="card-subtitle">
                 {user.role === 'teacher' ? 'השתמש בלשוניות למעלה לגישה להקלטת שיעורים וניהול הקלטות' : 'בקרוב...'}
               </p>
             </div>
           </div>
         )}
-      </Card>
+      </div>
 
       {user.role === 'teacher' && activeTab === 'record' && (
         <RecordingInterface t={t} onRecordingComplete={handleRecordingComplete} />
@@ -980,66 +701,79 @@ const AppContent = ({ showRegister, setShowRegister }) => {
 
   if (loading) {
     return (
-      <AppContainer>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          fontSize: '1.2rem',
-          color: '#7f8c8d'
-        }}>
-          {t('forms.loading')}
-          <LoadingSpinner />
+      <div className="theme-bg-background" style={{ 
+        direction: 'rtl', 
+        textAlign: 'right', 
+        fontFamily: 'Heebo, sans-serif', 
+        minHeight: '100vh' 
+      }}>
+        <div className="loading-container-fullscreen">
+          <div className="loading-message" style={{ fontSize: '1.2rem' }}>
+            {t('forms.loading')}
+          </div>
+          <div className="loading-spinner loading-spinner-medium"></div>
         </div>
-      </AppContainer>
+      </div>
     );
   }
 
   // For students, render StudentDashboard directly without App header to avoid duplication
   if (isAuthenticated && user.role === 'student') {
     return (
-      <AppContainer>
+      <div className="theme-bg-background" style={{ 
+        direction: 'rtl', 
+        textAlign: 'right', 
+        fontFamily: 'Heebo, sans-serif', 
+        minHeight: '100vh' 
+      }}>
         <StudentDashboard user={user} onLogout={logout} />
-      </AppContainer>
+      </div>
     );
   }
 
   // For other users (teachers, principals) or non-authenticated users, show normal layout
   return (
-    <AppContainer>
-      <Header>
-        <HeaderContent>
-          <Logo>LimudAI</Logo>
-          <Nav>
+    <div className="theme-bg-background" style={{ 
+      direction: 'rtl', 
+      textAlign: 'right', 
+      fontFamily: 'Heebo, sans-serif', 
+      minHeight: '100vh' 
+    }}>
+      <header className="app-header">
+        <div className="header-content">
+          <h1 className="header-title">LimudAI</h1>
+          <nav className="header-actions">
             {isAuthenticated ? (
               <>
-                <span>שלום, {user.firstName}</span>
+                <span className="user-greeting">שלום, {user.firstName}</span>
                 <ThemeToggleButton size="small" />
-                <NavButton onClick={logout}>
+                <button className="btn btn-outline btn-sm" onClick={logout}>
                   {t('auth.logout')}
-                </NavButton>
+                </button>
               </>
             ) : (
               <>
                 <ThemeToggleButton size="small" />
-                <NavButton onClick={() => setShowRegister(!showRegister)}>
+                <button 
+                  className="btn btn-outline btn-sm" 
+                  onClick={() => setShowRegister(!showRegister)}
+                >
                   {showRegister ? t('auth.login') : t('auth.register')}
-                </NavButton>
+                </button>
               </>
             )}
-          </Nav>
-        </HeaderContent>
-      </Header>
+          </nav>
+        </div>
+      </header>
       
-      <Main>
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
         {isAuthenticated ? (
           <Dashboard />
         ) : (
           showRegister ? <RegisterForm /> : <LoginForm />
         )}
-      </Main>
-    </AppContainer>
+      </main>
+    </div>
   );
 };
 

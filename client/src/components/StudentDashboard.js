@@ -5,6 +5,9 @@ import ErrorBoundary from './ErrorBoundary';
 import LoadingSpinner, { ContentSkeleton, StatsSkeleton } from './LoadingSpinner';
 import ErrorMessage, { NetworkStatus } from './ErrorMessage';
 import LessonViewer from './LessonViewer';
+import '../styles/theme.css';
+import '../styles/components.css';
+import '../styles/forms.css';
 import './StudentPortal.css';
 
 // Translation helper
@@ -233,15 +236,24 @@ const apiService = {
 
 // Components
 const SessionWarning = ({ timeLeft, onExtend }) => (
-  <div className="session-warning" role="alert">
-    <span>⚠️ {t('student.sessionExpiring')} {timeLeft} {t('student.minutes')}</span>
-    <button 
-      className="btn btn-sm btn-outline"
-      onClick={onExtend}
-      aria-label={t('student.extendSession')}
-    >
-      {t('student.extendSession')}
-    </button>
+  <div className="error-message error-message-warning" role="alert">
+    <div className="error-content">
+      <span className="error-icon">⚠️</span>
+      <div className="error-text">
+        <div className="error-main-text">
+          {t('student.sessionExpiring')} {timeLeft} {t('student.minutes')}
+        </div>
+      </div>
+    </div>
+    <div className="error-actions">
+      <button 
+        className="btn btn-sm btn-outline"
+        onClick={onExtend}
+        aria-label={t('student.extendSession')}
+      >
+        {t('student.extendSession')}
+      </button>
+    </div>
   </div>
 );
 
@@ -249,8 +261,8 @@ const StatCard = ({ number, label, loading = false }) => (
   <div className="stat-card">
     {loading ? (
       <>
-        <div className="skeleton-stat-number"></div>
-        <div className="skeleton-stat-label"></div>
+        <div className="loading-spinner loading-spinner-medium"></div>
+        <div className="loading-message">טוען...</div>
       </>
     ) : (
       <>
@@ -264,21 +276,10 @@ const StatCard = ({ number, label, loading = false }) => (
 const ContentCard = ({ content, type, onView, onTest, loading = false }) => {
   if (loading) {
     return (
-      <div className="content-card skeleton-card">
-        <div className="skeleton-title"></div>
-        <div className="skeleton-meta">
-          <div className="skeleton-tag"></div>
-          <div className="skeleton-tag"></div>
-          <div className="skeleton-tag"></div>
-        </div>
-        <div className="skeleton-description">
-          <div className="skeleton-line"></div>
-          <div className="skeleton-line"></div>
-          <div className="skeleton-line short"></div>
-        </div>
-        <div className="skeleton-actions">
-          <div className="skeleton-button"></div>
-          <div className="skeleton-button"></div>
+      <div className="card">
+        <div className="card-header">
+          <div className="loading-spinner loading-spinner-small"></div>
+          <div className="loading-message">טוען תוכן...</div>
         </div>
       </div>
     );
@@ -298,20 +299,44 @@ const ContentCard = ({ content, type, onView, onTest, loading = false }) => {
   };
 
   return (
-    <article className="content-card" tabIndex="0">
-      <header>
-        <h3 className="content-title">
+    <article className="card card-interactive" tabIndex="0">
+      <div className="card-header">
+        <h3 className="card-title">
           {type === 'test' ? (content.set_name || content.filename) : content.filename}
         </h3>
-        <div className="content-meta">
-          <span className="meta-tag">{content.subject_area || 'כללי'}</span>
-          <span className="meta-tag">{content.class_name}</span>
+        <div className="d-flex gap-1" style={{ flexWrap: 'wrap', marginTop: '0.5rem' }}>
+          <span className="btn btn-sm" style={{ 
+            backgroundColor: 'var(--color-border)', 
+            color: 'var(--color-textSecondary)',
+            cursor: 'default'
+          }}>
+            {content.subject_area || 'כללי'}
+          </span>
+          <span className="btn btn-sm" style={{ 
+            backgroundColor: 'var(--color-border)', 
+            color: 'var(--color-textSecondary)',
+            cursor: 'default'
+          }}>
+            {content.class_name}
+          </span>
           {type === 'lesson' && (
             <>
-              <span className="meta-tag">{formatDate(content.lesson_date)}</span>
-              <span className="meta-tag">{formatDuration(content.metadata)}</span>
+              <span className="btn btn-sm" style={{ 
+                backgroundColor: 'var(--color-border)', 
+                color: 'var(--color-textSecondary)',
+                cursor: 'default'
+              }}>
+                {formatDate(content.lesson_date)}
+              </span>
+              <span className="btn btn-sm" style={{ 
+                backgroundColor: 'var(--color-border)', 
+                color: 'var(--color-textSecondary)',
+                cursor: 'default'
+              }}>
+                {formatDuration(content.metadata)}
+              </span>
               {content.has_test && (
-                <span className="meta-tag meta-tag-success">
+                <span className="btn btn-sm btn-success" style={{ cursor: 'default' }}>
                   {t('student.tests')} זמין
                 </span>
               )}
@@ -319,23 +344,37 @@ const ContentCard = ({ content, type, onView, onTest, loading = false }) => {
           )}
           {type === 'test' && (
             <>
-              <span className="meta-tag">{content.total_questions} {t('student.questions')}</span>
+              <span className="btn btn-sm" style={{ 
+                backgroundColor: 'var(--color-border)', 
+                color: 'var(--color-textSecondary)',
+                cursor: 'default'
+              }}>
+                {content.total_questions} {t('student.questions')}
+              </span>
               {content.estimated_duration && (
-                <span className="meta-tag">{content.estimated_duration} {t('time.minutes')}</span>
+                <span className="btn btn-sm" style={{ 
+                  backgroundColor: 'var(--color-border)', 
+                  color: 'var(--color-textSecondary)',
+                  cursor: 'default'
+                }}>
+                  {content.estimated_duration} {t('time.minutes')}
+                </span>
               )}
             </>
           )}
         </div>
-      </header>
-      
-      <div className="content-description">
-        {type === 'test' 
-          ? (content.test_description || content.summary_text || 'תיאור לא זמין').substring(0, 150) + '...'
-          : (content.summary_text || 'תקציר לא זמין').substring(0, 150) + '...'
-        }
       </div>
       
-      <footer className="content-actions">
+      <div className="card-body">
+        <p className="card-subtitle">
+          {type === 'test' 
+            ? (content.test_description || content.summary_text || 'תיאור לא זמין').substring(0, 150) + '...'
+            : (content.summary_text || 'תקציר לא זמין').substring(0, 150) + '...'
+          }
+        </p>
+      </div>
+      
+      <div className="card-footer">
         <button 
           className="btn btn-primary"
           onClick={() => onView(content)}
@@ -355,7 +394,7 @@ const ContentCard = ({ content, type, onView, onTest, loading = false }) => {
             {t('student.takeTest')}
           </button>
         )}
-      </footer>
+      </div>
     </article>
   );
 };
@@ -365,7 +404,12 @@ const EmptyState = ({ type, icon }) => (
     <div className="empty-icon" role="img" aria-label={`אין ${type}`}>
       {icon}
     </div>
-    <div>{type === 'lessons' ? t('student.noLessons') : t('student.noTests')}</div>
+    <div className="empty-title">
+      {type === 'lessons' ? 'אין שיעורים זמינים' : 'אין מבחנים זמינים'}
+    </div>
+    <div className="empty-description">
+      {type === 'lessons' ? t('student.noLessons') : t('student.noTests')}
+    </div>
   </div>
 );
 
@@ -586,172 +630,188 @@ const StudentDashboard = ({ user, onLogout }) => {
 
   return (
     <ErrorBoundary fallbackMessage="שגיאה בטעינת לוח הבקרה">
-      <div className="student-portal theme-bg-background theme-text-primary">
+      <div className="theme-bg-background" style={{ 
+        direction: 'rtl', 
+        textAlign: 'right', 
+        fontFamily: 'Heebo, sans-serif', 
+        minHeight: '100vh' 
+      }}>
         <NetworkStatus isOnline={isOnline} onRetry={fetchDashboardData} />
         
         {/* Student Dashboard Header */}
-        <header className="student-header theme-bg-primary">
+        <header className="app-header">
           <div className="header-content">
             <h1 className="header-title">LimudAI - פורטל תלמיד</h1>
             <div className="header-actions">
               <span className="user-greeting">שלום, {user.firstName}</span>
               <ThemeToggleButton size="small" />
-              <button onClick={onLogout} className="btn btn-error logout-btn">
+              <button onClick={onLogout} className="btn btn-error btn-sm">
                 התנתק
               </button>
             </div>
           </div>
         </header>
         
-        <div className="dashboard-container theme-bg-background">
+        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
           {/* Session Warning - positioned at top if needed */}
           {showWarning && (
-            <div className="session-warning-container">
-              <SessionWarning timeLeft={timeLeft} onExtend={extendSession} />
-            </div>
+            <SessionWarning timeLeft={timeLeft} onExtend={extendSession} />
           )}
 
-          {/* Main Content */}
-          <main className="main-content">
-            {/* Welcome Card */}
-            <section className="welcome-card theme-surface">
-              <h2 className="welcome-title theme-text-primary">
+          {/* Welcome Card */}
+          <section className="card">
+            <div className="card-header">
+              <h2 className="card-title">
                 {t('student.dashboard')}
               </h2>
-              <p className="welcome-text theme-text-secondary">
+              <p className="card-subtitle">
                 {t('dashboard.welcome')}, {user.firstName} {user.lastName}!
               </p>
+            </div>
 
-              {/* Stats Grid */}
-              {errors.dashboard ? (
-                <ErrorMessage 
-                  error={errors.dashboard} 
-                  onRetry={fetchDashboardData}
-                  type="error"
+            {/* Stats Grid */}
+            {errors.dashboard ? (
+              <ErrorMessage 
+                error={errors.dashboard} 
+                onRetry={fetchDashboardData}
+                type="error"
+              />
+            ) : (
+              <div className="stats-grid">
+                <StatCard 
+                  number={dashboardData?.stats?.lessonsCount || 0}
+                  label={t('student.availableLessons')}
+                  loading={loading.dashboard}
                 />
-              ) : (
-                <div className="stats-grid">
-                  <StatCard 
-                    number={dashboardData?.stats?.lessonsCount || 0}
-                    label={t('student.availableLessons')}
-                    loading={loading.dashboard}
-                  />
-                  <StatCard 
-                    number={dashboardData?.stats?.testsCount || 0}
-                    label={t('student.availableTests')}
-                    loading={loading.dashboard}
-                  />
-                  <StatCard 
-                    number={dashboardData?.stats?.recentActivity || 0}
-                    label={t('dashboard.recentActivity')}
-                    loading={loading.dashboard}
-                  />
-                  <StatCard 
-                    number={dashboardData?.classes?.length || 0}
-                    label={t('dashboard.myClasses')}
-                    loading={loading.dashboard}
-                  />
-                </div>
-              )}
-            </section>
-
-            {/* Navigation Tabs */}
-            <section className="navigation-tabs theme-surface">
-              <div className="tabs-header theme-border">
-                <button 
-                  className={`tab ${activeTab === 'lessons' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('lessons')}
-                  aria-selected={activeTab === 'lessons'}
-                  role="tab"
-                >
-                  {t('student.lessons')}
-                </button>
-                <button 
-                  className={`tab ${activeTab === 'tests' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('tests')}
-                  aria-selected={activeTab === 'tests'}
-                  role="tab"
-                >
-                  {t('student.tests')}
-                </button>
+                <StatCard 
+                  number={dashboardData?.stats?.testsCount || 0}
+                  label={t('student.availableTests')}
+                  loading={loading.dashboard}
+                />
+                <StatCard 
+                  number={dashboardData?.stats?.recentActivity || 0}
+                  label={t('dashboard.recentActivity')}
+                  loading={loading.dashboard}
+                />
+                <StatCard 
+                  number={dashboardData?.classes?.length || 0}
+                  label={t('dashboard.myClasses')}
+                  loading={loading.dashboard}
+                />
               </div>
+            )}
+          </section>
 
-              <div className="tab-content" role="tabpanel">
-                {/* Search and Filter */}
-                <SearchAndFilter
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  filters={filters}
-                  onFilterChange={setFilters}
-                />
+          {/* Navigation Tabs */}
+          <section className="nav-tabs">
+            <div className="nav-tabs-header">
+              <button 
+                className={`nav-tab ${activeTab === 'lessons' ? 'active' : ''}`}
+                onClick={() => handleTabChange('lessons')}
+                aria-selected={activeTab === 'lessons'}
+                role="tab"
+              >
+                {t('student.lessons')}
+              </button>
+              <button 
+                className={`nav-tab ${activeTab === 'tests' ? 'active' : ''}`}
+                onClick={() => handleTabChange('tests')}
+                aria-selected={activeTab === 'tests'}
+                role="tab"
+              >
+                {t('student.tests')}
+              </button>
+            </div>
 
-                {/* Content */}
-                {activeTab === 'lessons' && (
-                  <>
-                    <h3 className="content-section-title theme-text-primary">{t('student.myLessons')}</h3>
-                    
-                    {errors.lessons && (
-                      <ErrorMessage 
-                        error={errors.lessons} 
-                        onRetry={fetchLessons}
-                        type="error"
-                      />
-                    )}
-                    
-                    {loading.lessons ? (
-                      <ContentSkeleton count={6} />
-                    ) : filteredLessons.length === 0 ? (
-                      <EmptyState type="lessons" icon="📚" />
-                    ) : (
-                      <div className="content-grid">
-                        {filteredLessons.map((lesson) => (
+            <div className="nav-tab-content" role="tabpanel">
+              {/* Search and Filter */}
+              <SearchAndFilter
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                filters={filters}
+                onFilterChange={setFilters}
+              />
+
+              {/* Content */}
+              {activeTab === 'lessons' && (
+                <>
+                  <h3 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1.3rem', fontWeight: 600 }}>
+                    {t('student.myLessons')}
+                  </h3>
+                  
+                  {errors.lessons && (
+                    <ErrorMessage 
+                      error={errors.lessons} 
+                      onRetry={fetchLessons}
+                      type="error"
+                    />
+                  )}
+                  
+                  {loading.lessons ? (
+                    <div className="d-flex gap-2" style={{ flexWrap: 'wrap' }}>
+                      {Array.from({ length: 6 }, (_, i) => (
+                        <ContentCard key={i} loading={true} />
+                      ))}
+                    </div>
+                  ) : filteredLessons.length === 0 ? (
+                    <EmptyState type="lessons" icon="📚" />
+                  ) : (
+                    <div className="d-flex gap-2" style={{ flexWrap: 'wrap' }}>
+                      {filteredLessons.map((lesson) => (
+                        <div key={lesson.recording_id} style={{ flex: '1 1 300px', minWidth: '300px' }}>
                           <ContentCard
-                            key={lesson.recording_id}
                             content={lesson}
                             type="lesson"
                             onView={handleViewLesson}
                             onTest={handleTakeTest}
                           />
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
 
-                {activeTab === 'tests' && (
-                  <>
-                    <h3 className="content-section-title theme-text-primary">{t('student.myTests')}</h3>
-                    
-                    {errors.tests && (
-                      <ErrorMessage 
-                        error={errors.tests} 
-                        onRetry={fetchTests}
-                        type="error"
-                      />
-                    )}
-                    
-                    {loading.tests ? (
-                      <ContentSkeleton count={6} />
-                    ) : filteredTests.length === 0 ? (
-                      <EmptyState type="tests" icon="📝" />
-                    ) : (
-                      <div className="content-grid">
-                        {filteredTests.map((test) => (
+              {activeTab === 'tests' && (
+                <>
+                  <h3 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1.3rem', fontWeight: 600 }}>
+                    {t('student.myTests')}
+                  </h3>
+                  
+                  {errors.tests && (
+                    <ErrorMessage 
+                      error={errors.tests} 
+                      onRetry={fetchTests}
+                      type="error"
+                    />
+                  )}
+                  
+                  {loading.tests ? (
+                    <div className="d-flex gap-2" style={{ flexWrap: 'wrap' }}>
+                      {Array.from({ length: 6 }, (_, i) => (
+                        <ContentCard key={i} loading={true} />
+                      ))}
+                    </div>
+                  ) : filteredTests.length === 0 ? (
+                    <EmptyState type="tests" icon="📝" />
+                  ) : (
+                    <div className="d-flex gap-2" style={{ flexWrap: 'wrap' }}>
+                      {filteredTests.map((test) => (
+                        <div key={test.recording_id} style={{ flex: '1 1 300px', minWidth: '300px' }}>
                           <ContentCard
-                            key={test.recording_id}
                             content={test}
                             type="test"
                             onView={handleTakeTest}
                           />
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </section>
-          </main>
-        </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+        </main>
 
         {/* Lesson Viewer Modal */}
         {selectedLesson && (
