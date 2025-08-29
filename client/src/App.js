@@ -1,6 +1,8 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import styled from 'styled-components';
 import { heTranslations } from './translations';
+import { ThemeProvider, useTheme, ThemeToggleButton } from './contexts/ThemeContext';
+import './styles/theme.css';
 import RecordingInterface from './components/RecordingInterface';
 import SessionManager from './components/SessionManager';
 import LessonsManager from './components/LessonsManager';
@@ -17,14 +19,17 @@ const AppContainer = styled.div`
   text-align: right;
   font-family: 'Heebo', sans-serif;
   min-height: 100vh;
-  background-color: #f8f9fa;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
 `;
 
 const Header = styled.header`
-  background-color: #2c3e50;
-  color: white;
+  background-color: var(--color-headerBackground);
+  color: var(--color-textOnDark);
   padding: 1rem 2rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px var(--color-shadowLight);
+  transition: background-color var(--transition-normal), box-shadow var(--transition-normal);
 `;
 
 const HeaderContent = styled.div`
@@ -80,11 +85,14 @@ const Main = styled.main`
 `;
 
 const Card = styled.div`
-  background: white;
-  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
   padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px var(--color-shadowLight);
   margin-bottom: 2rem;
+  border: 1px solid var(--color-border);
+  transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
 `;
 
 const Form = styled.form`
@@ -778,7 +786,7 @@ const Dashboard = () => {
     return <PrincipalDashboard />;
   }
 
-  // If user is student, show Student Dashboard
+  // If user is student, show Student Dashboard directly without wrapper
   if (user.role === 'student') {
     return <StudentDashboard user={user} onLogout={logout} />;
   }
@@ -956,11 +964,13 @@ const App = () => {
   const [showRegister, setShowRegister] = useState(false);
 
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <AppContent showRegister={showRegister} setShowRegister={setShowRegister} />
-      </AuthProvider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <AppContent showRegister={showRegister} setShowRegister={setShowRegister} />
+        </AuthProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 };
 
@@ -986,6 +996,16 @@ const AppContent = ({ showRegister, setShowRegister }) => {
     );
   }
 
+  // For students, render StudentDashboard directly without App header to avoid duplication
+  if (isAuthenticated && user.role === 'student') {
+    return (
+      <AppContainer>
+        <StudentDashboard user={user} onLogout={logout} />
+      </AppContainer>
+    );
+  }
+
+  // For other users (teachers, principals) or non-authenticated users, show normal layout
   return (
     <AppContainer>
       <Header>
@@ -995,12 +1015,14 @@ const AppContent = ({ showRegister, setShowRegister }) => {
             {isAuthenticated ? (
               <>
                 <span>שלום, {user.firstName}</span>
+                <ThemeToggleButton size="small" />
                 <NavButton onClick={logout}>
                   {t('auth.logout')}
                 </NavButton>
               </>
             ) : (
               <>
+                <ThemeToggleButton size="small" />
                 <NavButton onClick={() => setShowRegister(!showRegister)}>
                   {showRegister ? t('auth.login') : t('auth.register')}
                 </NavButton>

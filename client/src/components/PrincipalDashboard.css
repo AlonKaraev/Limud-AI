@@ -6,17 +6,51 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   direction: rtl;
   text-align: right;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
 .dashboard-header {
   margin-bottom: 30px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--color-border);
   padding-bottom: 20px;
 }
 
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.logout-btn {
+  background: var(--color-error);
+  color: var(--color-textOnPrimary);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all var(--transition-normal);
+}
+
+.logout-btn:hover {
+  background: var(--color-errorHover);
+  transform: translateY(-1px);
+}
+
 .dashboard-header h1 {
-  color: #2c3e50;
-  margin: 0 0 15px 0;
+  color: var(--color-text);
+  margin: 0;
   font-size: 2.5rem;
   font-weight: 600;
 }
@@ -26,33 +60,33 @@
   display: flex;
   gap: 10px;
   margin-bottom: 30px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-border);
   padding-bottom: 15px;
   flex-wrap: wrap;
 }
 
 .nav-btn {
   padding: 12px 24px;
-  border: 2px solid #3498db;
-  background: white;
-  color: #3498db;
-  border-radius: 8px;
+  border: 2px solid var(--color-primary);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 1rem;
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all var(--transition-slow);
   white-space: nowrap;
 }
 
 .nav-btn:hover {
-  background: #ecf0f1;
+  background: var(--color-surfaceHover);
   transform: translateY(-2px);
 }
 
 .nav-btn.active {
-  background: #3498db;
-  color: white;
-  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+  background: var(--color-primary);
+  color: var(--color-textOnPrimary);
+  box-shadow: 0 4px 12px var(--color-shadowMedium);
 }
 
 /* Dashboard Content */

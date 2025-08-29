@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ThemeToggleButton } from '../contexts/ThemeContext';
 import './PrincipalDashboard.css';
 
 const PrincipalDashboard = () => {
@@ -535,10 +536,23 @@ const PrincipalDashboard = () => {
     </div>
   );
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.href = '/';
+  };
+
   return (
     <div className="principal-dashboard">
       <div className="dashboard-header">
-        <h1>לוח בקרה מנהל</h1>
+        <div className="header-content">
+          <h1>לוח בקרה מנהל</h1>
+          <div className="header-actions">
+            <ThemeToggleButton size="small" />
+            <button onClick={handleLogout} className="logout-btn">
+              התנתק
+            </button>
+          </div>
+        </div>
         {error && <div className="error-message">{error}</div>}
         {success && <div className="success-message">{success}</div>}
       </div>

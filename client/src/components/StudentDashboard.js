@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { heTranslations } from '../translations';
+import { ThemeToggleButton } from '../contexts/ThemeContext';
 import ErrorBoundary from './ErrorBoundary';
 import LoadingSpinner, { ContentSkeleton, StatsSkeleton } from './LoadingSpinner';
 import ErrorMessage, { NetworkStatus } from './ErrorMessage';
@@ -310,7 +311,7 @@ const ContentCard = ({ content, type, onView, onTest, loading = false }) => {
               <span className="meta-tag">{formatDate(content.lesson_date)}</span>
               <span className="meta-tag">{formatDuration(content.metadata)}</span>
               {content.has_test && (
-                <span className="meta-tag" style={{ backgroundColor: '#27ae60', color: 'white' }}>
+                <span className="meta-tag meta-tag-success">
                   {t('student.tests')} זמין
                 </span>
               )}
@@ -585,25 +586,39 @@ const StudentDashboard = ({ user, onLogout }) => {
 
   return (
     <ErrorBoundary fallbackMessage="שגיאה בטעינת לוח הבקרה">
-      <div className="student-portal">
+      <div className="student-portal theme-bg-background theme-text-primary">
         <NetworkStatus isOnline={isOnline} onRetry={fetchDashboardData} />
         
-        <div className="dashboard-container">
+        {/* Student Dashboard Header */}
+        <header className="student-header theme-bg-primary">
+          <div className="header-content">
+            <h1 className="header-title">LimudAI - פורטל תלמיד</h1>
+            <div className="header-actions">
+              <span className="user-greeting">שלום, {user.firstName}</span>
+              <ThemeToggleButton size="small" />
+              <button onClick={onLogout} className="btn btn-error logout-btn">
+                התנתק
+              </button>
+            </div>
+          </div>
+        </header>
+        
+        <div className="dashboard-container theme-bg-background">
           {/* Session Warning - positioned at top if needed */}
           {showWarning && (
-            <div style={{ padding: '1rem 2rem', backgroundColor: '#f39c12', color: 'white' }}>
+            <div className="session-warning-container">
               <SessionWarning timeLeft={timeLeft} onExtend={extendSession} />
             </div>
           )}
 
           {/* Main Content */}
-          <main className="main-content" style={{ padding: '2rem' }}>
+          <main className="main-content">
             {/* Welcome Card */}
-            <section className="welcome-card" style={{ background: 'white', borderRadius: '8px', padding: '2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-              <h2 className="welcome-title" style={{ color: '#2c3e50', margin: '0 0 1rem 0', fontSize: '1.5rem' }}>
+            <section className="welcome-card theme-surface">
+              <h2 className="welcome-title theme-text-primary">
                 {t('student.dashboard')}
               </h2>
-              <p className="welcome-text" style={{ color: '#7f8c8d', margin: '0 0 1.5rem 0', fontSize: '1.1rem' }}>
+              <p className="welcome-text theme-text-secondary">
                 {t('dashboard.welcome')}, {user.firstName} {user.lastName}!
               </p>
 
@@ -641,26 +656,13 @@ const StudentDashboard = ({ user, onLogout }) => {
             </section>
 
             {/* Navigation Tabs */}
-            <section className="navigation-tabs" style={{ background: 'white', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-              <div className="tabs-header" style={{ display: 'flex', borderBottom: '1px solid #ecf0f1' }}>
+            <section className="navigation-tabs theme-surface">
+              <div className="tabs-header theme-border">
                 <button 
                   className={`tab ${activeTab === 'lessons' ? 'active' : ''}`}
                   onClick={() => handleTabChange('lessons')}
                   aria-selected={activeTab === 'lessons'}
                   role="tab"
-                  style={{
-                    flex: 1,
-                    padding: '1rem 2rem',
-                    border: 'none',
-                    background: activeTab === 'lessons' ? '#3498db' : 'transparent',
-                    color: activeTab === 'lessons' ? 'white' : '#2c3e50',
-                    fontFamily: 'Heebo, sans-serif',
-                    fontSize: '1rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    borderRadius: activeTab === 'lessons' ? '8px 8px 0 0' : '0'
-                  }}
                 >
                   {t('student.lessons')}
                 </button>
@@ -669,25 +671,12 @@ const StudentDashboard = ({ user, onLogout }) => {
                   onClick={() => handleTabChange('tests')}
                   aria-selected={activeTab === 'tests'}
                   role="tab"
-                  style={{
-                    flex: 1,
-                    padding: '1rem 2rem',
-                    border: 'none',
-                    background: activeTab === 'tests' ? '#3498db' : 'transparent',
-                    color: activeTab === 'tests' ? 'white' : '#2c3e50',
-                    fontFamily: 'Heebo, sans-serif',
-                    fontSize: '1rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    borderRadius: activeTab === 'tests' ? '8px 8px 0 0' : '0'
-                  }}
                 >
                   {t('student.tests')}
                 </button>
               </div>
 
-              <div className="tab-content" style={{ padding: '2rem', minHeight: '400px' }} role="tabpanel">
+              <div className="tab-content" role="tabpanel">
                 {/* Search and Filter */}
                 <SearchAndFilter
                   searchTerm={searchTerm}
@@ -699,7 +688,7 @@ const StudentDashboard = ({ user, onLogout }) => {
                 {/* Content */}
                 {activeTab === 'lessons' && (
                   <>
-                    <h3 style={{ marginTop: 0, color: '#2c3e50' }}>{t('student.myLessons')}</h3>
+                    <h3 className="content-section-title theme-text-primary">{t('student.myLessons')}</h3>
                     
                     {errors.lessons && (
                       <ErrorMessage 
@@ -731,7 +720,7 @@ const StudentDashboard = ({ user, onLogout }) => {
 
                 {activeTab === 'tests' && (
                   <>
-                    <h3 style={{ marginTop: 0, color: '#2c3e50' }}>{t('student.myTests')}</h3>
+                    <h3 className="content-section-title theme-text-primary">{t('student.myTests')}</h3>
                     
                     {errors.tests && (
                       <ErrorMessage 
