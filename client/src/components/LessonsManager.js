@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import AudioRecordingService from '../services/AudioRecordingService';
 import AudioPlayer from './AudioPlayer';
+import ErrorLogger from '../utils/ErrorLogger';
 
 const Container = styled.div`
   background: white;
@@ -2822,6 +2823,15 @@ const LessonsManager = ({ t }) => {
 
       const token = localStorage.getItem('token');
       if (!token) {
+        const errorDetails = {
+          operation: 'fetchLessons',
+          step: 'token_validation',
+          reason: 'No authentication token found in localStorage',
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString()
+        };
+        
+        ErrorLogger.logClientError('MISSING_AUTH_TOKEN', errorDetails);
         throw new Error('No authentication token found');
       }
 
@@ -2832,15 +2842,46 @@ const LessonsManager = ({ t }) => {
       });
 
       if (!response.ok) {
+        const errorDetails = {
+          operation: 'fetchLessons',
+          step: 'api_request',
+          status: response.status,
+          statusText: response.statusText,
+          url: '/api/recordings',
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString()
+        };
+
         if (response.status === 401) {
+          ErrorLogger.logClientError('FETCH_LESSONS_AUTH_FAILED', {
+            ...errorDetails,
+            reason: 'Authentication failed - token may be expired or invalid'
+          });
           throw new Error('Authentication failed. Please log in again.');
         } else if (response.status === 429) {
+          ErrorLogger.logClientError('FETCH_LESSONS_RATE_LIMITED', {
+            ...errorDetails,
+            reason: 'Rate limit exceeded'
+          });
           throw new Error('Rate limit exceeded. Please wait a moment and try again.');
         } else if (response.status >= 500) {
+          ErrorLogger.logClientError('FETCH_LESSONS_SERVER_ERROR', {
+            ...errorDetails,
+            reason: 'Server error - service temporarily unavailable'
+          });
           throw new Error('Server temporarily unavailable. Please try again later.');
         } else if (response.status === 404) {
+          ErrorLogger.logClientError('FETCH_LESSONS_ENDPOINT_NOT_FOUND', {
+            ...errorDetails,
+            reason: 'Recordings endpoint not found'
+          });
           throw new Error('Recordings endpoint not found. Please check server configuration.');
         }
+        
+        ErrorLogger.logClientError('FETCH_LESSONS_HTTP_ERROR', {
+          ...errorDetails,
+          reason: `HTTP error ${response.status}`
+        });
         throw new Error(`Failed to fetch recordings: ${response.status}`);
       }
 
@@ -2872,9 +2913,27 @@ const LessonsManager = ({ t }) => {
                 lessonData.aiContent = contentData.content;
               }
             } else {
+              ErrorLogger.logClientError('AI_CONTENT_FETCH_FAILED', {
+                operation: 'fetchLessons',
+                step: 'ai_content_fetch',
+                recordingId: recording.id,
+                status: contentResponse.status,
+                statusText: contentResponse.statusText,
+                reason: `AI content fetch failed for recording ${recording.id}`,
+                timestamp: new Date().toISOString()
+              });
               console.warn(`AI content fetch failed for recording ${recording.id}: ${contentResponse.status}`);
             }
           } catch (error) {
+            ErrorLogger.logClientError('AI_CONTENT_FETCH_ERROR', {
+              operation: 'fetchLessons',
+              step: 'ai_content_fetch',
+              recordingId: recording.id,
+              error: error.message,
+              stack: error.stack,
+              reason: `Network or parsing error fetching AI content for recording ${recording.id}`,
+              timestamp: new Date().toISOString()
+            });
             console.error(`Error fetching AI content for recording ${recording.id}:`, error);
             // Don't throw - just log and continue with null aiContent
           }
@@ -2886,6 +2945,15 @@ const LessonsManager = ({ t }) => {
       setLessons(lessonsWithContent);
       console.log(`Successfully loaded ${lessonsWithContent.length} lessons`);
     } catch (error) {
+      ErrorLogger.logClientError('FETCH_LESSONS_ERROR', {
+        operation: 'fetchLessons',
+        error: error.message,
+        stack: error.stack,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString(),
+        reason: 'General error in fetchLessons function'
+      });
+      
       console.error('Error fetching lessons:', error);
       setError(`שגיאה בטעינת השיעורים: ${error.message}`);
       // Set empty lessons array so UI doesn't break
@@ -3580,7 +3648,7 @@ const LessonsManager = ({ t }) => {
     }
   };
 
-  // Content sharing functionality
+  // Enhanced content sharing functionality with better error handling
   const handleShare = async () => {
     if (!shareModal || selectedClasses.length === 0 || Object.values(shareOptions).every(v => !v)) {
       alert('אנא בחר תוכן וכיתות לשיתוף');
@@ -3589,32 +3657,100 @@ const LessonsManager = ({ t }) => {
 
     setSharing(true);
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
+      }
+
+      console.log('Sharing content:', {
+        recordingId: shareModal.id,
+        contentTypes: Object.keys(shareOptions).filter(key => shareOptions[key]),
+        classIds: selectedClasses,
+        startDate: shareSchedule.startDate || null,
+        endDate: shareSchedule.endDate || null
+      });
+
       const response = await fetch('/api/content-sharing/share', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          lessonId: shareModal.id,
+          recordingId: shareModal.id,
           contentTypes: Object.keys(shareOptions).filter(key => shareOptions[key]),
-          targetClasses: selectedClasses,
-          schedule: shareSchedule.startDate || shareSchedule.endDate ? shareSchedule : null
+          classIds: selectedClasses,
+          startDate: shareSchedule.startDate || null,
+          endDate: shareSchedule.endDate || null
         })
       });
 
-      if (response.ok) {
-        alert('התוכן שותף בהצלחה!');
+      const data = await response.json();
+      console.log('Share response:', data);
+
+      if (response.ok && data.success) {
+        // Show detailed success message
+        const sharedTypes = Object.keys(shareOptions).filter(key => shareOptions[key]);
+        const typeNames = {
+          transcription: 'תמליל',
+          summary: 'סיכום',
+          test: 'מבחן'
+        };
+        const sharedTypeNames = sharedTypes.map(type => typeNames[type]).join(', ');
+        
+        alert(`התוכן שותף בהצלחה!\n\nתוכן שהושתף: ${sharedTypeNames}\nמספר כיתות: ${selectedClasses.length}\n${data.details?.totalStudents ? `סה"כ תלמידים: ${data.details.totalStudents}` : ''}`);
+        
+        // Reset modal state
         setShareModal(null);
         setShareOptions({ transcription: false, summary: false, test: false });
         setSelectedClasses([]);
         setShareSchedule({ startDate: '', endDate: '' });
       } else {
-        throw new Error('שגיאה בשיתוף התוכן');
+        // Handle different types of errors with user-friendly messages
+        let errorMessage = 'שגיאה בשיתוף התוכן';
+        
+        if (data.userFriendlyMessage) {
+          errorMessage = data.userFriendlyMessage;
+        } else if (data.error) {
+          errorMessage = data.error;
+        } else if (response.status === 401) {
+          errorMessage = 'אין הרשאה. אנא התחבר מחדש למערכת.';
+        } else if (response.status === 403) {
+          errorMessage = 'אין לך הרשאה לבצע פעולה זו. פעולה זו מיועדת למורים בלבד.';
+        } else if (response.status === 404) {
+          errorMessage = 'ההקלטה או הכיתות שבחרת לא נמצאו. ייתכן שהן נמחקו.';
+        } else if (response.status === 400) {
+          if (data.code === 'CONTENT_NOT_AVAILABLE') {
+            errorMessage = `לא ניתן לשתף את התוכן המבוקש:\n${data.error}\n\nאנא צור תחילה את התוכן החסר באמצעות עיבוד AI.`;
+          } else if (data.code === 'VALIDATION_ERROR') {
+            errorMessage = 'הנתונים שהוזנו אינם תקינים. אנא בדוק את הפרטים ונסה שוב.';
+          } else {
+            errorMessage = data.error || 'נתונים לא תקינים';
+          }
+        } else if (response.status >= 500) {
+          errorMessage = 'שגיאה בשרת. אנא נסה שוב מאוחר יותר.';
+        }
+
+        // Show detailed error information in development
+        if (process.env.NODE_ENV === 'development' && data.details) {
+          console.error('Detailed error:', data.details);
+          errorMessage += `\n\nפרטי שגיאה (מצב פיתוח):\n${data.details.message || 'לא זמין'}`;
+        }
+
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Error sharing content:', error);
-      alert('שגיאה בשיתוף התוכן');
+      
+      // Handle network errors
+      let displayError = error.message;
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        displayError = 'שגיאת רשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.';
+      } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+        displayError = 'לא ניתן להתחבר לשרת. אנא בדוק את החיבור לאינטרנט ונסה שוב.';
+      }
+      
+      alert(`שגיאה בשיתוף התוכן:\n\n${displayError}`);
     } finally {
       setSharing(false);
     }

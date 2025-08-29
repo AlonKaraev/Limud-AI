@@ -100,6 +100,7 @@ router.get('/dashboard', authenticate, requireStudent, async (req, res) => {
       JOIN class_memberships cm ON csp.class_id = cm.class_id
       WHERE cm.student_id = ? AND cs.is_active = 1 AND cm.is_active = 1
       AND (cs.end_date IS NULL OR cs.end_date > datetime('now'))
+      AND (cs.start_date IS NULL OR datetime(cs.start_date) <= datetime('now'))
       AND cs.share_type IN ('transcription', 'summary')
     `, [studentId]);
 
@@ -112,6 +113,7 @@ router.get('/dashboard', authenticate, requireStudent, async (req, res) => {
       WHERE cm.student_id = ? AND cs.is_active = 1 AND cm.is_active = 1
       AND cs.share_type = 'test'
       AND (cs.end_date IS NULL OR cs.end_date > datetime('now'))
+      AND (cs.start_date IS NULL OR datetime(cs.start_date) <= datetime('now'))
     `, [studentId]);
 
     res.json({
@@ -171,7 +173,7 @@ router.get('/lessons', authenticate, requireStudent, async (req, res) => {
       AND cm.is_active = 1
       AND cs.share_type IN ('transcription', 'summary')
       AND (cs.end_date IS NULL OR cs.end_date > datetime('now'))
-      AND cs.start_date <= datetime('now')
+      AND (cs.start_date IS NULL OR datetime(cs.start_date) <= datetime('now'))
       ORDER BY r.created_at DESC
     `, [studentId, studentId]);
 
@@ -181,14 +183,18 @@ router.get('/lessons', authenticate, requireStudent, async (req, res) => {
         return {
           ...lesson,
           metadata: lesson.metadata ? JSON.parse(lesson.metadata) : {},
-          key_topics: lesson.key_topics ? JSON.parse(lesson.key_topics) : []
+          key_topics: lesson.key_topics ? JSON.parse(lesson.key_topics) : [],
+          has_test: Boolean(lesson.has_test), // Convert to boolean
+          has_accessed: Boolean(lesson.has_accessed) // Convert to boolean
         };
       } catch (parseError) {
         console.error('Error parsing lesson data:', parseError);
         return {
           ...lesson,
           metadata: {},
-          key_topics: []
+          key_topics: [],
+          has_test: Boolean(lesson.has_test),
+          has_accessed: Boolean(lesson.has_accessed)
         };
       }
     });
@@ -245,7 +251,7 @@ router.get('/tests', authenticate, requireStudent, async (req, res) => {
       AND cm.is_active = 1
       AND cs.share_type = 'test'
       AND (cs.end_date IS NULL OR cs.end_date > datetime('now'))
-      AND cs.start_date <= datetime('now')
+      AND (cs.start_date IS NULL OR datetime(cs.start_date) <= datetime('now'))
       ORDER BY r.created_at DESC
     `, [studentId, studentId]);
 
@@ -254,13 +260,15 @@ router.get('/tests', authenticate, requireStudent, async (req, res) => {
       try {
         return {
           ...test,
-          key_topics: test.key_topics ? JSON.parse(test.key_topics) : []
+          key_topics: test.key_topics ? JSON.parse(test.key_topics) : [],
+          has_accessed: Boolean(test.has_accessed) // Convert to boolean
         };
       } catch (parseError) {
         console.error('Error parsing test data for recording:', test.recording_id, parseError);
         return {
           ...test,
-          key_topics: []
+          key_topics: [],
+          has_accessed: Boolean(test.has_accessed)
         };
       }
     });
@@ -291,7 +299,7 @@ router.get('/lesson/:id', authenticate, requireStudent, async (req, res) => {
       AND cs.is_active = 1 
       AND cm.is_active = 1
       AND (cs.end_date IS NULL OR cs.end_date > datetime('now'))
-      AND cs.start_date <= datetime('now')
+      AND datetime(cs.start_date) <= datetime('now')
       LIMIT 1
     `, [studentId, recordingId]);
 
@@ -386,7 +394,7 @@ router.get('/lesson/:id/test', authenticate, requireStudent, async (req, res) =>
       AND cs.is_active = 1 
       AND cm.is_active = 1
       AND (cs.end_date IS NULL OR cs.end_date > datetime('now'))
-      AND cs.start_date <= datetime('now')
+      AND datetime(cs.start_date) <= datetime('now')
       LIMIT 1
     `, [studentId, recordingId]);
 
@@ -473,7 +481,7 @@ router.post('/content/:id/access', authenticate, requireStudent, async (req, res
       AND cs.is_active = 1 
       AND cm.is_active = 1
       AND (cs.end_date IS NULL OR cs.end_date > datetime('now'))
-      AND cs.start_date <= datetime('now')
+      AND datetime(cs.start_date) <= datetime('now')
     `, [studentId, contentShareId]);
 
     if (!accessCheck.rows.length) {

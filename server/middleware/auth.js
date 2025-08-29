@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const rateLimit = require('express-rate-limit');
+const consoleLogger = require('../utils/ConsoleLogger');
 
 // Rate limiting for authentication endpoints
 const authLimiter = rateLimit({
@@ -30,6 +31,15 @@ const authenticate = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      consoleLogger.logAuthError('MISSING_TOKEN', {
+        endpoint: req.originalUrl,
+        method: req.method,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        reason: 'No authorization header or invalid format',
+        message: 'Authentication failed - missing or invalid token format'
+      });
+
       return res.status(401).json({
         error: 'נדרש טוקן אימות',
         code: 'MISSING_TOKEN'
@@ -43,6 +53,16 @@ const authenticate = async (req, res, next) => {
       const user = await User.findById(decoded.id);
       
       if (!user) {
+        consoleLogger.logAuthError('USER_NOT_FOUND', {
+          endpoint: req.originalUrl,
+          method: req.method,
+          userId: decoded.id,
+          ip: req.ip,
+          userAgent: req.get('User-Agent'),
+          reason: 'User ID from token not found in database',
+          message: 'Authentication failed - user not found'
+        });
+
         return res.status(401).json({
           error: 'משתמש לא נמצא',
           code: 'USER_NOT_FOUND'
@@ -50,21 +70,54 @@ const authenticate = async (req, res, next) => {
       }
       
       if (process.env.NODE_ENV === 'production' && !user.isVerified) {
+        consoleLogger.logAuthError('ACCOUNT_NOT_VERIFIED', {
+          endpoint: req.originalUrl,
+          method: req.method,
+          email: user.email,
+          userId: user.id,
+          ip: req.ip,
+          userAgent: req.get('User-Agent'),
+          reason: 'User account is not verified',
+          message: 'Authentication failed - account not verified'
+        });
+
         return res.status(401).json({
           error: 'חשבון המשתמש לא מאומת',
           code: 'ACCOUNT_NOT_VERIFIED'
         });
       }
       
+      // Ensure user object has school_id property for authorization
       req.user = user;
+      req.user.school_id = user.schoolId || decoded.school_id;
       next();
     } catch (tokenError) {
+      consoleLogger.logAuthError('INVALID_TOKEN', {
+        endpoint: req.originalUrl,
+        method: req.method,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        reason: tokenError.message,
+        message: 'Authentication failed - invalid or expired token',
+        stack: tokenError.stack
+      });
+
       return res.status(401).json({
         error: 'טוקן לא תקין או פג תוקף',
         code: 'INVALID_TOKEN'
       });
     }
   } catch (error) {
+    consoleLogger.logAuthError('AUTH_ERROR', {
+      endpoint: req.originalUrl,
+      method: req.method,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      reason: error.message,
+      message: 'Authentication middleware error',
+      stack: error.stack
+    });
+
     console.error('Authentication error:', error);
     return res.status(500).json({
       error: 'שגיאה בתהליך האימות',

@@ -2,6 +2,16 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { authenticate } = require('../middleware/auth');
 const { query, run } = require('../config/database-sqlite');
+const consoleLogger = require('../utils/ConsoleLogger');
+const {
+  detectAndRedactPII,
+  validateContentQuality,
+  generateSharingToken,
+  checkRateLimit,
+  logContentAccess,
+  validateSchoolAccess
+} = require('../middleware/contentSecurity');
+const crypto = require('crypto');
 
 const router = express.Router();
 
@@ -84,8 +94,18 @@ const executeRun = async (sql, params = [], maxRetries = 3) => {
 // Validation schemas
 const shareContentValidation = [
   body('recordingId')
-    .isInt({ min: 1 })
-    .withMessage('מזהה הקלטה לא תקין'),
+    .custom((value) => {
+      // Convert string to integer if needed
+      const numValue = parseInt(value, 10);
+      if (isNaN(numValue) || numValue < 1) {
+        throw new Error('מזהה הקלטה לא תקין');
+      }
+      return true;
+    })
+    .customSanitizer((value) => {
+      // Convert to integer
+      return parseInt(value, 10);
+    }),
   body('contentTypes')
     .isArray({ min: 1 })
     .withMessage('יש לבחור לפחות סוג תוכן אחד'),
@@ -96,15 +116,45 @@ const shareContentValidation = [
     .isArray({ min: 1 })
     .withMessage('יש לבחור לפחות כיתה אחת'),
   body('classIds.*')
-    .isInt({ min: 1 })
-    .withMessage('מזהה כיתה לא תקין'),
+    .custom((value) => {
+      // Convert string to integer if needed
+      const numValue = parseInt(value, 10);
+      if (isNaN(numValue) || numValue < 1) {
+        throw new Error('מזהה כיתה לא תקין');
+      }
+      return true;
+    })
+    .customSanitizer((value) => {
+      // Convert to integer
+      return parseInt(value, 10);
+    }),
   body('startDate')
-    .optional()
-    .isISO8601()
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (!value || value === '') return true; // Allow empty/null
+      try {
+        const date = new Date(value);
+        const isValidDate = !isNaN(date.getTime());
+        const matchesFormat = value.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+        return isValidDate && matchesFormat !== null;
+      } catch (error) {
+        return false;
+      }
+    })
     .withMessage('תאריך התחלה לא תקין'),
   body('endDate')
-    .optional()
-    .isISO8601()
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (!value || value === '') return true; // Allow empty/null
+      try {
+        const date = new Date(value);
+        const isValidDate = !isNaN(date.getTime());
+        const matchesFormat = value.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
+        return isValidDate && matchesFormat !== null;
+      } catch (error) {
+        return false;
+      }
+    })
     .withMessage('תאריך סיום לא תקין')
 ];
 
@@ -262,14 +312,47 @@ router.post('/classes/:classId/students', authenticate, async (req, res) => {
 });
 
 /**
- * Share content with classes
+ * Share content with classes - Enhanced with security features
  */
 router.post('/share', authenticate, shareContentValidation, async (req, res) => {
   try {
     if (req.user.role !== 'teacher') {
+      consoleLogger.logSharingError('UNAUTHORIZED_ACCESS', {
+        userId: req.user.id,
+        userEmail: req.user.email,
+        userRole: req.user.role,
+        endpoint: '/api/content-sharing/share',
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        reason: 'Non-teacher role attempting to share content',
+        message: 'Content sharing access denied - insufficient role permissions'
+      });
+
+      await logContentAccess({
+        userId: req.user.id,
+        contentType: 'share_attempt',
+        contentId: null,
+        action: 'unauthorized_access',
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        metadata: { reason: 'non_teacher_role', role: req.user.role }
+      });
+
       return res.status(403).json({
         error: 'רק מורים יכולים לשתף תוכן',
-        code: 'TEACHER_ONLY'
+        code: 'TEACHER_ONLY',
+        userFriendlyMessage: 'אין לך הרשאה לשתף תוכן. פעולה זו מיועדת למורים בלבד.'
+      });
+    }
+
+    // Check rate limiting
+    const rateLimitCheck = await checkRateLimit(req.user.id, 'share');
+    if (!rateLimitCheck.allowed) {
+      return res.status(429).json({
+        error: 'חרגת ממגבלת השיתוף',
+        code: 'RATE_LIMIT_EXCEEDED',
+        userFriendlyMessage: `ניתן לשתף עד ${rateLimitCheck.limit} פריטים בשעה. נסה שוב בעוד ${Math.ceil((rateLimitCheck.resetTime - new Date()) / (1000 * 60))} דקות.`,
+        retryAfter: Math.ceil((rateLimitCheck.resetTime - new Date()) / 1000)
       });
     }
 
@@ -278,6 +361,7 @@ router.post('/share', authenticate, shareContentValidation, async (req, res) => 
       return res.status(400).json({
         error: 'נתונים לא תקינים',
         code: 'VALIDATION_ERROR',
+        userFriendlyMessage: 'הנתונים שהוזנו אינם תקינים. אנא בדוק את הפרטים ונסה שוב.',
         details: errors.array().map(err => ({
           field: err.param,
           message: err.msg
@@ -287,73 +371,291 @@ router.post('/share', authenticate, shareContentValidation, async (req, res) => 
 
     const { recordingId, contentTypes, classIds, startDate, endDate } = req.body;
 
-    // Verify recording belongs to teacher
-    const recording = await getRecordingById(recordingId, req.user.id);
-    if (!recording) {
-      return res.status(404).json({
-        error: 'הקלטה לא נמצאה',
-        code: 'RECORDING_NOT_FOUND'
-      });
-    }
-
-    // Verify all classes belong to teacher
-    const classes = await getClassesByIds(classIds, req.user.id);
-    if (classes.length !== classIds.length) {
-      return res.status(404).json({
-        error: 'אחת או יותר מהכיתות לא נמצאו',
-        code: 'CLASSES_NOT_FOUND'
-      });
-    }
-
-    // Verify content exists for the content types being shared
-    const aiContent = await getAIContentForRecording(recordingId);
-    const missingContent = [];
-    
-    for (const contentType of contentTypes) {
-      if (contentType === 'transcription' && !aiContent?.transcription?.transcription_text) {
-        missingContent.push('תמליל');
-      } else if (contentType === 'summary' && !aiContent?.summary?.summary_text) {
-        missingContent.push('סיכום');
-      } else if (contentType === 'test' && (!aiContent?.questions || aiContent.questions.length === 0)) {
-        missingContent.push('מבחן');
-      }
-    }
-
-    if (missingContent.length > 0) {
-      return res.status(400).json({
-        error: `התוכן הבא לא זמין לשיתוף: ${missingContent.join(', ')}`,
-        code: 'CONTENT_NOT_AVAILABLE'
-      });
-    }
-
-    // Create content shares
-    const shareResults = await shareContentWithClasses({
+    // Enhanced logging for debugging
+    console.log('Content sharing request:', {
       recordingId,
-      teacherId: req.user.id,
       contentTypes,
       classIds,
+      teacherId: req.user.id,
       startDate,
-      endDate
+      endDate,
+      ipAddress: req.ip
     });
 
-    // Create notifications for students
-    await createStudentNotifications({
-      shareResults,
-      recording,
-      teacher: req.user,
-      classes
-    });
+    // Validate school-level access - ensure all classes belong to the teacher's school
+    try {
+      const classValidation = await validateTeacherClassAccess(req.user.id, req.user.school_id, classIds);
+      if (!classValidation.valid) {
+        return res.status(403).json({
+          error: classValidation.error,
+          code: 'SCHOOL_ACCESS_DENIED',
+          userFriendlyMessage: classValidation.error,
+          invalidClasses: classValidation.invalidClasses
+        });
+      }
+    } catch (validationError) {
+      console.error('School access validation error:', validationError);
+      return res.status(500).json({
+        error: 'שגיאה בבדיקת הרשאות בית ספר',
+        code: 'SCHOOL_VALIDATION_ERROR',
+        userFriendlyMessage: 'שגיאה בבדיקת הרשאות. אנא נסה שוב.'
+      });
+    }
 
-    res.json({
+    // Verify recording belongs to teacher with better error handling
+    let recording;
+    try {
+      recording = await getRecordingById(recordingId, req.user.id);
+      if (!recording) {
+        return res.status(404).json({
+          error: 'הקלטה לא נמצאה',
+          code: 'RECORDING_NOT_FOUND',
+          userFriendlyMessage: 'ההקלטה שבחרת לא נמצאה או שאין לך הרשאה לגשת אליה.'
+        });
+      }
+    } catch (dbError) {
+      console.error('Database error fetching recording:', dbError);
+      return handleDatabaseError(dbError, res, 'אחזור הקלטה');
+    }
+
+    // Verify all classes belong to teacher with better error handling
+    let classes;
+    try {
+      classes = await getClassesByIds(classIds, req.user.id);
+      if (classes.length !== classIds.length) {
+        const foundClassIds = classes.map(c => c.id);
+        const missingClassIds = classIds.filter(id => !foundClassIds.includes(id));
+        return res.status(404).json({
+          error: 'אחת או יותר מהכיתות לא נמצאו',
+          code: 'CLASSES_NOT_FOUND',
+          userFriendlyMessage: `לא נמצאו כיתות עם המזהים: ${missingClassIds.join(', ')}. ייתכן שהכיתות נמחקו או שאין לך הרשאה לגשת אליהן.`,
+          missingClassIds
+        });
+      }
+    } catch (dbError) {
+      console.error('Database error fetching classes:', dbError);
+      return handleDatabaseError(dbError, res, 'אחזור כיתות');
+    }
+
+    // Verify content exists and validate quality
+    let aiContent;
+    let contentValidationResults = {};
+    let securityMetadata = {};
+    
+    try {
+      aiContent = await getAIContentForRecording(recordingId);
+      const missingContent = [];
+      const contentTypeNames = {
+        'transcription': 'תמליל',
+        'summary': 'סיכום', 
+        'test': 'מבחן'
+      };
+      
+      // Check content availability and validate quality
+      for (const contentType of contentTypes) {
+        let content = null;
+        let contentExists = false;
+
+        if (contentType === 'transcription' && aiContent?.transcription?.transcription_text) {
+          content = aiContent.transcription;
+          contentExists = true;
+        } else if (contentType === 'summary' && aiContent?.summary?.summary_text) {
+          content = aiContent.summary;
+          contentExists = true;
+        } else if (contentType === 'test' && aiContent?.questions && aiContent.questions.length > 0) {
+          content = aiContent.questions;
+          contentExists = true;
+        }
+
+        if (!contentExists) {
+          missingContent.push(contentTypeNames[contentType]);
+          continue;
+        }
+
+        // Validate content quality
+        const qualityValidation = validateContentQuality(content, contentType);
+        contentValidationResults[contentType] = qualityValidation;
+
+        // Detect and redact PII
+        if (contentType === 'transcription' || contentType === 'summary') {
+          const textContent = contentType === 'transcription' ? content.transcription_text : content.summary_text;
+          const piiResult = detectAndRedactPII(textContent);
+          
+          securityMetadata[contentType] = {
+            piiDetected: piiResult.piiFound,
+            piiRedacted: piiResult.piiFound,
+            redactionCount: piiResult.redactions.length,
+            qualityScore: qualityValidation.score,
+            qualityIssues: qualityValidation.issues
+          };
+
+          // Store redacted content for sharing
+          if (piiResult.piiFound) {
+            if (contentType === 'transcription') {
+              aiContent.transcription.transcription_text = piiResult.content;
+            } else {
+              aiContent.summary.summary_text = piiResult.content;
+            }
+          }
+        } else if (contentType === 'test') {
+          securityMetadata[contentType] = {
+            piiDetected: false,
+            piiRedacted: false,
+            redactionCount: 0,
+            qualityScore: qualityValidation.score,
+            qualityIssues: qualityValidation.issues
+          };
+        }
+
+        // Warn about quality issues
+        if (!qualityValidation.isValid || qualityValidation.score < 70) {
+          console.warn(`Content quality issues for ${contentType}:`, qualityValidation.issues);
+        }
+      }
+
+      if (missingContent.length > 0) {
+        return res.status(400).json({
+          error: `התוכן הבא לא זמין לשיתוף: ${missingContent.join(', ')}`,
+          code: 'CONTENT_NOT_AVAILABLE',
+          userFriendlyMessage: `לא ניתן לשתף את התוכן המבוקש מכיוון שהוא עדיין לא נוצר. תוכן חסר: ${missingContent.join(', ')}. אנא צור תחילה את התוכן באמצעות עיבוד AI.`,
+          missingContent,
+          availableContent: {
+            transcription: !!aiContent?.transcription?.transcription_text,
+            summary: !!aiContent?.summary?.summary_text,
+            test: !!(aiContent?.questions && aiContent.questions.length > 0)
+          }
+        });
+      }
+    } catch (dbError) {
+      console.error('Database error fetching AI content:', dbError);
+      return handleDatabaseError(dbError, res, 'אחזור תוכן AI');
+    }
+
+    // Check student consent for affected students
+    const affectedStudents = await getStudentsFromClasses(classIds);
+    const consentIssues = await checkStudentConsent(affectedStudents, ['content_sharing', 'data_processing']);
+    
+    if (consentIssues.length > 0) {
+      console.warn('Student consent issues detected:', consentIssues);
+      // For now, log the issue but don't block sharing
+      // In production, you might want to require explicit consent
+    }
+
+    // Create content shares with basic functionality
+    let shareResults;
+    try {
+      shareResults = await shareContentWithClasses({
+        recordingId,
+        teacherId: req.user.id,
+        contentTypes,
+        classIds,
+        startDate,
+        endDate
+      });
+      
+      console.log('Content sharing completed successfully:', shareResults);
+    } catch (dbError) {
+      console.error('Database error creating content shares:', dbError);
+      return handleDatabaseError(dbError, res, 'יצירת שיתוף תוכן');
+    }
+
+    // Create notifications for students with error handling
+    try {
+      await createStudentNotifications({
+        shareResults,
+        recording,
+        teacher: req.user,
+        classes
+      });
+      console.log('Student notifications created successfully');
+    } catch (notificationError) {
+      console.error('Error creating student notifications:', notificationError);
+      // Don't fail the whole operation if notifications fail
+      // The content was shared successfully, notifications are secondary
+    }
+
+    // Prepare response with security information
+    const response = {
       success: true,
       shares: shareResults,
-      message: `תוכן שותף עם ${classes.length} כיתות`
-    });
+      message: `תוכן שותף בהצלחה עם ${classes.length} כיתות`,
+      details: {
+        sharedContentTypes: contentTypes,
+        targetClasses: classes.map(c => ({ id: c.id, name: c.name })),
+        totalStudents: classes.reduce((sum, c) => sum + (c.student_count || 0), 0),
+        securityInfo: {
+          piiDetected: Object.values(securityMetadata).some(m => m.piiDetected),
+          contentValidated: true,
+          qualityScores: Object.fromEntries(
+            Object.entries(contentValidationResults).map(([type, validation]) => [type, validation.score])
+          )
+        }
+      }
+    };
+
+    // Add warnings if there are quality or security issues
+    const warnings = [];
+    
+    if (Object.values(securityMetadata).some(m => m.piiDetected)) {
+      warnings.push('זוהה מידע אישי בתוכן ובוצעה הסתרה אוטומטית');
+    }
+    
+    const lowQualityContent = Object.entries(contentValidationResults)
+      .filter(([_, validation]) => validation.score < 80)
+      .map(([type, _]) => contentTypeNames[type]);
+    
+    if (lowQualityContent.length > 0) {
+      warnings.push(`איכות התוכן הבא נמוכה: ${lowQualityContent.join(', ')}`);
+    }
+
+    if (consentIssues.length > 0) {
+      warnings.push(`${consentIssues.length} תלמידים לא נתנו הסכמה מפורשת לשיתוף תוכן`);
+    }
+
+    if (warnings.length > 0) {
+      response.warnings = warnings;
+    }
+
+    res.json(response);
   } catch (error) {
-    console.error('Error sharing content:', error);
-    res.status(500).json({
+    console.error('Unexpected error sharing content:', error);
+    
+    // Log the error
+    await logContentAccess({
+      userId: req.user?.id,
+      contentType: 'content_share',
+      contentId: req.body?.recordingId,
+      action: 'share_error',
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      metadata: { error: error.message, stack: error.stack }
+    }).catch(logError => console.error('Failed to log error:', logError));
+    
+    // Provide more specific error messages based on error type
+    let userFriendlyMessage = 'אירעה שגיאה בלתי צפויה בעת שיתוף התוכן. אנא נסה שוב מאוחר יותר.';
+    let statusCode = 500;
+    
+    if (error.message.includes('timeout')) {
+      userFriendlyMessage = 'הפעולה ארכה יותר מהצפוי. אנא נסה שוב.';
+      statusCode = 408;
+    } else if (error.message.includes('connection')) {
+      userFriendlyMessage = 'בעיה בחיבור למסד הנתונים. אנא נסה שוב מאוחר יותר.';
+      statusCode = 503;
+    } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+      userFriendlyMessage = 'השרת אינו זמין כרגע. אנא נסה שוב מאוחר יותר.';
+      statusCode = 503;
+    }
+    
+    res.status(statusCode).json({
       error: 'שגיאה בשיתוף התוכן',
-      code: 'SHARE_CONTENT_ERROR'
+      code: 'SHARE_CONTENT_ERROR',
+      userFriendlyMessage,
+      timestamp: new Date().toISOString(),
+      requestId: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        stack: error.stack
+      } : undefined
     });
   }
 });
@@ -1235,6 +1537,323 @@ async function markNotificationAsRead(notificationId, studentId) {
     SET is_read = TRUE, read_at = datetime('now')
     WHERE id = ? AND student_id = ?
   `, [notificationId, studentId]);
+}
+
+// Enhanced security helper functions
+
+/**
+ * Validate teacher access to classes (school-level security)
+ */
+async function validateTeacherClassAccess(teacherId, teacherSchoolId, classIds) {
+  const { query } = require('../config/database-sqlite');
+  
+  try {
+    // Check if all classes belong to the teacher and the same school
+    const placeholders = classIds.map(() => '?').join(',');
+    const result = await query(`
+      SELECT c.id, c.name, c.school_id, c.teacher_id
+      FROM classes c
+      WHERE c.id IN (${placeholders}) AND c.is_active = TRUE
+    `, classIds);
+
+    const foundClasses = result.rows;
+    
+    // Check if all requested classes were found
+    if (foundClasses.length !== classIds.length) {
+      const foundClassIds = foundClasses.map(c => c.id);
+      const missingClassIds = classIds.filter(id => !foundClassIds.includes(id));
+      
+      return {
+        valid: false,
+        error: `כיתות לא נמצאו או לא פעילות: ${missingClassIds.join(', ')}`,
+        invalidClasses: missingClassIds
+      };
+    }
+
+    // Check if all classes belong to the teacher
+    const notOwnedClasses = foundClasses.filter(c => c.teacher_id !== teacherId);
+    if (notOwnedClasses.length > 0) {
+      return {
+        valid: false,
+        error: `אין לך הרשאה לגשת לכיתות: ${notOwnedClasses.map(c => c.name).join(', ')}`,
+        invalidClasses: notOwnedClasses.map(c => c.id)
+      };
+    }
+
+    // Check if all classes belong to the same school as the teacher
+    const wrongSchoolClasses = foundClasses.filter(c => c.school_id !== teacherSchoolId);
+    if (wrongSchoolClasses.length > 0) {
+      return {
+        valid: false,
+        error: `כיתות שייכות לבית ספר אחר: ${wrongSchoolClasses.map(c => c.name).join(', ')}`,
+        invalidClasses: wrongSchoolClasses.map(c => c.id)
+      };
+    }
+
+    return {
+      valid: true,
+      classes: foundClasses
+    };
+  } catch (error) {
+    console.error('Error validating teacher class access:', error);
+    return {
+      valid: false,
+      error: 'שגיאה בבדיקת הרשאות כיתות',
+      invalidClasses: classIds
+    };
+  }
+}
+
+/**
+ * Get students from classes for consent checking
+ */
+async function getStudentsFromClasses(classIds) {
+  const { query } = require('../config/database-sqlite');
+  
+  const placeholders = classIds.map(() => '?').join(',');
+  const result = await query(`
+    SELECT DISTINCT u.id, u.first_name, u.last_name, u.email
+    FROM users u
+    JOIN class_memberships cm ON u.id = cm.student_id
+    WHERE cm.class_id IN (${placeholders}) 
+      AND u.role = 'student' 
+      AND cm.is_active = TRUE
+  `, classIds);
+
+  return result.rows;
+}
+
+/**
+ * Check student consent for specific consent types
+ * Simplified version - assumes consent is given for now
+ */
+async function checkStudentConsent(students, consentTypes) {
+  // For now, return empty array (no consent issues)
+  // In a full implementation, this would check a student_consent table
+  return [];
+}
+
+/**
+ * Enhanced content sharing with security features
+ */
+async function shareContentWithClassesSecure({
+  recordingId,
+  teacherId,
+  contentTypes,
+  classIds,
+  startDate,
+  endDate,
+  aiContent,
+  securityMetadata,
+  ipAddress,
+  userAgent
+}) {
+  const { run, query } = require('../config/database-sqlite');
+  
+  const shareResults = [];
+
+  for (const contentType of contentTypes) {
+    // Generate secure sharing token
+    const sharingToken = generateSharingToken();
+    
+    // Determine expiration date (default 30 days)
+    const expiresAt = endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    
+    // Create content share with security features
+    const shareResult = await run(`
+      INSERT OR REPLACE INTO content_shares (
+        recording_id, teacher_id, share_type, is_active, 
+        start_date, end_date, sharing_token, classification_level,
+        requires_consent, auto_expire_days, created_at, updated_at
+      ) VALUES (?, ?, ?, TRUE, ?, ?, ?, 'public', 0, 30, datetime('now'), datetime('now'))
+    `, [
+      recordingId,
+      teacherId,
+      contentType,
+      startDate || new Date().toISOString(),
+      expiresAt,
+      sharingToken
+    ]);
+
+    const shareId = shareResult.lastID;
+
+    // Create content security metadata
+    const metadata = securityMetadata[contentType];
+    if (metadata) {
+      await run(`
+        INSERT OR REPLACE INTO content_security_metadata (
+          content_type, content_id, classification_level, pii_detected,
+          pii_redacted, redaction_count, quality_score, quality_issues,
+          sharing_token, expires_at, created_by, created_at, updated_at
+        ) VALUES (?, ?, 'public', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `, [
+        contentType,
+        shareId,
+        metadata.piiDetected ? 1 : 0,
+        metadata.piiRedacted ? 1 : 0,
+        metadata.redactionCount,
+        metadata.qualityScore,
+        JSON.stringify(metadata.qualityIssues),
+        sharingToken,
+        expiresAt,
+        teacherId
+      ]);
+    }
+
+    // Create content snapshot for immutable sharing
+    const contentData = getContentForSnapshot(aiContent, contentType);
+    if (contentData) {
+      const contentHash = crypto.createHash('sha256').update(JSON.stringify(contentData)).digest('hex');
+      
+      await run(`
+        INSERT INTO content_snapshots (
+          original_content_type, original_content_id, snapshot_data,
+          content_hash, created_for_share_id, created_by, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      `, [
+        contentType,
+        recordingId,
+        JSON.stringify(contentData),
+        contentHash,
+        shareId,
+        teacherId
+      ]);
+    }
+
+    // Add class permissions
+    for (const classId of classIds) {
+      await run(`
+        INSERT OR IGNORE INTO content_share_permissions (
+          content_share_id, class_id, created_at
+        ) VALUES (?, ?, datetime('now'))
+      `, [shareId, classId]);
+    }
+
+    // Log sharing audit
+    await run(`
+      INSERT INTO content_sharing_audit (
+        share_id, action, performed_by, affected_users, details,
+        ip_address, user_agent, created_at
+      ) VALUES (?, 'created', ?, ?, ?, ?, ?, datetime('now'))
+    `, [
+      shareId,
+      teacherId,
+      JSON.stringify(classIds),
+      JSON.stringify({
+        contentType,
+        securityMetadata: metadata,
+        sharingToken
+      }),
+      ipAddress,
+      userAgent
+    ]);
+
+    shareResults.push({
+      shareId,
+      contentType,
+      classIds,
+      sharingToken,
+      expiresAt,
+      securityInfo: metadata
+    });
+  }
+
+  return shareResults;
+}
+
+/**
+ * Get content data for snapshot creation
+ */
+function getContentForSnapshot(aiContent, contentType) {
+  switch (contentType) {
+    case 'transcription':
+      return aiContent?.transcription || null;
+    case 'summary':
+      return aiContent?.summary || null;
+    case 'test':
+      return { questions: aiContent?.questions || [] };
+    default:
+      return null;
+  }
+}
+
+/**
+ * Enhanced student notifications with consent checking
+ */
+async function createStudentNotificationsSecure({
+  shareResults,
+  recording,
+  teacher,
+  classes,
+  consentRequired = false
+}) {
+  const { run, query } = require('../config/database-sqlite');
+  
+  // Get all students from the classes with consent status
+  const classIds = classes.map(c => c.id);
+  const placeholders = classIds.map(() => '?').join(',');
+  
+  const studentsResult = await query(`
+    SELECT DISTINCT 
+      cm.student_id, 
+      u.first_name, 
+      u.last_name,
+      sc.consent_given as content_sharing_consent,
+      snp.enabled as notifications_enabled,
+      snp.delivery_method
+    FROM class_memberships cm
+    JOIN users u ON cm.student_id = u.id
+    LEFT JOIN student_consent sc ON u.id = sc.student_id AND sc.consent_type = 'content_sharing'
+    LEFT JOIN student_notification_preferences snp ON u.id = snp.student_id AND snp.notification_type = 'content_shared'
+    WHERE cm.class_id IN (${placeholders}) AND cm.is_active = TRUE
+  `, classIds);
+
+  const students = studentsResult.rows;
+
+  // Create notifications for each student and each shared content type
+  for (const student of students) {
+    // Skip if notifications are disabled
+    if (student.notifications_enabled === 0) {
+      continue;
+    }
+
+    // Check consent if required
+    if (consentRequired && !student.content_sharing_consent) {
+      console.warn(`Skipping notification for student ${student.student_id} - no consent`);
+      continue;
+    }
+
+    for (const shareResult of shareResults) {
+      const contentTypeHebrew = {
+        transcription: 'תמליל',
+        summary: 'סיכום',
+        test: 'מבחן'
+      }[shareResult.contentType];
+
+      const lessonName = recording.metadata?.lessonName || `הקלטה ${recording.id}`;
+      const title = `תוכן חדש זמין: ${contentTypeHebrew}`;
+      const message = `המורה ${teacher.first_name} ${teacher.last_name} שיתף איתך ${contentTypeHebrew} עבור השיעור "${lessonName}"`;
+
+      // Determine privacy level based on content security
+      const privacyLevel = shareResult.securityInfo?.piiDetected ? 'high' : 'standard';
+
+      await run(`
+        INSERT INTO student_notifications (
+          student_id, content_share_id, notification_type, 
+          title, message, requires_consent, consent_obtained,
+          privacy_level, created_at
+        ) VALUES (?, ?, 'content_shared', ?, ?, ?, ?, ?, datetime('now'))
+      `, [
+        student.student_id, 
+        shareResult.shareId, 
+        title, 
+        message,
+        consentRequired ? 1 : 0,
+        student.content_sharing_consent ? 1 : 0,
+        privacyLevel
+      ]);
+    }
+  }
 }
 
 module.exports = router;

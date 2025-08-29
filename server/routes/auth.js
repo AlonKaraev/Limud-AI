@@ -7,6 +7,7 @@ const {
   validateRequest, 
   logAuthEvent 
 } = require('../middleware/auth');
+const consoleLogger = require('../utils/ConsoleLogger');
 
 const router = express.Router();
 
@@ -75,6 +76,19 @@ router.post('/register', authLimiter, registerValidation, async (req, res) => {
     // Check for validation errors
     const errors = require('express-validator').validationResult(req);
     if (!errors.isEmpty()) {
+      consoleLogger.logAuthError('VALIDATION_ERROR', {
+        endpoint: '/api/auth/register',
+        method: 'POST',
+        email: req.body.email,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        validationErrors: errors.array().map(err => ({
+          field: err.param,
+          message: err.msg
+        })),
+        message: 'Registration validation failed'
+      });
+
       return res.status(400).json({
         error: 'נתונים לא תקינים',
         code: 'VALIDATION_ERROR',
@@ -90,6 +104,16 @@ router.post('/register', authLimiter, registerValidation, async (req, res) => {
     // Check if user already exists
     const existingUser = await User.findByEmail(email);
     if (existingUser) {
+      consoleLogger.logAuthError('EMAIL_EXISTS', {
+        endpoint: '/api/auth/register',
+        method: 'POST',
+        email,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        reason: 'User with this email already exists',
+        message: 'Registration failed - duplicate email'
+      });
+
       logAuthEvent('REGISTRATION_FAILED', null, {
         reason: 'EMAIL_EXISTS',
         email,
@@ -153,6 +177,19 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
     // Check for validation errors
     const errors = require('express-validator').validationResult(req);
     if (!errors.isEmpty()) {
+      consoleLogger.logAuthError('VALIDATION_ERROR', {
+        endpoint: '/api/auth/login',
+        method: 'POST',
+        email: req.body.email,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        validationErrors: errors.array().map(err => ({
+          field: err.param,
+          message: err.msg
+        })),
+        message: 'Login validation failed'
+      });
+
       return res.status(400).json({
         error: 'נתונים לא תקינים',
         code: 'VALIDATION_ERROR',
@@ -168,6 +205,16 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
     // Find user by email
     const user = await User.findByEmail(email);
     if (!user) {
+      consoleLogger.logAuthError('USER_NOT_FOUND', {
+        endpoint: '/api/auth/login',
+        method: 'POST',
+        email,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        reason: 'No user found with this email',
+        message: 'Login failed - user not found'
+      });
+
       logAuthEvent('LOGIN_FAILED', null, {
         reason: 'USER_NOT_FOUND',
         email,
@@ -184,6 +231,17 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
     // Verify password
     const isValidPassword = await user.verifyPassword(password);
     if (!isValidPassword) {
+      consoleLogger.logAuthError('INVALID_PASSWORD', {
+        endpoint: '/api/auth/login',
+        method: 'POST',
+        email,
+        userId: user.id,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        reason: 'Password verification failed',
+        message: 'Login failed - invalid password'
+      });
+
       logAuthEvent('LOGIN_FAILED', user.id, {
         reason: 'INVALID_PASSWORD',
         email,
@@ -199,6 +257,17 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
 
     // Skip account verification check in development
     if (process.env.NODE_ENV === 'production' && !user.isVerified) {
+      consoleLogger.logAuthError('ACCOUNT_NOT_VERIFIED', {
+        endpoint: '/api/auth/login',
+        method: 'POST',
+        email,
+        userId: user.id,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        reason: 'User account is not verified',
+        message: 'Login failed - account not verified'
+      });
+
       logAuthEvent('LOGIN_FAILED', user.id, {
         reason: 'ACCOUNT_NOT_VERIFIED',
         email,

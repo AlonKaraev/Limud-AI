@@ -92,7 +92,8 @@ class User {
       email: this.email,
       role: this.role,
       firstName: this.firstName,
-      lastName: this.lastName
+      lastName: this.lastName,
+      school_id: this.schoolId // Add school_id to JWT payload for authorization
     };
     
     return jwt.sign(payload, process.env.JWT_SECRET || 'your-secret-key', {
