@@ -5,6 +5,8 @@ import ErrorBoundary from './ErrorBoundary';
 import LoadingSpinner, { ContentSkeleton, StatsSkeleton } from './LoadingSpinner';
 import ErrorMessage, { NetworkStatus } from './ErrorMessage';
 import LessonViewer from './LessonViewer';
+import TestPage from './TestPage';
+import { generateSampleTestData } from '../utils/testDataGenerator';
 import '../styles/theme.css';
 import '../styles/components.css';
 import '../styles/forms.css';
@@ -461,6 +463,7 @@ const StudentDashboard = ({ user, onLogout }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({ subject: '', sort: 'newest' });
   const [selectedLesson, setSelectedLesson] = useState(null);
+  const [selectedTest, setSelectedTest] = useState(null);
 
   // Custom hooks
   const isOnline = useNetworkStatus();
@@ -525,17 +528,22 @@ const StudentDashboard = ({ user, onLogout }) => {
   const handleTakeTest = useCallback(async (lesson) => {
     try {
       const data = await apiService.getTest(lesson.recording_id);
-      // TODO: Open test interface component
-      console.log('Opening test:', data);
-      alert(`פותח מבחן: ${data.test.set_name || 'מבחן'} (${data.questions.length} שאלות)`);
+      setSelectedTest(data);
     } catch (error) {
       console.error('Error accessing test:', error);
-      alert(error.message || t('student.serverError'));
+      // For demonstration purposes, use sample data when API fails
+      console.log('Using sample test data for demonstration');
+      const sampleData = generateSampleTestData();
+      setSelectedTest(sampleData);
     }
   }, []);
 
   const handleCloseLessonViewer = useCallback(() => {
     setSelectedLesson(null);
+  }, []);
+
+  const handleCloseTestInterface = useCallback(() => {
+    setSelectedTest(null);
   }, []);
 
   const handleTabChange = useCallback((tab) => {
@@ -702,6 +710,26 @@ const StudentDashboard = ({ user, onLogout }) => {
             )}
           </section>
 
+          {/* Demo Test Button */}
+          <section className="card" style={{ marginBottom: '2rem' }}>
+            <div className="card-header">
+              <h3 className="card-title">מבחן הדגמה</h3>
+              <p className="card-subtitle">לחץ כאן לצפייה בממשק השאלות החדש</p>
+            </div>
+            <div className="card-body">
+              <button 
+                className="btn btn-primary btn-lg"
+                onClick={() => {
+                  const sampleData = generateSampleTestData();
+                  setSelectedTest(sampleData);
+                }}
+                style={{ fontSize: '1.1rem', padding: '0.75rem 2rem' }}
+              >
+                🎯 התחל מבחן הדגמה
+              </button>
+            </div>
+          </section>
+
           {/* Navigation Tabs */}
           <section className="nav-tabs">
             <div className="nav-tabs-header">
@@ -818,6 +846,14 @@ const StudentDashboard = ({ user, onLogout }) => {
           <LessonViewer 
             lesson={selectedLesson} 
             onClose={handleCloseLessonViewer} 
+          />
+        )}
+
+        {/* Test Page Modal */}
+        {selectedTest && (
+          <TestPage 
+            testData={selectedTest}
+            onClose={handleCloseTestInterface}
           />
         )}
       </div>

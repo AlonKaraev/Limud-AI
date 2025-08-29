@@ -99,30 +99,30 @@
   text-align: center;
   padding: 40px;
   font-size: 1.2rem;
-  color: #7f8c8d;
+  color: var(--color-textSecondary);
 }
 
 .error-message {
-  background: #e74c3c;
-  color: white;
+  background: var(--color-error);
+  color: var(--color-textOnPrimary);
   padding: 12px 20px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   margin-bottom: 20px;
   font-weight: 500;
 }
 
 .success-message {
-  background: #27ae60;
-  color: white;
+  background: var(--color-success);
+  color: var(--color-textOnPrimary);
   padding: 12px 20px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   margin-bottom: 20px;
   font-weight: 500;
 }
 
 /* Dashboard Overview */
 .dashboard-overview h2 {
-  color: #2c3e50;
+  color: var(--color-text);
   margin-bottom: 25px;
   font-size: 2rem;
 }
@@ -135,13 +135,13 @@
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--color-gradientStart) 0%, var(--color-gradientEnd) 100%);
+  color: var(--color-textOnPrimary);
   padding: 25px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   text-align: center;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
+  box-shadow: 0 8px 25px var(--color-shadowLight);
+  transition: transform var(--transition-slow);
 }
 
 .stat-card:hover {
@@ -166,14 +166,14 @@
 }
 
 .grade-distribution {
-  background: white;
+  background: var(--color-surface);
   padding: 25px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 15px var(--color-shadowLight);
 }
 
 .grade-distribution h3 {
-  color: #2c3e50;
+  color: var(--color-text);
   margin-bottom: 20px;
   font-size: 1.5rem;
 }
@@ -185,44 +185,44 @@
 }
 
 .grade-item {
-  background: #f8f9fa;
+  background: var(--color-surfaceHover);
   padding: 15px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   text-align: center;
-  border: 2px solid #e9ecef;
-  transition: all 0.3s ease;
+  border: 2px solid var(--color-border);
+  transition: all var(--transition-slow);
 }
 
 .grade-item:hover {
-  border-color: #3498db;
-  background: #e3f2fd;
+  border-color: var(--color-primary);
+  background: var(--color-primaryLight);
 }
 
 .grade-name {
   display: block;
   font-size: 1.5rem;
   font-weight: bold;
-  color: #2c3e50;
+  color: var(--color-text);
   margin-bottom: 5px;
 }
 
 .grade-count {
   font-size: 0.9rem;
-  color: #7f8c8d;
+  color: var(--color-textSecondary);
 }
 
 /* Management Sections */
 .management-section {
-  background: white;
+  background: var(--color-surface);
   padding: 25px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 15px var(--color-shadowLight);
   margin-bottom: 30px;
 }
 
 .management-section h2,
 .management-section h3 {
-  color: #2c3e50;
+  color: var(--color-text);
   margin-bottom: 20px;
 }
 
@@ -233,7 +233,7 @@
 
 .management-section h3 {
   font-size: 1.5rem;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--color-divider);
   padding-bottom: 10px;
 }
 
@@ -257,7 +257,7 @@
 
 .form-group label {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--color-text);
   margin-bottom: 8px;
   font-size: 1rem;
 }
@@ -266,18 +266,20 @@
 .form-group select,
 .form-group textarea {
   padding: 12px 15px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
   font-size: 1rem;
-  transition: border-color 0.3s ease;
+  transition: border-color var(--transition-slow);
   font-family: inherit;
+  background-color: var(--color-inputBackground);
+  color: var(--color-text);
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: var(--color-inputBorderFocus);
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
@@ -292,50 +294,50 @@
 .btn-selected {
   padding: 12px 24px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all var(--transition-slow);
   text-align: center;
   display: inline-block;
   text-decoration: none;
 }
 
 .btn-primary {
-  background: #3498db;
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-textOnPrimary);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #2980b9;
+  background: var(--color-primaryHover);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
 }
 
 .btn-primary:disabled {
-  background: #bdc3c7;
+  background: var(--color-textSecondary);
   cursor: not-allowed;
   transform: none;
 }
 
 .btn-secondary {
-  background: #95a5a6;
-  color: white;
+  background: var(--color-secondary);
+  color: var(--color-textOnPrimary);
 }
 
 .btn-secondary:hover {
-  background: #7f8c8d;
+  background: var(--color-secondaryHover);
   transform: translateY(-2px);
 }
 
 .btn-selected {
-  background: #27ae60;
-  color: white;
+  background: var(--color-success);
+  color: var(--color-textOnPrimary);
 }
 
 .btn-selected:hover {
-  background: #229954;
+  background: var(--color-successHover);
 }
 
 /* Lists and Grids */
@@ -347,19 +349,19 @@
 .class-item,
 .user-item,
 .permission-item {
-  background: #f8f9fa;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
+  background: var(--color-surfaceHover);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 20px;
   margin-bottom: 15px;
-  transition: all 0.3s ease;
+  transition: all var(--transition-slow);
 }
 
 .class-item:hover,
 .user-item:hover,
 .permission-item:hover {
-  border-color: #3498db;
-  background: #e3f2fd;
+  border-color: var(--color-primary);
+  background: var(--color-primaryLight);
   transform: translateY(-2px);
 }
 
@@ -372,7 +374,7 @@
 .class-info h4,
 .user-info h4,
 .permission-info h4 {
-  color: #2c3e50;
+  color: var(--color-text);
   margin: 0 0 10px 0;
   font-size: 1.3rem;
 }
@@ -381,7 +383,7 @@
 .user-info p,
 .permission-info p {
   margin: 5px 0;
-  color: #7f8c8d;
+  color: var(--color-textSecondary);
   font-size: 0.95rem;
 }
 
@@ -413,9 +415,9 @@
   max-height: 300px;
   overflow-y: auto;
   padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 2px solid #e9ecef;
+  background: var(--color-surfaceHover);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-border);
 }
 
 .student-checkbox {
@@ -423,14 +425,14 @@
   align-items: center;
   gap: 10px;
   padding: 10px;
-  background: white;
-  border-radius: 6px;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background-color var(--transition-slow);
 }
 
 .student-checkbox:hover {
-  background: #e3f2fd;
+  background: var(--color-primaryLight);
 }
 
 .student-checkbox input[type="checkbox"] {
@@ -556,17 +558,17 @@
 }
 
 .students-selection::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
 }
 
 .students-selection::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
+  background: var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
 .students-selection::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--color-textSecondary);
 }
 
 /* Focus styles for accessibility */

@@ -28,9 +28,9 @@
 }
 
 .lesson-viewer-modal {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px var(--color-shadowDark);
   max-width: 900px;
   width: 100%;
   max-height: 90vh;
@@ -44,8 +44,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem 2rem;
-  border-bottom: 1px solid #e9ecef;
-  background: #f8f9fa;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surfaceHover);
 }
 
 .lesson-header-content {
@@ -54,7 +54,7 @@
 
 .lesson-title {
   margin: 0 0 0.5rem 0;
-  color: #2c3e50;
+  color: var(--color-text);
   font-size: 1.5rem;
   font-weight: 600;
 }
@@ -62,7 +62,7 @@
 .lesson-meta {
   display: flex;
   gap: 1rem;
-  color: #6c757d;
+  color: var(--color-textSecondary);
   font-size: 0.9rem;
 }
 
@@ -88,8 +88,8 @@
 
 .lesson-tabs {
   display: flex;
-  border-bottom: 1px solid #e9ecef;
-  background: white;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .lesson-tab {
@@ -97,24 +97,24 @@
   padding: 1rem 1.5rem;
   border: none;
   background: transparent;
-  color: #6c757d;
+  color: var(--color-textSecondary);
   font-family: 'Heebo', sans-serif;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-normal);
   border-bottom: 3px solid transparent;
 }
 
 .lesson-tab:hover:not(:disabled) {
-  background: #f8f9fa;
-  color: #2c3e50;
+  background: var(--color-surfaceHover);
+  color: var(--color-text);
 }
 
 .lesson-tab.active {
-  color: #3498db;
-  border-bottom-color: #3498db;
-  background: white;
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: var(--color-surface);
 }
 
 .lesson-tab:disabled {
@@ -134,7 +134,7 @@
 
 .lesson-section h3 {
   margin: 0 0 1.5rem 0;
-  color: #2c3e50;
+  color: var(--color-text);
   font-size: 1.3rem;
   font-weight: 600;
 }
@@ -151,11 +151,11 @@
 }
 
 .lesson-text {
-  background: #f8f9fa;
-  border-radius: 8px;
+  background: var(--color-surfaceHover);
+  border-radius: var(--radius-md);
   padding: 1.5rem;
   line-height: 1.6;
-  color: #2c3e50;
+  color: var(--color-text);
 }
 
 .lesson-text p {
@@ -167,8 +167,8 @@
 }
 
 .transcript-text {
-  background: #2c3e50;
-  color: #ecf0f1;
+  background: var(--color-headerBackground);
+  color: var(--color-textOnDark);
   font-family: 'Courier New', monospace;
   direction: ltr;
   text-align: left;
@@ -185,12 +185,12 @@
 .learning-objectives {
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--color-border);
 }
 
 .learning-objectives h4 {
   margin: 0 0 1rem 0;
-  color: #2c3e50;
+  color: var(--color-text);
   font-size: 1.1rem;
   font-weight: 600;
 }
@@ -204,7 +204,7 @@
 .learning-objectives li {
   margin-bottom: 0.5rem;
   line-height: 1.5;
-  color: #495057;
+  color: var(--color-textSecondary);
 }
 
 .topics-grid {
@@ -214,28 +214,28 @@
 }
 
 .topic-card {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
+  background: var(--color-surfaceHover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 1.5rem;
-  transition: all 0.2s ease;
+  transition: all var(--transition-normal);
 }
 
 .topic-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px var(--color-shadowLight);
   transform: translateY(-2px);
 }
 
 .topic-card h4 {
   margin: 0 0 0.5rem 0;
-  color: #2c3e50;
+  color: var(--color-text);
   font-size: 1rem;
   font-weight: 600;
 }
 
 .topic-card p {
   margin: 0;
-  color: #6c757d;
+  color: var(--color-textSecondary);
   font-size: 0.9rem;
   line-height: 1.4;
 }
@@ -243,10 +243,10 @@
 .empty-content {
   text-align: center;
   padding: 3rem 1rem;
-  color: #6c757d;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 2px dashed #dee2e6;
+  color: var(--color-textSecondary);
+  background: var(--color-surfaceHover);
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--color-border);
 }
 
 .empty-content p {
@@ -256,8 +256,8 @@
 
 .lesson-viewer-footer {
   padding: 1.5rem 2rem;
-  border-top: 1px solid #e9ecef;
-  background: #f8f9fa;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surfaceHover);
 }
 
 .lesson-actions {
@@ -315,8 +315,8 @@
   }
   
   .lesson-tab.active {
-    border-bottom-color: #e9ecef;
-    border-left-color: #3498db;
+    border-bottom-color: var(--color-border);
+    border-left-color: var(--color-primary);
   }
   
   .lesson-content {
@@ -364,53 +364,7 @@
   }
 }
 
-/* Dark mode support for lesson viewer */
-@media (prefers-color-scheme: dark) {
-  .lesson-viewer-modal {
-    background: #2d2d2d;
-    color: #ffffff;
-  }
-  
-  .lesson-viewer-header,
-  .lesson-viewer-footer {
-    background: #1a1a1a;
-    border-color: #444444;
-  }
-  
-  .lesson-tabs {
-    background: #2d2d2d;
-    border-color: #444444;
-  }
-  
-  .lesson-tab {
-    color: #cccccc;
-  }
-  
-  .lesson-tab:hover:not(:disabled) {
-    background: #3d3d3d;
-    color: #ffffff;
-  }
-  
-  .lesson-tab.active {
-    background: #2d2d2d;
-  }
-  
-  .lesson-text {
-    background: #3d3d3d;
-    color: #ffffff;
-  }
-  
-  .topic-card {
-    background: #3d3d3d;
-    border-color: #555555;
-  }
-  
-  .empty-content {
-    background: #3d3d3d;
-    border-color: #555555;
-    color: #cccccc;
-  }
-}
+/* Dark mode support is now handled by CSS variables */
 
 /* Dashboard Container */
 .dashboard-container {
@@ -740,30 +694,7 @@
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .dashboard-container {
-    background-color: #1a1a1a;
-    color: #ffffff;
-  }
-
-  .welcome-card,
-  .stat-card,
-  .navigation-tabs {
-    background-color: #2d2d2d;
-    color: #ffffff;
-  }
-
-  .content-card {
-    background-color: #333333;
-    border-color: #444444;
-  }
-
-  .meta-tag {
-    background-color: #444444;
-    color: #cccccc;
-  }
-}
+/* Dark mode support is now handled by CSS variables */
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {

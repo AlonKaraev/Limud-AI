@@ -5,10 +5,10 @@ import AudioPlayer from './AudioPlayer';
 import ErrorLogger from '../utils/ErrorLogger';
 
 const Container = styled.div`
-  background: white;
-  border-radius: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
   padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px var(--color-shadowLight);
   margin-bottom: 2rem;
 `;
 
@@ -18,7 +18,7 @@ const Header = styled.div`
   align-items: center;
   margin-bottom: 2rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #ecf0f1;
+  border-bottom: 1px solid var(--color-border);
 `;
 
 const HeaderButtons = styled.div`
@@ -28,53 +28,53 @@ const HeaderButtons = styled.div`
 
 const UploadButton = styled.button`
   padding: 0.5rem 1rem;
-  background-color: #27ae60;
-  color: white;
+  background-color: var(--color-success);
+  color: var(--color-textOnPrimary);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: 'Heebo', sans-serif;
-  transition: background-color 0.2s;
+  transition: var(--transition-fast);
 
   &:hover {
-    background-color: #229954;
+    background-color: var(--color-successHover);
   }
 
   &:disabled {
-    background-color: #bdc3c7;
+    background-color: var(--color-disabled);
     cursor: not-allowed;
   }
 
   &.record {
-    background-color: #e74c3c;
+    background-color: var(--color-danger);
     
     &:hover {
-      background-color: #c0392b;
+      background-color: var(--color-dangerHover);
     }
   }
 `;
 
 const Title = styled.h2`
-  color: #2c3e50;
+  color: var(--color-text);
   margin: 0;
 `;
 
 const RefreshButton = styled.button`
   padding: 0.5rem 1rem;
-  background-color: #3498db;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--color-textOnPrimary);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: 'Heebo', sans-serif;
-  transition: background-color 0.2s;
+  transition: var(--transition-fast);
 
   &:hover {
-    background-color: #2980b9;
+    background-color: var(--color-primaryHover);
   }
 
   &:disabled {
-    background-color: #bdc3c7;
+    background-color: var(--color-disabled);
     cursor: not-allowed;
   }
 `;
@@ -87,14 +87,14 @@ const LessonGrid = styled.div`
 `;
 
 const LessonCard = styled.div`
-  border: 1px solid #ecf0f1;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 1.5rem;
-  background: #fafbfc;
-  transition: all 0.2s;
+  background: var(--color-surfaceElevated);
+  transition: var(--transition-medium);
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px var(--color-shadowMedium);
     transform: translateY(-2px);
   }
 `;
@@ -107,13 +107,13 @@ const LessonHeader = styled.div`
 `;
 
 const LessonTitle = styled.h3`
-  color: #2c3e50;
+  color: var(--color-text);
   margin: 0;
   font-size: 1.1rem;
 `;
 
 const LessonDate = styled.span`
-  color: #7f8c8d;
+  color: var(--color-textSecondary);
   font-size: 0.9rem;
 `;
 
@@ -129,11 +129,11 @@ const InfoRow = styled.div`
 `;
 
 const InfoLabel = styled.span`
-  color: #7f8c8d;
+  color: var(--color-textSecondary);
 `;
 
 const InfoValue = styled.span`
-  color: #2c3e50;
+  color: var(--color-text);
   font-weight: 500;
 `;
 
@@ -144,23 +144,23 @@ const StatusBadge = styled.span`
   font-weight: 500;
   
   &.completed {
-    background-color: #d5f4e6;
-    color: #27ae60;
+    background-color: var(--color-successLight);
+    color: var(--color-success);
   }
   
   &.processing {
-    background-color: #fef9e7;
-    color: #f39c12;
+    background-color: var(--color-warningLight);
+    color: var(--color-warning);
   }
   
   &.failed {
-    background-color: #fadbd8;
-    color: #e74c3c;
+    background-color: var(--color-dangerLight);
+    color: var(--color-danger);
   }
   
   &.pending {
-    background-color: #ebf3fd;
-    color: #3498db;
+    background-color: var(--color-primaryLight);
+    color: var(--color-primary);
   }
 `;
 
@@ -169,18 +169,18 @@ const ContentSection = styled.div`
 `;
 
 const ContentTitle = styled.h4`
-  color: #2c3e50;
+  color: var(--color-text);
   margin: 0 0 0.5rem 0;
   font-size: 1rem;
 `;
 
 const ContentPreview = styled.div`
-  background: white;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   padding: 0.75rem;
   font-size: 0.9rem;
-  color: #555;
+  color: var(--color-textSecondary);
   max-height: 100px;
   overflow-y: auto;
   line-height: 1.4;
@@ -195,10 +195,10 @@ const RecordingDetailsRow = styled.div`
   align-items: center;
   margin-bottom: 1rem;
   padding: 0.5rem;
-  background: #f8f9fa;
-  border-radius: 4px;
+  background: var(--color-surfaceElevated);
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
-  color: #2c3e50;
+  color: var(--color-text);
 `;
 
 const RecordingDetail = styled.span`
@@ -209,38 +209,38 @@ const RecordingDetail = styled.span`
 const TextActionButton = styled.button`
   padding: 0.75rem 1.25rem;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-family: 'Heebo', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
-  transition: all 0.3s ease;
+  transition: var(--transition-medium);
   position: relative;
   z-index: 1;
   min-width: 100px;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
   
   &:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    box-shadow: var(--shadow-md);
   }
   
   &.play {
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    color: white;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primaryHover));
+    color: var(--color-textOnPrimary);
     
     &:hover:not(:disabled) {
-      background: linear-gradient(135deg, #2980b9, #1f5f8b);
+      background: linear-gradient(135deg, var(--color-primaryHover), var(--color-primaryActive));
     }
   }
   
   &.delete {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-    color: white;
+    background: linear-gradient(135deg, var(--color-danger), var(--color-dangerHover));
+    color: var(--color-textOnPrimary);
     
     &:hover:not(:disabled) {
-      background: linear-gradient(135deg, #c0392b, #a93226);
+      background: linear-gradient(135deg, var(--color-dangerHover), var(--color-dangerActive));
     }
   }
 
@@ -248,23 +248,23 @@ const TextActionButton = styled.button`
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-xs);
     
     &:hover {
       transform: none;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      box-shadow: var(--shadow-xs);
     }
   }
 `;
 
 // AI Actions Button - Static Blue Styling
 const AIActionsButton = styled(TextActionButton)`
-  background: linear-gradient(135deg, #3498db, #2980b9);
-  color: white;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primaryHover));
+  color: var(--color-textOnPrimary);
   min-width: 80px;
   
   &:hover:not(:disabled) {
-    background: linear-gradient(135deg, #2980b9, #1f5f8b);
+    background: linear-gradient(135deg, var(--color-primaryHover), var(--color-primaryActive));
   }
 `;
 
@@ -277,39 +277,39 @@ const AIExpandedMenuButton = styled(TextActionButton)`
   gap: 0.5rem;
   
   &.ai-completed {
-    background: linear-gradient(135deg, #27ae60, #229954);
-    color: white;
+    background: linear-gradient(135deg, var(--color-success), var(--color-successHover));
+    color: var(--color-textOnPrimary);
     
     &:hover:not(:disabled) {
-      background: linear-gradient(135deg, #229954, #1e8449);
+      background: linear-gradient(135deg, var(--color-successHover), var(--color-successActive));
     }
   }
   
   &.ai-processing {
-    background: linear-gradient(135deg, #f39c12, #e67e22);
-    color: white;
+    background: linear-gradient(135deg, var(--color-warning), var(--color-warningHover));
+    color: var(--color-textOnPrimary);
     animation: aiPulse 2s infinite;
     
     &:hover:not(:disabled) {
-      background: linear-gradient(135deg, #e67e22, #d35400);
+      background: linear-gradient(135deg, var(--color-warningHover), var(--color-warningActive));
     }
   }
   
   &.ai-failed {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-    color: white;
+    background: linear-gradient(135deg, var(--color-danger), var(--color-dangerHover));
+    color: var(--color-textOnPrimary);
     
     &:hover:not(:disabled) {
-      background: linear-gradient(135deg, #c0392b, #a93226);
+      background: linear-gradient(135deg, var(--color-dangerHover), var(--color-dangerActive));
     }
   }
   
   &.ai-pending {
-    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
-    color: white;
+    background: linear-gradient(135deg, var(--color-disabled), var(--color-textSecondary));
+    color: var(--color-textOnPrimary);
     
     &:hover:not(:disabled) {
-      background: linear-gradient(135deg, #7f8c8d, #6c7b7d);
+      background: linear-gradient(135deg, var(--color-textSecondary), var(--color-text));
     }
   }
   
@@ -332,11 +332,11 @@ const AIStatusButtonText = styled.span`
 // Expandable AI Status Components
 const ExpandableAIStatus = styled.div`
   margin-bottom: 1rem;
-  border-radius: 8px;
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  border-radius: var(--radius-md);
+  background: var(--color-surfaceElevated);
+  border: 1px solid var(--color-border);
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: var(--transition-medium);
 `;
 
 const AIStatusHeader = styled.div`
@@ -347,22 +347,22 @@ const AIStatusHeader = styled.div`
   cursor: pointer;
   background: ${props => {
     switch (props.status) {
-      case 'completed': return 'linear-gradient(135deg, #d5f4e6, #c8e6c9)';
-      case 'processing': return 'linear-gradient(135deg, #fef9e7, #fff3cd)';
-      case 'failed': return 'linear-gradient(135deg, #fadbd8, #f8d7da)';
-      default: return 'linear-gradient(135deg, #ebf3fd, #d1ecf1)';
+      case 'completed': return 'linear-gradient(135deg, var(--color-successLight), var(--color-successLighter))';
+      case 'processing': return 'linear-gradient(135deg, var(--color-warningLight), var(--color-warningLighter))';
+      case 'failed': return 'linear-gradient(135deg, var(--color-dangerLight), var(--color-dangerLighter))';
+      default: return 'linear-gradient(135deg, var(--color-primaryLight), var(--color-primaryLighter))';
     }
   }};
-  border-bottom: ${props => props.expanded ? '1px solid #e9ecef' : 'none'};
-  transition: all 0.3s ease;
+  border-bottom: ${props => props.expanded ? `1px solid var(--color-border)` : 'none'};
+  transition: var(--transition-medium);
   
   &:hover {
     background: ${props => {
       switch (props.status) {
-        case 'completed': return 'linear-gradient(135deg, #c8e6c9, #a5d6a7)';
-        case 'processing': return 'linear-gradient(135deg, #fff3cd, #ffe082)';
-        case 'failed': return 'linear-gradient(135deg, #f8d7da, #f5c6cb)';
-        default: return 'linear-gradient(135deg, #d1ecf1, #b3e5fc)';
+        case 'completed': return 'linear-gradient(135deg, var(--color-successLighter), var(--color-success))';
+        case 'processing': return 'linear-gradient(135deg, var(--color-warningLighter), var(--color-warning))';
+        case 'failed': return 'linear-gradient(135deg, var(--color-dangerLighter), var(--color-danger))';
+        default: return 'linear-gradient(135deg, var(--color-primaryLighter), var(--color-primary))';
       }
     }};
   }
@@ -383,13 +383,13 @@ const AIStatusIcon = styled.div`
   justify-content: center;
   font-size: 14px;
   font-weight: bold;
-  color: white;
+  color: var(--color-textOnPrimary);
   background: ${props => {
     switch (props.status) {
-      case 'completed': return '#27ae60';
-      case 'processing': return '#f39c12';
-      case 'failed': return '#e74c3c';
-      default: return '#3498db';
+      case 'completed': return 'var(--color-success)';
+      case 'processing': return 'var(--color-warning)';
+      case 'failed': return 'var(--color-danger)';
+      default: return 'var(--color-primary)';
     }
   }};
   
@@ -412,19 +412,19 @@ const AIStatusText = styled.div`
 const AIStatusTitle = styled.span`
   font-weight: 600;
   font-size: 1rem;
-  color: #2c3e50;
+  color: var(--color-text);
 `;
 
 const AIStatusSubtitle = styled.span`
   font-size: 0.85rem;
-  color: #666;
+  color: var(--color-textSecondary);
   font-weight: 500;
 `;
 
 const AIStatusToggle = styled.div`
   font-size: 1.2rem;
-  color: #666;
-  transition: transform 0.3s ease;
+  color: var(--color-textSecondary);
+  transition: var(--transition-medium);
   transform: ${props => props.expanded ? 'rotate(180deg)' : 'rotate(0deg)'};
 `;
 
@@ -433,8 +433,8 @@ const AIStatusContent = styled.div`
   max-height: ${props => props.expanded ? '400px' : '0'};
   overflow-y: ${props => props.expanded ? 'auto' : 'hidden'};
   overflow-x: hidden;
-  transition: all 0.3s ease;
-  background: white;
+  transition: var(--transition-medium);
+  background: var(--color-surface);
   
   /* Custom scrollbar styling */
   &::-webkit-scrollbar {
@@ -442,16 +442,16 @@ const AIStatusContent = styled.div`
   }
   
   &::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--color-surfaceElevated);
     border-radius: 3px;
   }
   
   &::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
+    background: var(--color-border);
     border-radius: 3px;
     
     &:hover {
-      background: #a8a8a8;
+      background: var(--color-textSecondary);
     }
   }
 `;
@@ -472,19 +472,19 @@ const AIStageCard = styled.div`
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  background: #fafbfc;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  background: var(--color-surfaceElevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
   font-family: 'Heebo', sans-serif;
   text-align: right;
   width: 100%;
   
   &:hover:not(:disabled) {
-    background: #f5f6fa;
-    border-color: #e9ecef;
+    background: var(--color-surface);
+    border-color: var(--color-borderHover);
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-md);
   }
   
   &:disabled {
@@ -508,24 +508,24 @@ const AIStageCardIcon = styled.div`
   flex-shrink: 0;
   
   &.success {
-    background-color: #27ae60;
-    color: white;
+    background-color: var(--color-success);
+    color: var(--color-textOnPrimary);
   }
   
   &.failed {
-    background-color: #e74c3c;
-    color: white;
+    background-color: var(--color-danger);
+    color: var(--color-textOnPrimary);
   }
   
   &.processing {
-    background-color: #f39c12;
-    color: white;
+    background-color: var(--color-warning);
+    color: var(--color-textOnPrimary);
     animation: stagePulse 1.5s infinite;
   }
   
   &.pending {
-    background-color: #bdc3c7;
-    color: white;
+    background-color: var(--color-disabled);
+    color: var(--color-textOnPrimary);
   }
   
   @keyframes stagePulse {
@@ -544,12 +544,12 @@ const AIStageCardContent = styled.div`
 const AIStageCardTitle = styled.span`
   font-weight: 600;
   font-size: 1rem;
-  color: #2c3e50;
+  color: var(--color-text);
 `;
 
 const AIStageCardStatus = styled.span`
   font-size: 0.85rem;
-  color: #666;
+  color: var(--color-textSecondary);
   font-weight: 500;
 `;
 
@@ -558,15 +558,15 @@ const AIStageCardMeta = styled.div`
   align-items: center;
   gap: 0.5rem;
   font-size: 0.8rem;
-  color: #999;
+  color: var(--color-textTertiary);
 `;
 
 const ErrorExpandSection = styled.div`
   margin-top: 1rem;
   padding: 1rem;
-  background: #fff5f5;
-  border: 1px solid #fed7d7;
-  border-radius: 8px;
+  background: var(--color-dangerLighter);
+  border: 1px solid var(--color-dangerLight);
+  border-radius: var(--radius-md);
 `;
 
 const ErrorExpandHeader = styled.div`
@@ -574,7 +574,7 @@ const ErrorExpandHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  color: #e74c3c;
+  color: var(--color-danger);
   font-weight: 600;
   margin-bottom: 0.5rem;
 `;
@@ -582,8 +582,8 @@ const ErrorExpandHeader = styled.div`
 const ErrorExpandContent = styled.div`
   max-height: ${props => props.expanded ? '200px' : '0'};
   overflow: hidden;
-  transition: max-height 0.3s ease;
-  color: #c53030;
+  transition: var(--transition-medium);
+  color: var(--color-dangerDark);
   font-size: 0.85rem;
   line-height: 1.4;
 `;
@@ -600,8 +600,8 @@ const ButtonsRow = styled.div`
 
 const AIMenuHeader = styled.div`
   padding: 1rem;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
+  background: var(--color-surfaceElevated);
+  border-bottom: 1px solid var(--color-border);
 `;
 
 const AIMenuHeaderTitle = styled.div`
@@ -609,20 +609,20 @@ const AIMenuHeaderTitle = styled.div`
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--color-text);
   margin-bottom: 0.5rem;
   font-size: 1rem;
 `;
 
 const AIMenuHeaderStatus = styled.div`
   font-size: 0.85rem;
-  color: #666;
+  color: var(--color-textSecondary);
   font-weight: 500;
 `;
 
 const AIMenuStages = styled.div`
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--color-borderLight);
 `;
 
 const AIMenuStagesHeader = styled.div`
@@ -633,10 +633,10 @@ const AIMenuStagesHeader = styled.div`
   padding: 0.25rem 0;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #2c3e50;
+  color: var(--color-text);
   
   &:hover {
-    color: #3498db;
+    color: var(--color-primary);
   }
 `;
 
@@ -653,9 +653,9 @@ const AIMenuStageItem = styled.div`
   gap: 0.75rem;
   font-size: 0.85rem;
   padding: 0.5rem;
-  background: #fafbfc;
-  border-radius: 6px;
-  border: 1px solid #f0f0f0;
+  background: var(--color-surfaceElevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-borderLight);
 `;
 
 const AIMenuStageIcon = styled.div`
@@ -670,24 +670,24 @@ const AIMenuStageIcon = styled.div`
   flex-shrink: 0;
   
   &.success {
-    background-color: #27ae60;
-    color: white;
+    background-color: var(--color-success);
+    color: var(--color-textOnPrimary);
   }
   
   &.failed {
-    background-color: #e74c3c;
-    color: white;
+    background-color: var(--color-danger);
+    color: var(--color-textOnPrimary);
   }
   
   &.processing {
-    background-color: #f39c12;
-    color: white;
+    background-color: var(--color-warning);
+    color: var(--color-textOnPrimary);
     animation: pulse 1.5s infinite;
   }
   
   &.pending {
-    background-color: #bdc3c7;
-    color: white;
+    background-color: var(--color-disabled);
+    color: var(--color-textOnPrimary);
   }
   
   @keyframes pulse {
@@ -698,13 +698,13 @@ const AIMenuStageIcon = styled.div`
 
 const AIMenuStageText = styled.span`
   flex: 1;
-  color: #2c3e50;
+  color: var(--color-text);
   font-weight: 500;
 `;
 
 const AIMenuStageStatus = styled.span`
   font-size: 0.8rem;
-  color: #666;
+  color: var(--color-textSecondary);
   font-weight: 400;
 `;
 
@@ -893,22 +893,22 @@ const ActionButton = styled.button`
 const LoadingMessage = styled.div`
   text-align: center;
   padding: 2rem;
-  color: #7f8c8d;
+  color: var(--color-textSecondary);
   font-size: 1.1rem;
 `;
 
 const ErrorMessage = styled.div`
-  background-color: #fadbd8;
-  color: #e74c3c;
+  background-color: var(--color-dangerLight);
+  color: var(--color-danger);
   padding: 1rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   margin-bottom: 1rem;
 `;
 
 const EmptyState = styled.div`
   text-align: center;
   padding: 3rem;
-  color: #7f8c8d;
+  color: var(--color-textSecondary);
 `;
 
 const ProcessingModal = styled.div`
@@ -925,16 +925,16 @@ const ProcessingModal = styled.div`
 `;
 
 const ModalContent = styled.div`
-  background: white;
+  background: var(--color-surface);
   padding: 2rem;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   max-width: 500px;
   width: 90%;
   text-align: center;
 `;
 
 const ModalTitle = styled.h3`
-  color: #2c3e50;
+  color: var(--color-text);
   margin-bottom: 1rem;
 `;
 
@@ -957,7 +957,7 @@ const Checkbox = styled.input`
 `;
 
 const CheckboxLabel = styled.label`
-  color: #2c3e50;
+  color: var(--color-text);
   cursor: pointer;
 `;
 
