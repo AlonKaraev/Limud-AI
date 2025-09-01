@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Tag Assignment Interface - Limud AI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e5e9;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+        }
+        
+        .header p {
+            color: #6c757d;
+            margin: 0;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .test-section h2 {
+            color: #495057;
+            margin-top: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin: 5px;
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #1e7e34;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .demo-card {
+            background: white;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .demo-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        
+        .demo-tag {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        
+        .instructions ul {
+            margin: 10px 0;
+            padding-right: 20px;
+        }
+        
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏷️ בדיקת ממשק הקצאת תגיות</h1>
+            <p>בדיקה של הפונקציונליות החדשה להוספת ועריכת תגיות בכרטיסי זיכרון</p>
+        </div>
+
+        <div class="instructions">
+            <h3>📋 הוראות לבדיקה:</h3>
+            <ul>
+                <li>לחץ על "פתח ממשק יצירת כרטיס" כדי לגשת לטופס יצירת כרטיס זיכרון</li>
+                <li>גלול למטה לקטע "הגדרות נוספות" ומצא את שדה "תגיות"</li>
+                <li>הקש שם תגית והקש Enter או פסיק כדי להוסיף אותה</li>
+                <li>לחץ על ה-X ליד תגית כדי להסיר אותה</li>
+                <li>בדוק שהתגיות מופיעות בתצוגה המקדימה של הכרטיס</li>
+                <li>נסה ליצור כרטיס עם תגיות ובדוק שהן נשמרות</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 בדיקות פונקציונליות</h2>
+            
+            <div class="form-group">
+                <label class="form-label">בדיקת ממשק יצירת כרטיס:</label>
+                <button class="btn btn-primary" onclick="openMemoryCardForm()">
+                    פתח ממשק יצירת כרטיס
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">בדיקת API של תגיות:</label>
+                <button class="btn btn-success" onclick="testTagsAPI()">
+                    בדוק API תגיות
+                </button>
+            </div>
+            
+            <div id="status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📝 דוגמאות תגיות</h2>
+            <p>כך אמורות להיראות התגיות בכרטיסי הזיכרון:</p>
+            
+            <div class="demo-card">
+                <h3>כרטיס דוגמה - מתמטיקה</h3>
+                <p><strong>שאלה:</strong> מה זה 2 + 2?</p>
+                <p><strong>תשובה:</strong> 4</p>
+                <div class="demo-tags">
+                    <span class="demo-tag">מתמטיקה</span>
+                    <span class="demo-tag">חיבור</span>
+                    <span class="demo-tag">בסיסי</span>
+                    <span class="demo-tag">כיתה א'</span>
+                </div>
+            </div>
+            
+            <div class="demo-card">
+                <h3>כרטיס דוגמה - עברית</h3>
+                <p><strong>שאלה:</strong> מה זה נרדף למילה "גדול"?</p>
+                <p><strong>תשובה:</strong> ענק, רב, עצום</p>
+                <div class="demo-tags">
+                    <span class="demo-tag">עברית</span>
+                    <span class="demo-tag">מילים נרדפות</span>
+                    <span class="demo-tag">אוצר מילים</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>✅ רשימת בדיקות</h2>
+            <div id="checklist">
+                <div class="status info">
+                    <strong>בדיקות שיש לבצע:</strong>
+                    <ul>
+                        <li>✅ יצירת רכיב TagInput</li>
+                        <li>✅ עיצוב CSS לתגיות</li>
+                        <li>✅ שילוב בטופס יצירת כרטיס</li>
+                        <li>🔄 בדיקת הוספת תגיות עם Enter</li>
+                        <li>🔄 בדיקת הסרת תגיות עם X</li>
+                        <li>🔄 בדיקת שמירת תגיות בבסיס הנתונים</li>
+                        <li>🔄 בדיקת הצגת תגיות בכרטיסים</li>
+                        <li>🔄 בדיקת תצוגה מקדימה עם תגיות</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function openMemoryCardForm() {
+            showStatus('פותח ממשק יצירת כרטיס זיכרון...', 'info');
+            
+            // Try to open the React app
+            const newWindow = window.open('http://localhost:3001', '_blank');
+            
+            if (newWindow) {
+                showStatus('✅ ממשק יצירת כרטיס נפתח בחלון חדש. חפש את קטע "תגיות" בטופס.', 'success');
+            } else {
+                showStatus('❌ לא ניתן לפתוח את הממשק. ודא שהשרת פועל על http://localhost:3001', 'error');
+            }
+        }
+
+        async function testTagsAPI() {
+            showStatus('בודק חיבור ל-API...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/memory-cards/sets/user/1', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    showStatus('✅ API פועל תקין! ניתן לבדוק את פונקציונליות התגיות.', 'success');
+                } else {
+                    showStatus(`⚠️ API מחזיר שגיאה: ${response.status}. ייתכן שנדרשת הזדהות.`, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ שגיאה בחיבור ל-API: ${error.message}. ודא שהשרת פועל.`, 'error');
+            }
+        }
+
+        // Auto-test API connection on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                showStatus('🚀 עמוד הבדיקה נטען בהצלחה. לחץ על הכפתורים כדי לבדוק את הפונקציונליות.', 'success');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { heTranslations } from './translations';
 import { ThemeProvider, useTheme, ThemeToggleButton } from './contexts/ThemeContext';
+import tokenManager from './utils/TokenManager';
 import './styles/theme.css';
 import './styles/components.css';
 import './styles/forms.css';
@@ -9,6 +10,7 @@ import SessionManager from './components/SessionManager';
 import LessonsManager from './components/LessonsManager';
 import PrincipalDashboard from './components/PrincipalDashboard';
 import StudentDashboard from './components/StudentDashboard';
+import TeacherDashboard from './components/TeacherDashboard';
 
 // Create contexts for global state management
 const AuthContext = createContext();
@@ -40,96 +42,160 @@ const getNestedTranslation = (obj, path) => {
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('token'));
 
   useEffect(() => {
-    if (token) {
-      // Verify token and get user data
-      fetchUserProfile();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
+    // Check if user is already authenticated
+    initializeAuth();
+    
+    // Listen for token events
+    const handleTokenExpired = () => {
+      console.log('🔄 Token expired, clearing user state');
+      setUser(null);
+    };
+    
+    const handleTokenRefreshed = (event) => {
+      console.log('🔄 Token refreshed, updating user data');
+      if (event.detail.user) {
+        setUser(event.detail.user);
+      }
+    };
+    
+    const handleAuthFailed = () => {
+      console.log('🔄 Authentication failed, clearing user state');
+      setUser(null);
+    };
 
-  const fetchUserProfile = async () => {
+    window.addEventListener('tokenExpired', handleTokenExpired);
+    window.addEventListener('tokenRefreshed', handleTokenRefreshed);
+    window.addEventListener('authenticationFailed', handleAuthFailed);
+
+    return () => {
+      window.removeEventListener('tokenExpired', handleTokenExpired);
+      window.removeEventListener('tokenRefreshed', handleTokenRefreshed);
+      window.removeEventListener('authenticationFailed', handleAuthFailed);
+    };
+  }, []);
+
+  const initializeAuth = async () => {
     try {
-      const response = await fetch('/api/auth/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // Check if we have a valid token
+      if (tokenManager.isAuthenticated()) {
+        const userData = tokenManager.getUserData();
+        if (userData) {
+          setUser(userData);
+          console.log('✅ User authenticated from stored token:', userData.email);
+        } else {
+          // Token exists but no user data, validate with server
+          await validateCurrentUser();
         }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-      } else {
-        // Token is invalid
-        logout();
       }
     } catch (error) {
-      console.error('Error fetching user profile:', error);
-      logout();
+      console.error('❌ Error initializing auth:', error);
+      tokenManager.clearToken();
     } finally {
       setLoading(false);
     }
   };
 
+  const validateCurrentUser = async () => {
+    try {
+      const response = await tokenManager.authenticatedFetch('/api/auth/validate');
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.user) {
+          setUser(data.user);
+          // Update stored user data
+          tokenManager.setToken(tokenManager.getToken(), data.user);
+          console.log('✅ User validated with server:', data.user.email);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error validating user:', error);
+      tokenManager.clearToken();
+      setUser(null);
+    }
+  };
+
   const login = async (email, password) => {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email, password })
-    });
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (response.ok) {
-      setToken(data.token);
-      setUser(data.user);
-      localStorage.setItem('token', data.token);
-      return { success: true, data };
-    } else {
-      return { success: false, error: data.error };
+      if (response.ok && data.success) {
+        // Use TokenManager to store token and user data
+        tokenManager.setToken(data.token, data.user);
+        setUser(data.user);
+        console.log('✅ Login successful:', data.user.email);
+        return { success: true, data };
+      } else {
+        console.log('❌ Login failed:', data.error);
+        return { success: false, error: data.error };
+      }
+    } catch (error) {
+      console.error('❌ Login error:', error);
+      return { success: false, error: 'שגיאה בתהליך ההתחברות' };
     }
   };
 
   const register = async (userData) => {
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(userData)
-    });
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (response.ok) {
-      setToken(data.token);
-      setUser(data.user);
-      localStorage.setItem('token', data.token);
-      return { success: true, data };
-    } else {
-      return { success: false, error: data.error };
+      if (response.ok && data.success) {
+        console.log('✅ Registration successful:', data.user.email);
+        return { success: true, data };
+      } else {
+        console.log('❌ Registration failed:', data.error);
+        return { success: false, error: data.error };
+      }
+    } catch (error) {
+      console.error('❌ Registration error:', error);
+      return { success: false, error: 'שגיאה ביצירת המשתמש' };
     }
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      // Call server logout endpoint if authenticated
+      if (tokenManager.isAuthenticated()) {
+        await tokenManager.authenticatedFetch('/api/auth/logout', {
+          method: 'POST'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+    } finally {
+      // Always clear local state
+      tokenManager.clearToken();
+      setUser(null);
+      console.log('✅ User logged out');
+    }
   };
 
   const value = {
     user,
-    token,
     loading,
     login,
     register,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    tokenManager // Expose tokenManager for advanced usage
   };
 
   return (
@@ -524,7 +590,6 @@ const RegisterForm = () => {
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState('overview');
   const [fileStorageService] = useState(() => new (require('./services/FileStorageService').default)());
   const [isProcessingRecording, setIsProcessingRecording] = useState(false);
 
@@ -538,146 +603,22 @@ const Dashboard = () => {
     return <StudentDashboard user={user} onLogout={logout} />;
   }
 
-  const handleRecordingComplete = async (recordingData) => {
-    // Prevent duplicate processing
-    if (isProcessingRecording) {
-      console.log('Recording already being processed, ignoring duplicate call');
-      return;
-    }
+  // If user is teacher, show Teacher Dashboard
+  if (user.role === 'teacher') {
+    return (
+      <TeacherDashboard 
+        user={user}
+        t={t}
+        onLogout={logout}
+        fileStorageService={fileStorageService}
+        isProcessingRecording={isProcessingRecording}
+        setIsProcessingRecording={setIsProcessingRecording}
+      />
+    );
+  }
 
-    setIsProcessingRecording(true);
-    
-    try {
-      console.log('Processing recording completion:', {
-        duration: recordingData.duration,
-        qualityReportDuration: recordingData.qualityReport?.duration,
-        blobSize: recordingData.audioBlob?.size,
-        aiOptions: recordingData.aiOptions
-      });
-      
-      const result = await fileStorageService.saveRecording(recordingData);
-      console.log('Recording saved successfully:', result);
-      
-      // Trigger AI processing if requested
-      if (recordingData.aiOptions && (recordingData.aiOptions.generateSummary || recordingData.aiOptions.generateTest)) {
-        console.log('Triggering AI processing for recording:', result.recordingId);
-        await triggerAIProcessing(result.recordingId, recordingData.aiOptions);
-      }
-      
-      // Switch to lessons tab to show the new recording with AI content
-      setActiveTab('lessons');
-    } catch (error) {
-      console.error('Error saving recording:', error);
-    } finally {
-      // Reset the flag after a short delay to allow for legitimate subsequent recordings
-      setTimeout(() => {
-        setIsProcessingRecording(false);
-      }, 2000);
-    }
-  };
-
-  const triggerAIProcessing = async (recordingId, aiOptions) => {
-    try {
-      const token = localStorage.getItem('token');
-      const processingOptions = [];
-      
-      if (aiOptions.generateSummary) {
-        processingOptions.push('summary');
-      }
-      if (aiOptions.generateTest) {
-        processingOptions.push('questions');
-      }
-      
-      const response = await fetch('/api/ai-content/process-recording', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          recordingId,
-          processingOptions
-        })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log('AI processing initiated:', result);
-      } else {
-        const error = await response.json();
-        console.error('Failed to initiate AI processing:', error);
-      }
-    } catch (error) {
-      console.error('Error triggering AI processing:', error);
-    }
-  };
-
-  return (
-    <>
-      <div className="card">
-        <div className="card-header">
-          <h2 className="card-title">
-            {user.role === 'teacher' ? t('dashboard.teacherDashboard') : t('dashboard.studentDashboard')}
-          </h2>
-          <p className="card-subtitle">
-            {t('dashboard.welcome')}, {user.firstName} {user.lastName}!
-          </p>
-        </div>
-        
-        {user.role === 'teacher' && (
-          <div className="nav-tabs">
-            <div className="nav-tabs-header">
-              <button
-                className={`nav-tab ${activeTab === 'overview' ? 'active' : ''}`}
-                onClick={() => setActiveTab('overview')}
-              >
-                סקירה כללית
-              </button>
-              <button
-                className={`nav-tab ${activeTab === 'lessons' ? 'active' : ''}`}
-                onClick={() => setActiveTab('lessons')}
-              >
-                שיעורים
-              </button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'overview' && (
-          <div className="d-flex gap-2" style={{ flexWrap: 'wrap' }}>
-            <div className="card" style={{ flex: '1', minWidth: '200px', marginBottom: '1rem' }}>
-              <h3 className="card-title">
-                {t('dashboard.recentActivity')}
-              </h3>
-              <p className="card-subtitle">
-                {t('forms.noData')}
-              </p>
-            </div>
-            <div className="card" style={{ flex: '1', minWidth: '200px', marginBottom: '1rem' }}>
-              <h3 className="card-title">
-                {t('dashboard.quickActions')}
-              </h3>
-              <p className="card-subtitle">
-                {user.role === 'teacher' ? 'השתמש בלשוניות למעלה לגישה להקלטת שיעורים וניהול הקלטות' : 'בקרוב...'}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {user.role === 'teacher' && activeTab === 'record' && (
-        <RecordingInterface t={t} onRecordingComplete={handleRecordingComplete} />
-      )}
-
-      {user.role === 'teacher' && activeTab === 'sessions' && (
-        <SessionManager t={t} />
-      )}
-
-      {user.role === 'teacher' && activeTab === 'lessons' && (
-        <LessonsManager t={t} />
-      )}
-    </>
-  );
+  // Fallback for other roles (shouldn't happen with current logic)
+  return null;
 };
 
 // Main App Component

@@ -289,6 +289,30 @@ class ErrorLogger {
   }
 
   /**
+   * Log client errors (alias for logError for backward compatibility)
+   */
+  logClientError(error, details = {}) {
+    if (!this.isDevelopment) return;
+    
+    const timestamp = this.getTimestamp();
+    
+    console.group(`❌ [CLIENT ERROR] ${timestamp}`);
+    console.error(`Message: ${error.message || error}`);
+    
+    Object.keys(details).forEach(key => {
+      if (details[key] !== undefined && details[key] !== null) {
+        console.error(`${key}:`, details[key]);
+      }
+    });
+    
+    if (error && error.stack) {
+      console.error(`Stack:`, error.stack);
+    }
+    
+    console.groupEnd();
+  }
+
+  /**
    * Log network errors with request details
    */
   logNetworkError(details = {}) {

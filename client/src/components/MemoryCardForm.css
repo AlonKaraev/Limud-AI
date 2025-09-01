@@ -1,0 +1,589 @@
+/* Memory Card Form Styles */
+/* Component-specific styles for the Memory Card creation form */
+
+.memory-card-form-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: var(--color-surface, #ffffff);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  direction: rtl;
+  font-family: 'Heebo', sans-serif;
+}
+
+.memory-card-form-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid var(--color-border, #e9ecef);
+}
+
+.memory-card-form-header h2 {
+  color: var(--color-primary, #3498db);
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.memory-card-form-header p {
+  color: var(--color-textSecondary, #7f8c8d);
+  font-size: 1.1rem;
+  margin: 0;
+  text-align: center;
+}
+
+/* Form Sections */
+.form-section {
+  margin-bottom: 2.5rem;
+  padding: 1.5rem;
+  background: var(--color-surfaceHover, #f8f9fa);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-border, #e9ecef);
+}
+
+.form-section h3 {
+  color: var(--color-text, #2c3e50);
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border, #e9ecef);
+  text-align: right;
+}
+
+/* New Set Fields */
+.new-set-fields {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: var(--color-surface, #ffffff);
+  border-radius: var(--radius-md, 8px);
+  border: 2px dashed var(--color-primary, #3498db);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Card Content Layout */
+.card-content-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.card-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card-preview-section {
+  position: sticky;
+  top: 2rem;
+  background: var(--color-surface, #ffffff);
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.5rem;
+  border: 2px solid var(--color-primary, #3498db);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.1);
+}
+
+.preview-title {
+  color: var(--color-primary, #3498db);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.preview-title::before {
+  content: '👁️';
+  font-size: 1.1rem;
+}
+
+.preview-description {
+  color: var(--color-textSecondary, #6c757d);
+  font-size: 0.9rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.form-preview {
+  margin: 0;
+}
+
+/* Card Text Areas */
+.card-text-area {
+  min-height: 120px;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: 'Heebo', sans-serif;
+}
+
+.card-text-area:focus {
+  min-height: 150px;
+  transition: min-height 0.3s ease;
+}
+
+/* Success and Error Messages */
+.success-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  color: var(--color-success, #155724);
+  border: 1px solid var(--color-success, #c3e6cb);
+  border-radius: var(--radius-md, 8px);
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+  animation: fadeInScale 0.4s ease-out;
+}
+
+.success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: var(--color-success, #28a745);
+  color: white;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  color: var(--color-error, #721c24);
+  border: 1px solid var(--color-error, #f5c6cb);
+  border-radius: var(--radius-md, 8px);
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+  animation: shake 0.5s ease-in-out;
+}
+
+.error-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: var(--color-error, #dc3545);
+  color: white;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Form Styling Overrides */
+.memory-card-form .form-input,
+.memory-card-form .form-select,
+.memory-card-form .form-textarea {
+  font-size: 1rem;
+  padding: 0.875rem;
+  border-width: 2px;
+  transition: all 0.3s ease;
+}
+
+.memory-card-form .form-input:focus,
+.memory-card-form .form-select:focus,
+.memory-card-form .form-textarea:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+}
+
+.memory-card-form .form-label {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text, #2c3e50);
+  margin-bottom: 0.75rem;
+}
+
+.memory-card-form .form-help {
+  font-size: 0.9rem;
+  color: var(--color-textSecondary, #6c757d);
+  margin-top: 0.5rem;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+/* Button Styles */
+.memory-card-form .btn {
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: var(--radius-md, 8px);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Heebo', sans-serif;
+  min-width: 120px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.memory-card-form .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.memory-card-form .btn-primary {
+  background: linear-gradient(135deg, var(--color-primary, #3498db) 0%, #2980b9 100%);
+  color: white;
+  border-color: var(--color-primary, #3498db);
+}
+
+.memory-card-form .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2980b9 0%, #1f5f8b 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.memory-card-form .btn-outline {
+  background: transparent;
+  color: var(--color-primary, #3498db);
+  border-color: var(--color-primary, #3498db);
+}
+
+.memory-card-form .btn-outline:hover:not(:disabled) {
+  background: var(--color-primary, #3498db);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+}
+
+.memory-card-form .btn-secondary {
+  background: var(--color-surfaceHover, #f8f9fa);
+  color: var(--color-textSecondary, #6c757d);
+  border-color: var(--color-border, #dee2e6);
+}
+
+.memory-card-form .btn-secondary:hover:not(:disabled) {
+  background: var(--color-border, #dee2e6);
+  color: var(--color-text, #495057);
+  transform: translateY(-1px);
+}
+
+/* Form Actions */
+.memory-card-form .form-actions {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 2px solid var(--color-border, #e9ecef);
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* Loading States */
+.memory-card-form .btn:disabled {
+  position: relative;
+}
+
+.memory-card-form .btn:disabled::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .memory-card-form-container {
+    max-width: 900px;
+  }
+
+  .card-content-layout {
+    gap: 1.5rem;
+  }
+
+  .card-preview-section {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .memory-card-form-container {
+    padding: 1.5rem;
+    margin: 1rem;
+    max-width: 100%;
+  }
+
+  .memory-card-form-header h2 {
+    font-size: 1.75rem;
+  }
+
+  .form-section {
+    padding: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .form-section h3 {
+    font-size: 1.2rem;
+  }
+
+  .new-set-fields {
+    padding: 1rem;
+  }
+
+  .card-content-layout {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .card-preview-section {
+    order: -1;
+    position: static;
+    padding: 1rem;
+  }
+
+  .preview-title {
+    font-size: 1.1rem;
+  }
+
+  .memory-card-form .form-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .memory-card-form .btn {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .card-text-area {
+    min-height: 100px;
+  }
+
+  .card-text-area:focus {
+    min-height: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .memory-card-form-container {
+    padding: 1rem;
+    margin: 0.5rem;
+  }
+
+  .memory-card-form-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+  }
+
+  .memory-card-form-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .memory-card-form-header p {
+    font-size: 1rem;
+  }
+
+  .form-section {
+    padding: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .memory-card-form .form-input,
+  .memory-card-form .form-select,
+  .memory-card-form .form-textarea {
+    font-size: 0.95rem;
+    padding: 0.75rem;
+  }
+
+  .memory-card-form .btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .memory-card-form-container {
+    border: 3px solid var(--color-text, #000);
+  }
+
+  .form-section {
+    border-width: 2px;
+  }
+
+  .memory-card-form .form-input,
+  .memory-card-form .form-select,
+  .memory-card-form .form-textarea {
+    border-width: 3px;
+  }
+
+  .memory-card-form .btn {
+    border-width: 3px;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .memory-card-form-container *,
+  .memory-card-form-container *::before,
+  .memory-card-form-container *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .memory-card-form-container {
+    background: var(--color-surface, #2d2d2d);
+    color: var(--color-text, #ffffff);
+  }
+
+  .form-section {
+    background: var(--color-surfaceHover, #3d3d3d);
+    border-color: var(--color-border, #555);
+  }
+
+  .new-set-fields {
+    background: var(--color-surface, #2d2d2d);
+    border-color: var(--color-primary, #3498db);
+  }
+
+  .success-message {
+    background: linear-gradient(135deg, #1e4d2b 0%, #2d5a3d 100%);
+    color: #a3d9a5;
+    border-color: #2d5a3d;
+  }
+
+  .error-message {
+    background: linear-gradient(135deg, #4d1e1e 0%, #5a2d2d 100%);
+    color: #f5a3a3;
+    border-color: #5a2d2d;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .memory-card-form-container {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+
+  .memory-card-form .form-actions,
+  .success-message,
+  .error-message {
+    display: none;
+  }
+
+  .form-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* Focus Management for Accessibility */
+.memory-card-form .form-input:focus,
+.memory-card-form .form-select:focus,
+.memory-card-form .form-textarea:focus {
+  outline: 3px solid var(--color-primary, #3498db);
+  outline-offset: 2px;
+}
+
+.memory-card-form .btn:focus {
+  outline: 3px solid var(--color-primary, #3498db);
+  outline-offset: 2px;
+}
+
+/* Skip to content for screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Form validation visual feedback */
+.memory-card-form .form-input.error,
+.memory-card-form .form-select.error,
+.memory-card-form .form-textarea.error {
+  border-color: var(--color-error, #dc3545);
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+  animation: errorPulse 0.6s ease-in-out;
+}
+
+@keyframes errorPulse {
+  0% { box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1); }
+  50% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0.2); }
+  100% { box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1); }
+}
+
+.memory-card-form .form-error {
+  color: var(--color-error, #dc3545);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.memory-card-form .form-error::before {
+  content: '⚠';
+  font-size: 1rem;
+}

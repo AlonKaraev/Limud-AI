@@ -300,11 +300,70 @@ const ContentCard = ({ content, type, onView, onTest, loading = false }) => {
     return 'לא ידוע';
   };
 
+  // Generate a meaningful lesson title
+  const generateLessonTitle = (content) => {
+    // First priority: Use teacher-provided lesson name if available
+    if (content.lesson_name && content.lesson_name.trim()) {
+      return content.lesson_name.trim();
+    }
+    
+    // Second priority: Only use AI-generated naming if teacher explicitly enabled it
+    if (content.use_ai_naming) {
+      // If we have key topics, use the first one as the title
+      if (content.key_topics && content.key_topics.length > 0) {
+        return content.key_topics[0];
+      }
+      
+      // If we have a summary, extract the first meaningful sentence
+      if (content.summary_text) {
+        const sentences = content.summary_text.split(/[.!?]/).filter(s => s.trim().length > 10);
+        if (sentences.length > 0) {
+          const firstSentence = sentences[0].trim();
+          // Limit to reasonable length
+          return firstSentence.length > 60 ? firstSentence.substring(0, 60) + '...' : firstSentence;
+        }
+      }
+      
+      // Generate title based on subject area and date
+      if (content.subject_area && content.lesson_date) {
+        const date = new Date(content.lesson_date);
+        const dateStr = date.toLocaleDateString('he-IL', { 
+          day: 'numeric', 
+          month: 'long' 
+        });
+        return `שיעור ${content.subject_area} - ${dateStr}`;
+      }
+      
+      // Generate title based on subject area only
+      if (content.subject_area) {
+        return `שיעור ${content.subject_area}`;
+      }
+      
+      // Generate title based on class name
+      if (content.class_name) {
+        return `שיעור ${content.class_name}`;
+      }
+    }
+    
+    // Fallback: clean up filename by removing extension and common prefixes
+    let cleanTitle = content.filename;
+    // Remove file extension
+    cleanTitle = cleanTitle.replace(/\.(mp3|wav|m4a|aac)$/i, '');
+    // Remove common recording prefixes
+    cleanTitle = cleanTitle.replace(/^(recording|lesson|שיעור|הקלטה)[-_\s]*/i, '');
+    // Replace underscores and dashes with spaces
+    cleanTitle = cleanTitle.replace(/[-_]/g, ' ');
+    // Capitalize first letter
+    cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+    
+    return cleanTitle || 'שיעור ללא שם';
+  };
+
   return (
     <article className="card card-interactive" tabIndex="0">
       <div className="card-header">
         <h3 className="card-title">
-          {type === 'test' ? (content.set_name || content.filename) : content.filename}
+          {type === 'test' ? (content.set_name || content.filename) : generateLessonTitle(content)}
         </h3>
         <div className="d-flex gap-1" style={{ flexWrap: 'wrap', marginTop: '0.5rem' }}>
           <span className="btn btn-sm" style={{ 
@@ -555,12 +614,64 @@ const StudentDashboard = ({ user, onLogout }) => {
     }
   }, [lessons.length, tests.length, loading.lessons, loading.tests, fetchLessons, fetchTests]);
 
+  // Helper function to generate lesson title (same logic as in ContentCard)
+  const generateLessonTitle = useCallback((content) => {
+    // First priority: Use teacher-provided lesson name if available
+    if (content.lesson_name && content.lesson_name.trim()) {
+      return content.lesson_name.trim();
+    }
+    
+    // Second priority: Only use AI-generated naming if teacher explicitly enabled it
+    if (content.use_ai_naming) {
+      if (content.key_topics && content.key_topics.length > 0) {
+        return content.key_topics[0];
+      }
+      
+      if (content.summary_text) {
+        const sentences = content.summary_text.split(/[.!?]/).filter(s => s.trim().length > 10);
+        if (sentences.length > 0) {
+          const firstSentence = sentences[0].trim();
+          return firstSentence.length > 60 ? firstSentence.substring(0, 60) + '...' : firstSentence;
+        }
+      }
+      
+      if (content.subject_area && content.lesson_date) {
+        const date = new Date(content.lesson_date);
+        const dateStr = date.toLocaleDateString('he-IL', { 
+          day: 'numeric', 
+          month: 'long' 
+        });
+        return `שיעור ${content.subject_area} - ${dateStr}`;
+      }
+      
+      if (content.subject_area) {
+        return `שיעור ${content.subject_area}`;
+      }
+      
+      if (content.class_name) {
+        return `שיעור ${content.class_name}`;
+      }
+    }
+    
+    let cleanTitle = content.filename;
+    cleanTitle = cleanTitle.replace(/\.(mp3|wav|m4a|aac)$/i, '');
+    cleanTitle = cleanTitle.replace(/^(recording|lesson|שיעור|הקלטה)[-_\s]*/i, '');
+    cleanTitle = cleanTitle.replace(/[-_]/g, ' ');
+    cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+    
+    return cleanTitle || 'שיעור ללא שם';
+  }, []);
+
   // Filtered and sorted data
   const filteredLessons = useMemo(() => {
-    let filtered = lessons.filter(lesson => 
-      lesson.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (lesson.summary_text && lesson.summary_text.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    let filtered = lessons.filter(lesson => {
+      const lessonTitle = generateLessonTitle(lesson);
+      return lessonTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lesson.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (lesson.summary_text && lesson.summary_text.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (lesson.subject_area && lesson.subject_area.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (lesson.class_name && lesson.class_name.toLowerCase().includes(searchTerm.toLowerCase()));
+    });
 
     if (filters.subject) {
       filtered = filtered.filter(lesson => lesson.subject_area === filters.subject);

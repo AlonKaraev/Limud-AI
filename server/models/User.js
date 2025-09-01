@@ -1,7 +1,15 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const path = require('path');
 const { query, run } = require('../config/database-sqlite');
+
+// Ensure environment variables are loaded - handle both development and production paths
+const envPath = process.cwd().includes('server') 
+  ? path.join(process.cwd(), '../.env')  // When running from server directory
+  : path.join(process.cwd(), '.env');    // When running from root directory
+
+require('dotenv').config({ path: envPath });
 
 class User {
   constructor(userData) {

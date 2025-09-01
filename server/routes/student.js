@@ -144,6 +144,8 @@ router.get('/lessons', authenticate, requireStudent, async (req, res) => {
         r.metadata,
         cs.id as content_share_id,
         cs.share_type,
+        cs.lesson_name,
+        cs.use_ai_naming,
         cs.start_date,
         cs.end_date,
         c.name as class_name,

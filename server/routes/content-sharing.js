@@ -106,6 +106,15 @@ const shareContentValidation = [
       // Convert to integer
       return parseInt(value, 10);
     }),
+  body('lessonName')
+    .optional()
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('שם השיעור לא יכול להכיל יותר מ-255 תווים'),
+  body('useAiNaming')
+    .optional()
+    .isBoolean()
+    .withMessage('הגדרת שימוש בשמות AI חייבת להיות true או false'),
   body('contentTypes')
     .isArray({ min: 1 })
     .withMessage('יש לבחור לפחות סוג תוכן אחד'),
@@ -369,7 +378,7 @@ router.post('/share', authenticate, shareContentValidation, async (req, res) => 
       });
     }
 
-    const { recordingId, contentTypes, classIds, startDate, endDate } = req.body;
+    const { recordingId, contentTypes, classIds, startDate, endDate, lessonName, useAiNaming } = req.body;
 
     // Enhanced logging for debugging
     console.log('Content sharing request:', {
@@ -550,7 +559,9 @@ router.post('/share', authenticate, shareContentValidation, async (req, res) => 
         contentTypes,
         classIds,
         startDate,
-        endDate
+        endDate,
+        lessonName,
+        useAiNaming
       });
       
       console.log('Content sharing completed successfully:', shareResults);
@@ -1106,7 +1117,7 @@ async function getAIContentForRecording(recordingId) {
   }
 }
 
-async function shareContentWithClasses({ recordingId, teacherId, contentTypes, classIds, startDate, endDate }) {
+async function shareContentWithClasses({ recordingId, teacherId, contentTypes, classIds, startDate, endDate, lessonName, useAiNaming }) {
   const { run, query } = require('../config/database-sqlite');
   
   const shareResults = [];
@@ -1115,13 +1126,15 @@ async function shareContentWithClasses({ recordingId, teacherId, contentTypes, c
     // Create or update content share
     const shareResult = await run(`
       INSERT OR REPLACE INTO content_shares (
-        recording_id, teacher_id, share_type, is_active, 
+        recording_id, teacher_id, share_type, lesson_name, use_ai_naming, is_active, 
         start_date, end_date, created_at, updated_at
-      ) VALUES (?, ?, ?, TRUE, ?, ?, datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, datetime('now'), datetime('now'))
     `, [
       recordingId,
       teacherId,
       contentType,
+      lessonName || null,
+      useAiNaming ? 1 : 0,
       startDate || new Date().toISOString(),
       endDate || null
     ]);

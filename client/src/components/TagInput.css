@@ -1,0 +1,255 @@
+/* Tag Input Component Styles */
+.tag-input-container {
+  width: 100%;
+  font-family: inherit;
+}
+
+.tag-input-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  background-color: #ffffff;
+  cursor: text;
+  transition: all 0.2s ease;
+}
+
+.tag-input-wrapper:hover {
+  border-color: #c3c9d0;
+}
+
+.tag-input-container.focused .tag-input-wrapper {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.tag-input-container.disabled .tag-input-wrapper {
+  background-color: #f8f9fa;
+  border-color: #e9ecef;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Individual Tag Styles */
+.tag-item {
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  max-width: 150px;
+  box-shadow: 0 1px 3px rgba(0, 123, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.tag-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3);
+}
+
+.tag-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  direction: rtl;
+  text-align: right;
+}
+
+.tag-remove-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+  margin-right: 4px;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.tag-remove-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  transform: scale(1.1);
+}
+
+.tag-remove-btn:active {
+  transform: scale(0.95);
+}
+
+/* Input Field Styles */
+.tag-input-field {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  font-family: inherit;
+  color: #333;
+  flex: 1;
+  min-width: 120px;
+  padding: 2px 0;
+  direction: rtl;
+  text-align: right;
+}
+
+.tag-input-field::placeholder {
+  color: #6c757d;
+  opacity: 1;
+}
+
+.tag-input-field:disabled {
+  cursor: not-allowed;
+}
+
+/* Helper Text Styles */
+.tag-input-help {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6c757d;
+  direction: rtl;
+}
+
+.help-text {
+  flex: 1;
+}
+
+.tag-count {
+  font-weight: 500;
+  color: #495057;
+  background-color: #f8f9fa;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+/* Error State */
+.tag-input-container.error .tag-input-wrapper {
+  border-color: #dc3545;
+}
+
+.tag-input-container.error.focused .tag-input-wrapper {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+/* Different Tag Color Variants */
+.tag-item.variant-success {
+  background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+.tag-item.variant-warning {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #212529;
+}
+
+.tag-item.variant-info {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+.tag-item.variant-secondary {
+  background: linear-gradient(135deg, #6c757d, #545b62);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .tag-input-wrapper {
+    padding: 6px 10px;
+    min-height: 38px;
+  }
+  
+  .tag-item {
+    font-size: 12px;
+    padding: 3px 6px;
+  }
+  
+  .tag-text {
+    max-width: 100px;
+  }
+  
+  .tag-input-field {
+    font-size: 13px;
+    min-width: 100px;
+  }
+  
+  .tag-input-help {
+    font-size: 11px;
+  }
+}
+
+/* Animation for tag addition/removal */
+@keyframes tagSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.tag-item {
+  animation: tagSlideIn 0.2s ease-out;
+}
+
+/* Focus ring for accessibility */
+.tag-remove-btn:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 1px;
+}
+
+.tag-input-field:focus {
+  outline: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .tag-input-wrapper {
+    border-width: 2px;
+  }
+  
+  .tag-item {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  .tag-remove-btn {
+    border: 1px solid rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .tag-item,
+  .tag-remove-btn,
+  .tag-input-wrapper {
+    transition: none;
+    animation: none;
+  }
+  
+  .tag-item:hover {
+    transform: none;
+  }
+  
+  .tag-remove-btn:hover {
+    transform: none;
+  }
+}

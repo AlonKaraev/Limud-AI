@@ -2,7 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
-require('dotenv').config();
+
+// Load environment variables - handle both development and production paths
+const envPath = process.cwd().includes('server') 
+  ? path.join(process.cwd(), '../.env')  // When running from server directory
+  : path.join(process.cwd(), '.env');    // When running from root directory
+
+require('dotenv').config({ path: envPath });
 
 const { generalLimiter, securityHeaders } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
@@ -70,6 +76,7 @@ app.use('/api/ai-content', require('./routes/ai-content'));
 app.use('/api/content-sharing', require('./routes/content-sharing'));
 app.use('/api/principal', require('./routes/principal'));
 app.use('/api/student', require('./routes/student'));
+app.use('/api/memory-cards', require('./routes/memory-cards'));
 
 // Serve static files from React app in production
 if (process.env.NODE_ENV === 'production') {

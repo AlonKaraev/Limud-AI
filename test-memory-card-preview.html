@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Card Preview Test - Limud AI</title>
+    <style>
+        /* Basic CSS Variables */
+        :root {
+            --color-primary: #3498db;
+            --color-success: #28a745;
+            --color-warning: #ffc107;
+            --color-error: #dc3545;
+            --color-text: #2c3e50;
+            --color-textSecondary: #6c757d;
+            --color-surface: #ffffff;
+            --color-surfaceHover: #f8f9fa;
+            --color-border: #e9ecef;
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        /* Import Hebrew font */
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            direction: rtl;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .test-header h1 {
+            color: var(--color-primary);
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .test-header p {
+            color: var(--color-textSecondary);
+            font-size: 1.2rem;
+            margin: 0;
+        }
+
+        .test-section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: var(--color-surfaceHover);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border);
+        }
+
+        .test-section h2 {
+            color: var(--color-text);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .test-section p {
+            color: var(--color-textSecondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .card-demo {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            border: 1px solid var(--color-border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-demo h3 {
+            color: var(--color-primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .instructions {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border: 1px solid #2196f3;
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .instructions h3 {
+            color: #1976d2;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .instructions ul {
+            margin: 0;
+            padding-right: 1.5rem;
+            color: #1565c0;
+        }
+
+        .instructions li {
+            margin-bottom: 0.5rem;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        @media (max-width: 768px) {
+            .test-container {
+                padding: 1rem;
+            }
+
+            .test-header h1 {
+                font-size: 2rem;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .test-section {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🎴 Memory Card Preview Test</h1>
+            <p>בדיקת תצוגה מקדימה של כרטיסי זיכרון - Limud AI</p>
+        </div>
+
+        <div class="instructions">
+            <h3>🧪 הוראות בדיקה</h3>
+            <ul>
+                <li>לחץ על כל כרטיס כדי להפוך אותו בין הצד הקדמי והאחורי</li>
+                <li>בדוק שהטקסט העברי מוצג כראוי</li>
+                <li>ודא שהאנימציות פועלות בצורה חלקה</li>
+                <li>בדוק את התגובה על מכשירים שונים</li>
+                <li>ודא שהתגיות ורמת הקושי מוצגות נכון</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>📚 כרטיסי זיכרון לדוגמה</h2>
+            <p>כרטיסים עם תוכן עברי ואנגלי לבדיקת התמיכה הרב-לשונית</p>
+            
+            <div class="status-indicator status-success">
+                ✅ כרטיסים נטענו בהצלחה
+            </div>
+
+            <div class="cards-grid">
+                <!-- Hebrew Math Card -->
+                <div class="card-demo">
+                    <h3>מתמטיקה - כיתה ג'</h3>
+                    <div id="hebrew-math-card"></div>
+                </div>
+
+                <!-- English Vocabulary Card -->
+                <div class="card-demo">
+                    <h3>English Vocabulary</h3>
+                    <div id="english-vocab-card"></div>
+                </div>
+
+                <!-- Mixed Content Card -->
+                <div class="card-demo">
+                    <h3>תוכן מעורב</h3>
+                    <div id="mixed-content-card"></div>
+                </div>
+
+                <!-- Science Card -->
+                <div class="card-demo">
+                    <h3>מדעים - פיזיקה</h3>
+                    <div id="science-card"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 בדיקות פונקציונליות</h2>
+            <p>בדיקת תכונות שונות של הכרטיסים</p>
+            
+            <div class="status-indicator status-info">
+                ℹ️ בדוק את כל התכונות הבאות
+            </div>
+
+            <div class="cards-grid">
+                <!-- Small Size Card -->
+                <div class="card-demo">
+                    <h3>כרטיס קטן</h3>
+                    <div id="small-card"></div>
+                </div>
+
+                <!-- Large Size Card -->
+                <div class="card-demo">
+                    <h3>כרטיס גדול</h3>
+                    <div id="large-card"></div>
+                </div>
+
+                <!-- Card with Many Tags -->
+                <div class="card-demo">
+                    <h3>כרטיס עם תגיות רבות</h3>
+                    <div id="tags-card"></div>
+                </div>
+
+                <!-- Hard Difficulty Card -->
+                <div class="card-demo">
+                    <h3>רמת קושי גבוהה</h3>
+                    <div id="hard-card"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock MemoryCardPreview Component
+        class MemoryCardPreview {
+            constructor(container, options) {
+                this.container = container;
+                this.options = {
+                    card: null,
+                    size: 'medium',
+                    showFlipHint: true,
+                    className: '',
+                    ...options
+                };
+                this.isFlipped = false;
+                this.isAnimating = false;
+                this.render();
+            }
+
+            render() {
+                const { card, size, showFlipHint, className } = this.options;
+                
+                if (!card) {
+                    this.container.innerHTML = this.renderPlaceholder();
+                    return;
+                }
+
+                this.container.innerHTML = `
+                    <div class="memory-card-preview ${className} ${size}">
+                        <div class="card-container" tabindex="0" role="button" 
+                             aria-label="כרטיס זיכרון: צד קדמי. לחץ להיפוך" 
+                             aria-pressed="false">
+                            <!-- Front Side -->
+                            <div class="card-face card-front" dir="${this.getTextDirection(card.frontText)}">
+                                <div class="card-content">
+                                    <div class="card-text">${card.frontText}</div>
+                                    ${showFlipHint ? `
+                                        <div class="flip-hint">
+                                            <span class="flip-icon">🔄</span>
+                                            <span class="flip-text">לחץ להיפוך</span>
+                                        </div>
+                                    ` : ''}
+                                    <div class="card-metadata">
+                                        <div class="card-type">
+                                            <span class="type-icon">${this.getTypeIcon(card.cardType)}</span>
+                                        </div>
+                                        <div class="difficulty-indicator">
+                                            <span class="difficulty ${card.difficultyLevel}">${this.getDifficultyStars(card.difficultyLevel)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Back Side -->
+                            <div class="card-face card-back" dir="${this.getTextDirection(card.backText)}">
+                                <div class="card-content">
+                                    <div class="card-text">${card.backText}</div>
+                                    ${showFlipHint ? `
+                                        <div class="flip-hint">
+                                            <span class="flip-icon">🔄</span>
+                                            <span class="flip-text">לחץ להיפוך</span>
+                                        </div>
+                                    ` : ''}
+                                    <div class="card-metadata">
+                                        <div class="card-tags">
+                                            ${card.tags && card.tags.length > 0 ? `
+                                                <div class="tags-container">
+                                                    ${card.tags.slice(0, 3).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                                    ${card.tags.length > 3 ? `<span class="tag more-tags">+${card.tags.length - 3}</span>` : ''}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        <div class="answer-indicator">
+                                            <span class="answer-icon">✓</span>
+                                            <span class="answer-text">תשובה</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-status">
+                            <div class="status-indicator">
+                                <span class="status-dot front"></span>
+                                <span class="status-text">צד קדמי</span>
+                            </div>
+                            ${card.setName ? `
+                                <div class="set-info">
+                                    <span class="set-name">${card.setName}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+
+                this.attachEventListeners();
+            }
+
+            renderPlaceholder() {
+                return `
+                    <div class="memory-card-preview ${this.options.className} ${this.options.size}">
+                        <div class="card-placeholder">
+                            <div class="placeholder-icon">📝</div>
+                            <div class="placeholder-text">אין כרטיס לתצוגה</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            attachEventListeners() {
+                const cardContainer = this.container.querySelector('.card-container');
+                if (cardContainer) {
+                    cardContainer.addEventListener('click', () => this.handleFlip());
+                    cardContainer.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            this.handleFlip();
+                        }
+                    });
+                }
+            }
+
+            handleFlip() {
+                if (this.isAnimating) return;
+
+                this.isAnimating = true;
+                this.isFlipped = !this.isFlipped;
+
+                const cardContainer = this.container.querySelector('.card-container');
+                const statusDot = this.container.querySelector('.status-dot');
+                const statusText = this.container.querySelector('.status-text');
+
+                cardContainer.classList.add('animating');
+                cardContainer.classList.toggle('flipped', this.isFlipped);
+                cardContainer.setAttribute('aria-pressed', this.isFlipped);
+                cardContainer.setAttribute('aria-label', 
+                    `כרטיס זיכרון: ${this.isFlipped ? 'צד אחורי' : 'צד קדמי'}. לחץ להיפוך`);
+
+                statusDot.className = `status-dot ${this.isFlipped ? 'back' : 'front'}`;
+                statusText.textContent = this.isFlipped ? 'צד אחורי' : 'צד קדמי';
+
+                setTimeout(() => {
+                    cardContainer.classList.remove('animating');
+                    this.isAnimating = false;
+                }, 600);
+            }
+
+            getTextDirection(text) {
+                if (!text) return 'rtl';
+                const hebrewRegex = /[\u0590-\u05FF]/;
+                const englishRegex = /[a-zA-Z]/;
+                const hasHebrew = hebrewRegex.test(text);
+                const hasEnglish = englishRegex.test(text);
+                
+                if (hasHebrew) return 'rtl';
+                if (hasEnglish && !hasHebrew) return 'ltr';
+                return 'rtl';
+            }
+
+            getTypeIcon(cardType) {
+                switch (cardType) {
+                    case 'text': return '📝';
+                    case 'image': return '🖼️';
+                    case 'audio': return '🎵';
+                    default: return '📝';
+                }
+            }
+
+            getDifficultyStars(difficulty) {
+                switch (difficulty) {
+                    case 'easy': return '⭐';
+                    case 'medium': return '⭐⭐';
+                    case 'hard': return '⭐⭐⭐';
+                    default: return '⭐⭐';
+                }
+            }
+        }
+
+        // Load CSS dynamically
+        function loadCSS() {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'client/src/components/MemoryCardPreview.css';
+            document.head.appendChild(link);
+        }
+
+        // Initialize test cards
+        function initializeTestCards() {
+            // Hebrew Math Card
+            new MemoryCardPreview(document.getElementById('hebrew-math-card'), {
+                card: {
+                    frontText: 'מה התוצאה של 7 × 8?',
+                    backText: '56\n\n7 × 8 = 56\nזוהי טבלת הכפל הבסיסית',
+                    cardType: 'text',
+                    difficultyLevel: 'medium',
+                    tags: ['מתמטיקה', 'כפל', 'בסיסי'],
+                    setName: 'מתמטיקה כיתה ג'
+                },
+                size: 'medium'
+            });
+
+            // English Vocabulary Card
+            new MemoryCardPreview(document.getElementById('english-vocab-card'), {
+                card: {
+                    frontText: 'What does "beautiful" mean?',
+                    backText: 'יפה, נאה\n\nExample: The sunset is beautiful.\nדוגמה: השקיעה יפה.',
+                    cardType: 'text',
+                    difficultyLevel: 'easy',
+                    tags: ['English', 'Vocabulary', 'Adjectives'],
+                    setName: 'English Vocabulary'
+                },
+                size: 'medium'
+            });
+
+            // Mixed Content Card
+            new MemoryCardPreview(document.getElementById('mixed-content-card'), {
+                card: {
+                    frontText: 'What is H₂O?',
+                    backText: 'מים (Water)\n\nH₂O הוא הנוסחה הכימית של המים\nמורכב משני אטומי מימן ואטום חמצן אחד',
+                    cardType: 'text',
+                    difficultyLevel: 'medium',
+                    tags: ['כימיה', 'Chemistry', 'מים'],
+                    setName: 'מדעים בסיסיים'
+                },
+                size: 'medium'
+            });
+
+            // Science Card
+            new MemoryCardPreview(document.getElementById('science-card'), {
+                card: {
+                    frontText: 'מהי מהירות האור בוואקום?',
+                    backText: '299,792,458 מטר לשנייה\n\nזוהי קבוע פיזיקלי יסודי\nמסומן באות c',
+                    cardType: 'text',
+                    difficultyLevel: 'hard',
+                    tags: ['פיזיקה', 'קבועים', 'אור'],
+                    setName: 'פיזיקה תיכון'
+                },
+                size: 'medium'
+            });
+
+            // Small Size Card
+            new MemoryCardPreview(document.getElementById('small-card'), {
+                card: {
+                    frontText: 'כרטיס קטן',
+                    backText: 'זהו כרטיס בגודל קטן',
+                    cardType: 'text',
+                    difficultyLevel: 'easy',
+                    tags: ['דוגמה'],
+                    setName: 'בדיקות'
+                },
+                size: 'small'
+            });
+
+            // Large Size Card
+            new MemoryCardPreview(document.getElementById('large-card'), {
+                card: {
+                    frontText: 'כרטיס גדול עם טקסט ארוך יותר שמדגים איך הכרטיס נראה כשיש בו הרבה תוכן',
+                    backText: 'זהו כרטיס בגודל גדול שמאפשר להציג יותר טקסט ופרטים. הוא מתאים לתוכן מורכב יותר שדורש יותר מקום להצגה נכונה.',
+                    cardType: 'text',
+                    difficultyLevel: 'medium',
+                    tags: ['דוגמה', 'גדול'],
+                    setName: 'בדיקות גודל'
+                },
+                size: 'large'
+            });
+
+            // Card with Many Tags
+            new MemoryCardPreview(document.getElementById('tags-card'), {
+                card: {
+                    frontText: 'כרטיס עם תגיות רבות',
+                    backText: 'זהו כרטיס שמדגים איך נראות תגיות רבות',
+                    cardType: 'text',
+                    difficultyLevel: 'medium',
+                    tags: ['תגית1', 'תגית2', 'תגית3', 'תגית4', 'תגית5', 'תגית6'],
+                    setName: 'בדיקת תגיות'
+                },
+                size: 'medium'
+            });
+
+            // Hard Difficulty Card
+            new MemoryCardPreview(document.getElementById('hard-card'), {
+                card: {
+                    frontText: 'מהו האינטגרל של sin(x)?',
+                    backText: '-cos(x) + C\n\nכאשר C הוא קבוע האינטגרציה',
+                    cardType: 'text',
+                    difficultyLevel: 'hard',
+                    tags: ['מתמטיקה', 'אינטגרלים', 'מתקדם'],
+                    setName: 'מתמטיקה מתקדמת'
+                },
+                size: 'medium'
+            });
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCSS();
+            setTimeout(initializeTestCards, 100); // Small delay to ensure CSS loads
+        });
+    </script>
+</body>
+</html>

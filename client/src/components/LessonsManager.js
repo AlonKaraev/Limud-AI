@@ -236,11 +236,11 @@ const TextActionButton = styled.button`
   }
   
   &.delete {
-    background: linear-gradient(135deg, var(--color-danger), var(--color-dangerHover));
-    color: var(--color-textOnPrimary);
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
     
     &:hover:not(:disabled) {
-      background: linear-gradient(135deg, var(--color-dangerHover), var(--color-dangerActive));
+      background: linear-gradient(135deg, #c0392b, #a93226);
     }
   }
 
@@ -2068,17 +2068,30 @@ const CorrectAnswer = styled.div`
 const ToggleErrorButton = styled.button`
   padding: 0.4rem 0.8rem;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: 'Heebo', sans-serif;
   font-size: 0.85rem;
-  transition: all 0.2s;
-  background-color: #e74c3c;
-  color: white;
+  transition: var(--transition-fast);
+  background-color: var(--color-danger);
+  color: var(--color-textOnPrimary);
   margin-top: 0.5rem;
+  display: inline-block;
+  visibility: visible;
+  opacity: 1;
+  min-height: 32px;
+  min-width: 80px;
+  z-index: 10;
   
-  &:hover {
-    background-color: #c0392b;
+  &:hover:not(:disabled) {
+    background-color: var(--color-dangerHover);
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--color-disabled);
   }
 `;
 
@@ -2300,7 +2313,8 @@ const LessonsManager = ({ t }) => {
   const [shareOptions, setShareOptions] = useState({
     transcription: false,
     summary: false,
-    test: false
+    test: false,
+    flashcards: false
   });
   const [selectedClasses, setSelectedClasses] = useState([]);
   const [shareSchedule, setShareSchedule] = useState({
@@ -2309,6 +2323,18 @@ const LessonsManager = ({ t }) => {
   });
   const [sharing, setSharing] = useState(false);
   const [userRole, setUserRole] = useState(null);
+
+  // Flashcard creation state
+  const [flashcardModal, setFlashcardModal] = useState(null);
+  const [flashcardConfig, setFlashcardConfig] = useState({
+    cardCount: 10,
+    difficultyLevel: 'medium',
+    subjectArea: '',
+    gradeLevel: '',
+    language: 'hebrew'
+  });
+  const [generatingFlashcards, setGeneratingFlashcards] = useState(false);
+  const [flashcardProgress, setFlashcardProgress] = useState(0);
 
   const durationIntervalRef = useRef(null);
 
@@ -3756,6 +3782,86 @@ const LessonsManager = ({ t }) => {
     }
   };
 
+  // Flashcard generation functionality
+  const handleGenerateFlashcards = async () => {
+    if (!flashcardModal) return;
+
+    setGeneratingFlashcards(true);
+    setFlashcardProgress(0);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
+      }
+
+      // Auto-populate config from lesson metadata
+      const updatedConfig = {
+        ...flashcardConfig,
+        subjectArea: flashcardModal.metadata?.subject || flashcardConfig.subjectArea,
+        gradeLevel: flashcardModal.metadata?.classLevel || flashcardConfig.gradeLevel
+      };
+
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setFlashcardProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + Math.random() * 15;
+        });
+      }, 500);
+
+      console.log('Generating flashcards for lesson:', flashcardModal.id, 'with config:', updatedConfig);
+
+      const response = await fetch(`/api/memory-cards/generate/from-lesson/${flashcardModal.id}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ config: updatedConfig })
+      });
+
+      clearInterval(progressInterval);
+      setFlashcardProgress(100);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'שגיאה ביצירת כרטיסי זיכרון');
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.cards) {
+        // Show success message
+        const lessonName = flashcardModal.metadata?.lessonName || `הקלטה ${flashcardModal.id}`;
+        alert(`נוצרו ${result.cards.length} כרטיסי זיכרון בהצלחה עבור השיעור "${lessonName}"!\n\nהכרטיסים נשמרו ויהיו זמינים בלשונית "כרטיסי זיכרון".`);
+        
+        // Close modal and reset state
+        setFlashcardModal(null);
+        setFlashcardProgress(0);
+        setFlashcardConfig({
+          cardCount: 10,
+          difficultyLevel: 'medium',
+          subjectArea: '',
+          gradeLevel: '',
+          language: 'hebrew'
+        });
+      } else {
+        throw new Error('לא הצלחנו ליצור כרטיסי זיכרון');
+      }
+
+    } catch (error) {
+      console.error('Error generating flashcards:', error);
+      alert(`שגיאה ביצירת כרטיסי זיכרון:\n\n${error.message}`);
+    } finally {
+      setGeneratingFlashcards(false);
+      setFlashcardProgress(0);
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -4097,6 +4203,42 @@ const LessonsManager = ({ t }) => {
                                   <span>{aiContent.questions.length} שאלות</span>
                                   <span>•</span>
                                   <span>זמין לצפייה</span>
+                                </AIStageCardMeta>
+                              )}
+                            </AIStageCardContent>
+                          </AIStageCard>
+
+                          {/* Flashcards Stage-Action Card */}
+                          <AIStageCard
+                            as="button"
+                            disabled={!aiContent?.transcription?.transcription_text}
+                            onClick={() => {
+                              if (aiContent?.transcription?.transcription_text) {
+                                setFlashcardModal(lesson);
+                                setExpandedAIMenu(prev => ({
+                                  ...prev,
+                                  [lesson.id]: false
+                                }));
+                              }
+                            }}
+                            style={{ 
+                              cursor: aiContent?.transcription?.transcription_text ? 'pointer' : 'default',
+                              opacity: !aiContent?.transcription?.transcription_text ? 0.6 : 1
+                            }}
+                          >
+                            <AIStageCardIcon className="available">
+                              🃏
+                            </AIStageCardIcon>
+                            <AIStageCardContent>
+                              <AIStageCardTitle>כרטיסי זיכרון</AIStageCardTitle>
+                              <AIStageCardStatus>
+                                {aiContent?.transcription?.transcription_text ? 'צור כרטיסי זיכרון מהתמליל' : 'דרוש תמליל ליצירת כרטיסים'}
+                              </AIStageCardStatus>
+                              {aiContent?.transcription?.transcription_text && (
+                                <AIStageCardMeta>
+                                  <span>יצירה אוטומטית</span>
+                                  <span>•</span>
+                                  <span>מבוסס על תמליל</span>
                                 </AIStageCardMeta>
                               )}
                             </AIStageCardContent>
@@ -4828,6 +4970,30 @@ const LessonsManager = ({ t }) => {
                       `זמין לשיתוף (${shareModal.aiContent?.questions?.length || 0} שאלות)` :
                      getAIStageStatus(shareModal, 'questions') === 'processing' ? 'בעיבוד...' :
                      getAIStageStatus(shareModal, 'questions') === 'failed' ? 'נכשל' : 'לא זמין'}
+                  </ContentTypeStatus>
+                </ContentTypeCard>
+
+                {/* Flashcards Card */}
+                <ContentTypeCard
+                  selected={shareOptions.flashcards}
+                  onClick={() => {
+                    setShareOptions(prev => ({
+                      ...prev,
+                      flashcards: !prev.flashcards
+                    }));
+                  }}
+                >
+                  <ContentTypeHeader>
+                    <ContentTypeIcon available={true}>
+                      🃏
+                    </ContentTypeIcon>
+                    <ContentTypeTitle>כרטיסי זיכרון</ContentTypeTitle>
+                  </ContentTypeHeader>
+                  <ContentTypeDescription>
+                    יצירה אוטומטית של כרטיסי זיכרון מתוכן השיעור
+                  </ContentTypeDescription>
+                  <ContentTypeStatus available={true}>
+                    יווצרו אוטומטית מהתמליל
                   </ContentTypeStatus>
                 </ContentTypeCard>
               </ContentTypeGrid>

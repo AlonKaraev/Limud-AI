@@ -1,229 +1,37 @@
 const express = require('express');
-const { body } = require('express-validator');
+const router = express.Router();
 const User = require('../models/User');
-const { 
-  authLimiter, 
-  authenticate, 
-  validateRequest, 
-  logAuthEvent 
-} = require('../middleware/auth');
+const { authenticate, authLimiter } = require('../middleware/auth');
 const consoleLogger = require('../utils/ConsoleLogger');
 
-const router = express.Router();
+// Apply rate limiting to auth routes
+router.use(authLimiter);
 
-// Validation schemas
-const registerValidation = [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('כתובת אימייל לא תקינה'),
-  body('password')
-    .isLength({ min: 8 })
-    .withMessage('סיסמה חייבת להכיל לפחות 8 תווים')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('סיסמה חייבת להכיל לפחות אות קטנה, אות גדולה ומספר'),
-  body('role')
-    .isIn(['teacher', 'student'])
-    .withMessage('תפקיד חייב להיות מורה או תלמיד'),
-  body('firstName')
-    .trim()
-    .isLength({ min: 2, max: 50 })
-    .withMessage('שם פרטי חייב להכיל בין 2 ל-50 תווים'),
-  body('lastName')
-    .trim()
-    .isLength({ min: 2, max: 50 })
-    .withMessage('שם משפחה חייב להכיל בין 2 ל-50 תווים'),
-  body('phone')
-    .optional()
-    .matches(/^05\d{8}$/)
-    .withMessage('מספר טלפון חייב להיות בפורמט 05XXXXXXXX'),
-  body('schoolId')
-    .isInt({ min: 1 })
-    .withMessage('מזהה בית ספר לא תקין')
-];
-
-const loginValidation = [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('כתובת אימייל לא תקינה'),
-  body('password')
-    .notEmpty()
-    .withMessage('סיסמה נדרשת')
-];
-
-const resetPasswordValidation = [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('כתובת אימייל לא תקינה')
-];
-
-const newPasswordValidation = [
-  body('token')
-    .notEmpty()
-    .withMessage('טוקן איפוס נדרש'),
-  body('password')
-    .isLength({ min: 8 })
-    .withMessage('סיסמה חייבת להכיל לפחות 8 תווים')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('סיסמה חייבת להכיל לפחות אות קטנה, אות גדולה ומספר')
-];
-
-// Register new user
-router.post('/register', authLimiter, registerValidation, async (req, res) => {
+// POST /api/auth/login - User login
+router.post('/login', async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = require('express-validator').validationResult(req);
-    if (!errors.isEmpty()) {
-      consoleLogger.logAuthError('VALIDATION_ERROR', {
-        endpoint: '/api/auth/register',
-        method: 'POST',
-        email: req.body.email,
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        validationErrors: errors.array().map(err => ({
-          field: err.param,
-          message: err.msg
-        })),
-        message: 'Registration validation failed'
-      });
-
-      return res.status(400).json({
-        error: 'נתונים לא תקינים',
-        code: 'VALIDATION_ERROR',
-        details: errors.array().map(err => ({
-          field: err.param,
-          message: err.msg
-        }))
-      });
-    }
-
-    const { email, password, role, firstName, lastName, phone, schoolId } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findByEmail(email);
-    if (existingUser) {
-      consoleLogger.logAuthError('EMAIL_EXISTS', {
-        endpoint: '/api/auth/register',
-        method: 'POST',
-        email,
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        reason: 'User with this email already exists',
-        message: 'Registration failed - duplicate email'
-      });
-
-      logAuthEvent('REGISTRATION_FAILED', null, {
-        reason: 'EMAIL_EXISTS',
-        email,
-        ip: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-      
-      return res.status(409).json({
-        error: 'משתמש עם כתובת אימייל זו כבר קיים במערכת',
-        code: 'EMAIL_EXISTS'
-      });
-    }
-
-    // Create new user
-    const user = await User.create({
-      email,
-      password,
-      role,
-      firstName,
-      lastName,
-      phone,
-      schoolId
-    });
-
-    logAuthEvent('USER_REGISTERED', user.id, {
-      email: user.email,
-      role: user.role,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
-
-    // Generate token
-    const token = user.generateToken();
-
-    res.status(201).json({
-      message: 'משתמש נרשם בהצלחה',
-      user: user.toJSON(),
-      token,
-      requiresVerification: !user.isVerified
-    });
-
-  } catch (error) {
-    console.error('Registration error:', error);
-    
-    logAuthEvent('REGISTRATION_ERROR', null, {
-      error: error.message,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
-
-    res.status(500).json({
-      error: 'שגיאה ברישום המשתמש',
-      code: 'REGISTRATION_ERROR'
-    });
-  }
-});
-
-// Login user
-router.post('/login', authLimiter, loginValidation, async (req, res) => {
-  try {
-    // Check for validation errors
-    const errors = require('express-validator').validationResult(req);
-    if (!errors.isEmpty()) {
-      consoleLogger.logAuthError('VALIDATION_ERROR', {
-        endpoint: '/api/auth/login',
-        method: 'POST',
-        email: req.body.email,
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        validationErrors: errors.array().map(err => ({
-          field: err.param,
-          message: err.msg
-        })),
-        message: 'Login validation failed'
-      });
-
-      return res.status(400).json({
-        error: 'נתונים לא תקינים',
-        code: 'VALIDATION_ERROR',
-        details: errors.array().map(err => ({
-          field: err.param,
-          message: err.msg
-        }))
-      });
-    }
-
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        error: 'נדרש אימייל וסיסמה',
+        code: 'MISSING_CREDENTIALS'
+      });
+    }
 
     // Find user by email
     const user = await User.findByEmail(email);
     if (!user) {
-      consoleLogger.logAuthError('USER_NOT_FOUND', {
-        endpoint: '/api/auth/login',
-        method: 'POST',
+      consoleLogger.logAuthError('LOGIN_FAILED', {
         email,
         ip: req.ip,
         userAgent: req.get('User-Agent'),
-        reason: 'No user found with this email',
-        message: 'Login failed - user not found'
+        reason: 'User not found',
+        message: 'Login attempt with non-existent email'
       });
 
-      logAuthEvent('LOGIN_FAILED', null, {
-        reason: 'USER_NOT_FOUND',
-        email,
-        ip: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-      
       return res.status(401).json({
-        error: 'כתובת אימייל או סיסמה שגויים',
+        error: 'אימייל או סיסמה שגויים',
         code: 'INVALID_CREDENTIALS'
       });
     }
@@ -231,81 +39,44 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
     // Verify password
     const isValidPassword = await user.verifyPassword(password);
     if (!isValidPassword) {
-      consoleLogger.logAuthError('INVALID_PASSWORD', {
-        endpoint: '/api/auth/login',
-        method: 'POST',
+      consoleLogger.logAuthError('LOGIN_FAILED', {
         email,
         userId: user.id,
         ip: req.ip,
         userAgent: req.get('User-Agent'),
-        reason: 'Password verification failed',
-        message: 'Login failed - invalid password'
+        reason: 'Invalid password',
+        message: 'Login attempt with incorrect password'
       });
 
-      logAuthEvent('LOGIN_FAILED', user.id, {
-        reason: 'INVALID_PASSWORD',
-        email,
-        ip: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-      
       return res.status(401).json({
-        error: 'כתובת אימייל או סיסמה שגויים',
+        error: 'אימייל או סיסמה שגויים',
         code: 'INVALID_CREDENTIALS'
       });
     }
 
-    // Skip account verification check in development
+    // Check if account is verified (in production)
     if (process.env.NODE_ENV === 'production' && !user.isVerified) {
-      consoleLogger.logAuthError('ACCOUNT_NOT_VERIFIED', {
-        endpoint: '/api/auth/login',
-        method: 'POST',
-        email,
-        userId: user.id,
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        reason: 'User account is not verified',
-        message: 'Login failed - account not verified'
-      });
-
-      logAuthEvent('LOGIN_FAILED', user.id, {
-        reason: 'ACCOUNT_NOT_VERIFIED',
-        email,
-        ip: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-      
       return res.status(401).json({
-        error: 'חשבון המשתמש לא מאומת. אנא בדוק את האימייל שלך',
+        error: 'חשבון המשתמש לא מאומת',
         code: 'ACCOUNT_NOT_VERIFIED'
       });
     }
 
-    // Generate token
+    // Generate JWT token
     const token = user.generateToken();
 
-    logAuthEvent('LOGIN_SUCCESS', user.id, {
-      email: user.email,
-      role: user.role,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
+    // Log successful login
+    console.log(`✅ User login successful: ${user.email} (ID: ${user.id})`);
 
     res.json({
+      success: true,
       message: 'התחברות בוצעה בהצלחה',
-      user: user.toJSON(),
-      token
+      token,
+      user: user.toJSON()
     });
 
   } catch (error) {
     console.error('Login error:', error);
-    
-    logAuthEvent('LOGIN_ERROR', null, {
-      error: error.message,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
-
     res.status(500).json({
       error: 'שגיאה בתהליך ההתחברות',
       code: 'LOGIN_ERROR'
@@ -313,214 +84,223 @@ router.post('/login', authLimiter, loginValidation, async (req, res) => {
   }
 });
 
-// Get current user profile
-router.get('/profile', authenticate, async (req, res) => {
+// POST /api/auth/register - User registration
+router.post('/register', async (req, res) => {
   try {
-    res.json({
-      user: req.user.toJSON()
-    });
-  } catch (error) {
-    console.error('Profile fetch error:', error);
-    res.status(500).json({
-      error: 'שגיאה בטעינת פרופיל המשתמש',
-      code: 'PROFILE_ERROR'
-    });
-  }
-});
+    const { email, password, firstName, lastName, role, schoolId, phone } = req.body;
 
-// Update user profile
-router.put('/profile', authenticate, [
-  body('firstName')
-    .optional()
-    .trim()
-    .isLength({ min: 2, max: 50 })
-    .withMessage('שם פרטי חייב להכיל בין 2 ל-50 תווים'),
-  body('lastName')
-    .optional()
-    .trim()
-    .isLength({ min: 2, max: 50 })
-    .withMessage('שם משפחה חייב להכיל בין 2 ל-50 תווים'),
-  body('phone')
-    .optional()
-    .matches(/^05\d{8}$/)
-    .withMessage('מספר טלפון חייב להיות בפורמט 05XXXXXXXX')
-], async (req, res) => {
-  try {
-    // Check for validation errors
-    const errors = require('express-validator').validationResult(req);
-    if (!errors.isEmpty()) {
+    // Validate required fields
+    if (!email || !password || !firstName || !lastName || !role || !schoolId) {
       return res.status(400).json({
-        error: 'נתונים לא תקינים',
-        code: 'VALIDATION_ERROR',
-        details: errors.array().map(err => ({
-          field: err.param,
-          message: err.msg
-        }))
+        error: 'חסרים שדות חובה',
+        code: 'MISSING_REQUIRED_FIELDS'
       });
     }
 
-    const { firstName, lastName, phone } = req.body;
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        error: 'כתובת אימייל לא תקינה',
+        code: 'INVALID_EMAIL_FORMAT'
+      });
+    }
+
+    // Validate password strength
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: 'הסיסמה חייבת להכיל לפחות 6 תווים',
+        code: 'WEAK_PASSWORD'
+      });
+    }
+
+    // Create user
+    const userData = {
+      email: email.toLowerCase().trim(),
+      password,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      role,
+      schoolId: parseInt(schoolId),
+      phone: phone ? phone.trim() : null
+    };
+
+    const newUser = await User.create(userData);
+
+    console.log(`✅ User registered successfully: ${newUser.email} (ID: ${newUser.id})`);
+
+    res.status(201).json({
+      success: true,
+      message: 'המשתמש נוצר בהצלחה',
+      user: newUser.toJSON()
+    });
+
+  } catch (error) {
+    console.error('Registration error:', error);
     
-    const updatedUser = await req.user.updateProfile({
-      first_name: firstName,
-      last_name: lastName,
-      phone
-    });
+    if (error.message.includes('משתמש עם כתובת אימייל זו כבר קיים')) {
+      return res.status(409).json({
+        error: error.message,
+        code: 'EMAIL_ALREADY_EXISTS'
+      });
+    }
 
-    logAuthEvent('PROFILE_UPDATED', req.user.id, {
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
-
-    res.json({
-      message: 'פרופיל עודכן בהצלחה',
-      user: updatedUser.toJSON()
-    });
-
-  } catch (error) {
-    console.error('Profile update error:', error);
     res.status(500).json({
-      error: 'שגיאה בעדכון הפרופיל',
-      code: 'PROFILE_UPDATE_ERROR'
+      error: 'שגיאה ביצירת המשתמש',
+      code: 'REGISTRATION_ERROR'
     });
   }
 });
 
-// Verify account
-router.post('/verify/:token', async (req, res) => {
+// POST /api/auth/refresh - Refresh JWT token
+router.post('/refresh', authenticate, async (req, res) => {
   try {
-    const { token } = req.params;
-    const { email } = req.body;
+    // Get the current user from the authenticated request
+    const user = req.user;
 
-    if (!email) {
-      return res.status(400).json({
-        error: 'כתובת אימייל נדרשת',
-        code: 'EMAIL_REQUIRED'
-      });
-    }
+    // Generate a new token
+    const newToken = user.generateToken();
 
-    const user = await User.findByEmail(email);
-    if (!user) {
-      return res.status(404).json({
-        error: 'משתמש לא נמצא',
-        code: 'USER_NOT_FOUND'
-      });
-    }
-
-    await user.verifyAccount(token);
-
-    logAuthEvent('ACCOUNT_VERIFIED', user.id, {
-      email: user.email,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
+    console.log(`🔄 Token refreshed for user: ${user.email} (ID: ${user.id})`);
 
     res.json({
-      message: 'חשבון אומת בהצלחה',
+      success: true,
+      message: 'טוקן חודש בהצלחה',
+      token: newToken,
       user: user.toJSON()
     });
 
   } catch (error) {
-    console.error('Account verification error:', error);
-    
-    if (error.message.includes('טוקן אימות לא תקין')) {
-      return res.status(400).json({
-        error: error.message,
-        code: 'INVALID_VERIFICATION_TOKEN'
-      });
-    }
-
+    console.error('Token refresh error:', error);
     res.status(500).json({
-      error: 'שגיאה באימות החשבון',
-      code: 'VERIFICATION_ERROR'
+      error: 'שגיאה בחידוש הטוקן',
+      code: 'TOKEN_REFRESH_ERROR'
     });
   }
 });
 
-// Request password reset
-router.post('/reset-password', authLimiter, resetPasswordValidation, async (req, res) => {
+// GET /api/auth/validate - Validate current token
+router.get('/validate', authenticate, (req, res) => {
   try {
-    // Check for validation errors
-    const errors = require('express-validator').validationResult(req);
-    if (!errors.isEmpty()) {
+    // If we reach here, the token is valid (authenticate middleware passed)
+    res.json({
+      success: true,
+      message: 'טוקן תקין',
+      user: req.user.toJSON()
+    });
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(500).json({
+      error: 'שגיאה בבדיקת הטוקן',
+      code: 'TOKEN_VALIDATION_ERROR'
+    });
+  }
+});
+
+// POST /api/auth/logout - User logout (client-side token removal)
+router.post('/logout', authenticate, (req, res) => {
+  try {
+    console.log(`👋 User logout: ${req.user.email} (ID: ${req.user.id})`);
+    
+    res.json({
+      success: true,
+      message: 'התנתקות בוצעה בהצלחה'
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      error: 'שגיאה בתהליך ההתנתקות',
+      code: 'LOGOUT_ERROR'
+    });
+  }
+});
+
+// GET /api/auth/me - Get current user info
+router.get('/me', authenticate, (req, res) => {
+  try {
+    res.json({
+      success: true,
+      user: req.user.toJSON()
+    });
+  } catch (error) {
+    console.error('Get user info error:', error);
+    res.status(500).json({
+      error: 'שגיאה בטעינת פרטי המשתמש',
+      code: 'USER_INFO_ERROR'
+    });
+  }
+});
+
+// POST /api/auth/forgot-password - Request password reset
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
       return res.status(400).json({
-        error: 'נתונים לא תקינים',
-        code: 'VALIDATION_ERROR',
-        details: errors.array().map(err => ({
-          field: err.param,
-          message: err.msg
-        }))
+        error: 'נדרש אימייל',
+        code: 'MISSING_EMAIL'
       });
     }
-
-    const { email } = req.body;
 
     const user = await User.findByEmail(email);
     if (!user) {
       // Don't reveal if email exists or not for security
       return res.json({
-        message: 'אם כתובת האימייל קיימת במערכת, נשלח אליה קישור לאיפוס סיסמה'
+        success: true,
+        message: 'אם האימייל קיים במערכת, נשלח אליך קישור לאיפוס סיסמה'
       });
     }
 
     const resetToken = await user.generatePasswordResetToken();
-
-    logAuthEvent('PASSWORD_RESET_REQUESTED', user.id, {
-      email: user.email,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
-
-    // In a real application, you would send an email here
-    console.log(`Password reset token for ${email}: ${resetToken}`);
+    
+    // TODO: Send email with reset token
+    console.log(`🔑 Password reset requested for: ${user.email}, token: ${resetToken}`);
 
     res.json({
-      message: 'אם כתובת האימייל קיימת במערכת, נשלח אליה קישור לאיפוס סיסמה'
+      success: true,
+      message: 'אם האימייל קיים במערכת, נשלח אליך קישור לאיפוס סיסמה'
     });
 
   } catch (error) {
-    console.error('Password reset request error:', error);
+    console.error('Forgot password error:', error);
     res.status(500).json({
       error: 'שגיאה בבקשת איפוס סיסמה',
-      code: 'RESET_REQUEST_ERROR'
+      code: 'FORGOT_PASSWORD_ERROR'
     });
   }
 });
 
-// Reset password with token
-router.post('/reset-password/:token', authLimiter, newPasswordValidation, async (req, res) => {
+// POST /api/auth/reset-password - Reset password with token
+router.post('/reset-password', async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = require('express-validator').validationResult(req);
-    if (!errors.isEmpty()) {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
       return res.status(400).json({
-        error: 'נתונים לא תקינים',
-        code: 'VALIDATION_ERROR',
-        details: errors.array().map(err => ({
-          field: err.param,
-          message: err.msg
-        }))
+        error: 'נדרש טוקן וסיסמה חדשה',
+        code: 'MISSING_RESET_DATA'
       });
     }
 
-    const { token } = req.params;
-    const { password } = req.body;
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        error: 'הסיסמה חייבת להכיל לפחות 6 תווים',
+        code: 'WEAK_PASSWORD'
+      });
+    }
 
-    const user = await User.resetPassword(token, password);
-
-    logAuthEvent('PASSWORD_RESET_COMPLETED', user.id, {
-      email: user.email,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
+    const user = await User.resetPassword(token, newPassword);
+    
+    console.log(`🔑 Password reset successful for: ${user.email}`);
 
     res.json({
-      message: 'סיסמה אופסה בהצלחה',
-      user: user.toJSON()
+      success: true,
+      message: 'הסיסמה שונתה בהצלחה'
     });
 
   } catch (error) {
-    console.error('Password reset error:', error);
+    console.error('Reset password error:', error);
     
     if (error.message.includes('טוקן איפוס סיסמה לא תקין')) {
       return res.status(400).json({
@@ -531,30 +311,18 @@ router.post('/reset-password/:token', authLimiter, newPasswordValidation, async 
 
     res.status(500).json({
       error: 'שגיאה באיפוס הסיסמה',
-      code: 'PASSWORD_RESET_ERROR'
+      code: 'RESET_PASSWORD_ERROR'
     });
   }
 });
 
-// Logout (client-side token invalidation)
-router.post('/logout', authenticate, async (req, res) => {
-  try {
-    logAuthEvent('LOGOUT', req.user.id, {
-      email: req.user.email,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
-
-    res.json({
-      message: 'התנתקות בוצעה בהצלחה'
-    });
-  } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({
-      error: 'שגיאה בהתנתקות',
-      code: 'LOGOUT_ERROR'
-    });
-  }
+// GET /api/auth/health - Health check endpoint
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Auth service is healthy',
+    timestamp: new Date().toISOString()
+  });
 });
 
 module.exports = router;

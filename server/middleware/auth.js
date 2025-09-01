@@ -30,6 +30,16 @@ const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     
+    // Enhanced logging for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Auth Debug - Headers:', {
+        authorization: authHeader ? `${authHeader.substring(0, 20)}...` : 'MISSING',
+        endpoint: req.originalUrl,
+        method: req.method,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       consoleLogger.logAuthError('MISSING_TOKEN', {
         endpoint: req.originalUrl,
@@ -37,19 +47,45 @@ const authenticate = async (req, res, next) => {
         ip: req.ip,
         userAgent: req.get('User-Agent'),
         reason: 'No authorization header or invalid format',
-        message: 'Authentication failed - missing or invalid token format'
+        message: 'Authentication failed - missing or invalid token format',
+        authHeaderPresent: !!authHeader,
+        authHeaderFormat: authHeader ? authHeader.substring(0, 10) : 'N/A'
       });
 
       return res.status(401).json({
         error: 'נדרש טוקן אימות',
-        code: 'MISSING_TOKEN'
+        code: 'MISSING_TOKEN',
+        details: process.env.NODE_ENV === 'development' ? {
+          authHeaderPresent: !!authHeader,
+          expectedFormat: 'Bearer <token>'
+        } : undefined
       });
     }
     
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
+    // Enhanced token validation logging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Auth Debug - Token:', {
+        tokenLength: token.length,
+        tokenStart: token.substring(0, 20),
+        tokenEnd: token.substring(token.length - 20)
+      });
+    }
+    
     try {
       const decoded = User.verifyToken(token);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Auth Debug - Decoded token:', {
+          userId: decoded.id,
+          email: decoded.email,
+          role: decoded.role,
+          exp: new Date(decoded.exp * 1000).toISOString(),
+          timeUntilExpiry: Math.round((decoded.exp * 1000 - Date.now()) / 1000 / 60) + ' minutes'
+        });
+      }
+      
       const user = await User.findById(decoded.id);
       
       if (!user) {
@@ -60,12 +96,16 @@ const authenticate = async (req, res, next) => {
           ip: req.ip,
           userAgent: req.get('User-Agent'),
           reason: 'User ID from token not found in database',
-          message: 'Authentication failed - user not found'
+          message: 'Authentication failed - user not found',
+          decodedUserId: decoded.id
         });
 
         return res.status(401).json({
           error: 'משתמש לא נמצא',
-          code: 'USER_NOT_FOUND'
+          code: 'USER_NOT_FOUND',
+          details: process.env.NODE_ENV === 'development' ? {
+            decodedUserId: decoded.id
+          } : undefined
         });
       }
       
@@ -87,24 +127,45 @@ const authenticate = async (req, res, next) => {
         });
       }
       
+      // Enhanced success logging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Auth Success:', {
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+          endpoint: req.originalUrl
+        });
+      }
+      
       // Ensure user object has school_id property for authorization
       req.user = user;
       req.user.school_id = user.schoolId || decoded.school_id;
       next();
     } catch (tokenError) {
-      consoleLogger.logAuthError('INVALID_TOKEN', {
+      // Enhanced token error logging
+      const errorDetails = {
         endpoint: req.originalUrl,
         method: req.method,
         ip: req.ip,
         userAgent: req.get('User-Agent'),
         reason: tokenError.message,
         message: 'Authentication failed - invalid or expired token',
-        stack: tokenError.stack
-      });
+        stack: tokenError.stack,
+        tokenLength: token.length,
+        tokenStart: token.substring(0, 20),
+        errorName: tokenError.name
+      };
+      
+      consoleLogger.logAuthError('INVALID_TOKEN', errorDetails);
 
       return res.status(401).json({
         error: 'טוקן לא תקין או פג תוקף',
-        code: 'INVALID_TOKEN'
+        code: 'INVALID_TOKEN',
+        details: process.env.NODE_ENV === 'development' ? {
+          errorType: tokenError.name,
+          tokenLength: token.length,
+          hint: tokenError.message.includes('expired') ? 'Token has expired - please login again' : 'Token format is invalid'
+        } : undefined
       });
     }
   } catch (error) {

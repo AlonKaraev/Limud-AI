@@ -1,6 +1,12 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-require('dotenv').config();
+
+// Load environment variables - handle both development and production paths
+const envPath = process.cwd().includes('server') 
+  ? path.join(process.cwd(), '../.env')  // When running from server directory
+  : path.join(process.cwd(), '.env');    // When running from root directory
+
+require('dotenv').config({ path: envPath });
 
 // Database file path
 const dbPath = path.join(__dirname, '..', 'database', 'limudai.db');
@@ -310,6 +316,8 @@ const initializeDatabase = async () => {
         recording_id INTEGER NOT NULL,
         teacher_id INTEGER NOT NULL,
         share_type TEXT NOT NULL CHECK (share_type IN ('transcription', 'summary', 'test')),
+        lesson_name TEXT NULL,
+        use_ai_naming BOOLEAN DEFAULT 0,
         is_active BOOLEAN DEFAULT 1,
         start_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         end_date DATETIME NULL,
@@ -397,9 +405,23 @@ const initializeDatabase = async () => {
     await run(`CREATE INDEX IF NOT EXISTS idx_class_memberships_student_id ON class_memberships(student_id)`);
     await run(`CREATE INDEX IF NOT EXISTS idx_class_memberships_is_active ON class_memberships(is_active)`);
 
+    // Add lesson_name column if it doesn't exist
+    const contentSharesColumns = await query(`PRAGMA table_info(content_shares)`);
+    const hasLessonName = contentSharesColumns.rows.some(col => col.name === 'lesson_name');
+    const hasUseAiNaming = contentSharesColumns.rows.some(col => col.name === 'use_ai_naming');
+    
+    if (!hasLessonName) {
+      await run(`ALTER TABLE content_shares ADD COLUMN lesson_name TEXT NULL`);
+    }
+    
+    if (!hasUseAiNaming) {
+      await run(`ALTER TABLE content_shares ADD COLUMN use_ai_naming BOOLEAN DEFAULT 0`);
+    }
+
     await run(`CREATE INDEX IF NOT EXISTS idx_content_shares_recording_id ON content_shares(recording_id)`);
     await run(`CREATE INDEX IF NOT EXISTS idx_content_shares_teacher_id ON content_shares(teacher_id)`);
     await run(`CREATE INDEX IF NOT EXISTS idx_content_shares_share_type ON content_shares(share_type)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_content_shares_lesson_name ON content_shares(lesson_name)`);
     await run(`CREATE INDEX IF NOT EXISTS idx_content_shares_is_active ON content_shares(is_active)`);
     await run(`CREATE INDEX IF NOT EXISTS idx_content_shares_start_date ON content_shares(start_date)`);
     await run(`CREATE INDEX IF NOT EXISTS idx_content_shares_end_date ON content_shares(end_date)`);
@@ -505,16 +527,16 @@ const initializeDatabase = async () => {
     `);
 
     // Add created_by and managed_by columns to classes table if they don't exist
-    try {
+    const classesColumns = await query(`PRAGMA table_info(classes)`);
+    const hasCreatedBy = classesColumns.rows.some(col => col.name === 'created_by');
+    const hasManagedBy = classesColumns.rows.some(col => col.name === 'managed_by');
+    
+    if (!hasCreatedBy) {
       await run(`ALTER TABLE classes ADD COLUMN created_by INTEGER REFERENCES users(id)`);
-    } catch (error) {
-      // Column already exists, ignore error
     }
     
-    try {
+    if (!hasManagedBy) {
       await run(`ALTER TABLE classes ADD COLUMN managed_by INTEGER REFERENCES users(id)`);
-    } catch (error) {
-      // Column already exists, ignore error
     }
 
     // Create principal-specific indexes
@@ -571,9 +593,147 @@ const initializeDatabase = async () => {
       }
     }
 
-    console.log('Database initialized successfully with AI content and principal tables');
+    // Initialize Memory Cards tables
+    await initializeMemoryCardsTables();
+
+    console.log('Database initialized successfully with AI content, principal, and memory cards tables');
   } catch (error) {
     console.error('Error initializing database:', error);
+    throw error;
+  }
+};
+
+// Initialize Memory Cards tables
+const initializeMemoryCardsTables = async () => {
+  try {
+    // Memory card sets table - for organizing cards into study decks
+    await run(`
+      CREATE TABLE IF NOT EXISTS memory_card_sets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        user_id INTEGER NOT NULL,
+        subject_area TEXT,
+        grade_level TEXT,
+        is_public BOOLEAN DEFAULT 0,
+        total_cards INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Memory cards table - core card storage with front/back text
+    await run(`
+      CREATE TABLE IF NOT EXISTS memory_cards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        set_id INTEGER NOT NULL,
+        front_text TEXT NOT NULL,
+        back_text TEXT NOT NULL,
+        card_type TEXT DEFAULT 'text' CHECK (card_type IN ('text', 'image', 'audio')),
+        difficulty_level TEXT DEFAULT 'medium' CHECK (difficulty_level IN ('easy', 'medium', 'hard')),
+        tags TEXT DEFAULT '[]',
+        is_active BOOLEAN DEFAULT 1,
+        order_index INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (set_id) REFERENCES memory_card_sets(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Memory card progress tracking for students
+    await run(`
+      CREATE TABLE IF NOT EXISTS memory_card_progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER NOT NULL,
+        card_id INTEGER NOT NULL,
+        set_id INTEGER NOT NULL,
+        correct_attempts INTEGER DEFAULT 0,
+        incorrect_attempts INTEGER DEFAULT 0,
+        last_reviewed_at DATETIME,
+        mastery_level INTEGER DEFAULT 0 CHECK (mastery_level >= 0 AND mastery_level <= 5),
+        next_review_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (card_id) REFERENCES memory_cards(id) ON DELETE CASCADE,
+        FOREIGN KEY (set_id) REFERENCES memory_card_sets(id) ON DELETE CASCADE,
+        UNIQUE(student_id, card_id)
+      )
+    `);
+
+    // Memory card study sessions
+    await run(`
+      CREATE TABLE IF NOT EXISTS memory_card_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER NOT NULL,
+        set_id INTEGER NOT NULL,
+        session_type TEXT DEFAULT 'study' CHECK (session_type IN ('study', 'test', 'review')),
+        cards_studied INTEGER DEFAULT 0,
+        cards_correct INTEGER DEFAULT 0,
+        cards_incorrect INTEGER DEFAULT 0,
+        session_duration INTEGER DEFAULT 0,
+        started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        completed_at DATETIME,
+        metadata TEXT DEFAULT '{}',
+        FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (set_id) REFERENCES memory_card_sets(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Memory card set permissions for sharing
+    await run(`
+      CREATE TABLE IF NOT EXISTS memory_card_set_permissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        set_id INTEGER NOT NULL,
+        class_id INTEGER NOT NULL,
+        permission_type TEXT DEFAULT 'view' CHECK (permission_type IN ('view', 'study', 'test')),
+        granted_by INTEGER NOT NULL,
+        granted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        expires_at DATETIME,
+        is_active BOOLEAN DEFAULT 1,
+        FOREIGN KEY (set_id) REFERENCES memory_card_sets(id) ON DELETE CASCADE,
+        FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+        FOREIGN KEY (granted_by) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(set_id, class_id)
+      )
+    `);
+
+    // Create indexes for memory cards performance
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_sets_user_id ON memory_card_sets(user_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_sets_subject_area ON memory_card_sets(subject_area)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_sets_grade_level ON memory_card_sets(grade_level)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_sets_is_public ON memory_card_sets(is_public)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_sets_created_at ON memory_card_sets(created_at)`);
+
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_cards_user_id ON memory_cards(user_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_cards_set_id ON memory_cards(set_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_cards_card_type ON memory_cards(card_type)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_cards_difficulty_level ON memory_cards(difficulty_level)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_cards_is_active ON memory_cards(is_active)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_cards_order_index ON memory_cards(order_index)`);
+
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_progress_student_id ON memory_card_progress(student_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_progress_card_id ON memory_card_progress(card_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_progress_set_id ON memory_card_progress(set_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_progress_mastery_level ON memory_card_progress(mastery_level)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_progress_next_review_at ON memory_card_progress(next_review_at)`);
+
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_sessions_student_id ON memory_card_sessions(student_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_sessions_set_id ON memory_card_sessions(set_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_sessions_session_type ON memory_card_sessions(session_type)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_sessions_started_at ON memory_card_sessions(started_at)`);
+
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_set_permissions_set_id ON memory_card_set_permissions(set_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_set_permissions_class_id ON memory_card_set_permissions(class_id)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_set_permissions_granted_by ON memory_card_set_permissions(granted_by)`);
+    await run(`CREATE INDEX IF NOT EXISTS idx_memory_card_set_permissions_is_active ON memory_card_set_permissions(is_active)`);
+
+    console.log('Memory Cards tables initialized successfully');
+  } catch (error) {
+    console.error('Error initializing Memory Cards tables:', error);
     throw error;
   }
 };
@@ -582,5 +742,6 @@ module.exports = {
   db,
   query,
   run,
-  initializeDatabase
+  initializeDatabase,
+  initializeMemoryCardsTables
 };

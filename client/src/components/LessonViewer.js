@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { heTranslations } from '../translations';
 import ErrorMessage from './ErrorMessage';
 import LoadingSpinner from './LoadingSpinner';
+import CardGenerationInterface from './CardGenerationInterface';
 import './StudentPortal.css';
 
 // Translation helper
@@ -24,6 +25,8 @@ const LessonViewer = ({ lesson, onClose }) => {
   const [error, setError] = useState(null);
   const [lessonData, setLessonData] = useState(null);
   const [activeTab, setActiveTab] = useState('summary');
+  const [showCardGeneration, setShowCardGeneration] = useState(false);
+  const [cardGenerationSuccess, setCardGenerationSuccess] = useState(null);
 
   useEffect(() => {
     fetchLessonDetails();
@@ -88,6 +91,29 @@ const LessonViewer = ({ lesson, onClose }) => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
+  };
+
+  const handleGenerateCards = () => {
+    setShowCardGeneration(true);
+  };
+
+  const handleCardGenerationClose = () => {
+    setShowCardGeneration(false);
+    setCardGenerationSuccess(null);
+  };
+
+  const handleCardsGenerated = (result) => {
+    setCardGenerationSuccess(result);
+    setShowCardGeneration(false);
+    
+    // Show success message for a few seconds
+    setTimeout(() => {
+      setCardGenerationSuccess(null);
+    }, 5000);
+  };
+
+  const canGenerateCards = () => {
+    return lessonData?.transcription_text && lessonData.transcription_text.trim().length >= 100;
   };
 
   if (loading) {
@@ -240,10 +266,33 @@ const LessonViewer = ({ lesson, onClose }) => {
 
         {/* Footer Actions */}
         <footer className="lesson-viewer-footer">
+          {/* Success notification */}
+          {cardGenerationSuccess && (
+            <div className="card-generation-success">
+              <div className="success-message">
+                <span className="success-icon">✅</span>
+                <span className="success-text">
+                  {cardGenerationSuccess.cardsAdded} כרטיסים נוצרו ונשמרו בסט "{cardGenerationSuccess.setName}"
+                </span>
+              </div>
+            </div>
+          )}
+          
           <div className="lesson-actions">
             <button className="btn btn-outline" onClick={onClose}>
               {t('forms.cancel')}
             </button>
+            
+            {canGenerateCards() && (
+              <button 
+                className="btn btn-success" 
+                onClick={handleGenerateCards}
+                title="צור כרטיסי זיכרון מהשיעור"
+              >
+                🎴 צור כרטיסים
+              </button>
+            )}
+            
             {lessonData.transcription_text && (
               <button className="btn btn-primary" onClick={downloadTranscript}>
                 {t('student.downloadTranscript')}
@@ -252,6 +301,105 @@ const LessonViewer = ({ lesson, onClose }) => {
           </div>
         </footer>
       </div>
+
+      {/* Card Generation Interface */}
+      {showCardGeneration && (
+        <CardGenerationInterface
+          recordingId={lesson.recording_id}
+          onClose={handleCardGenerationClose}
+          onCardsGenerated={handleCardsGenerated}
+          initialConfig={{
+            subjectArea: lessonData.subject_area || '',
+            gradeLevel: lessonData.grade_level || ''
+          }}
+        />
+      )}
+
+      <style jsx>{`
+        .card-generation-success {
+          margin-bottom: 1rem;
+          padding: 0.75rem 1rem;
+          background: linear-gradient(135deg, rgba(39, 174, 96, 0.1) 0%, rgba(39, 174, 96, 0.05) 100%);
+          border: 1px solid rgba(39, 174, 96, 0.2);
+          border-radius: 8px;
+          animation: slideIn 0.3s ease-out;
+        }
+
+        .success-message {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: #27ae60;
+          font-weight: 600;
+        }
+
+        .success-icon {
+          font-size: 1.2rem;
+        }
+
+        .success-text {
+          font-size: 0.9rem;
+        }
+
+        .btn-success {
+          background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+          color: white;
+          border: none;
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          box-shadow: 0 2px 6px rgba(39, 174, 96, 0.3);
+        }
+
+        .btn-success:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 3px 8px rgba(39, 174, 96, 0.4);
+        }
+
+        .btn-success:active {
+          transform: translateY(0);
+        }
+
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @media (max-width: 768px) {
+          .lesson-actions {
+            flex-direction: column;
+            gap: 0.75rem;
+          }
+
+          .btn-success,
+          .btn-primary,
+          .btn-outline {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .card-generation-success {
+            margin-bottom: 0.75rem;
+            padding: 0.5rem 0.75rem;
+          }
+
+          .success-text {
+            font-size: 0.8rem;
+          }
+        }
+      `}</style>
     </div>
   );
 };
