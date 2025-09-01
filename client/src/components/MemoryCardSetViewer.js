@@ -1028,14 +1028,15 @@ const MemoryCardSetViewer = ({ setId, onClose, onEdit }) => {
         .study-mode {
           max-width: 100%;
           margin: 0;
-          height: calc(100vh - 140px);
+          height: calc(100vh - 200px);
           display: flex;
           flex-direction: column;
+          gap: 1rem;
+          overflow: hidden;
         }
 
         .study-header {
           text-align: center;
-          margin-bottom: 1rem;
           background: var(--color-surface, #ffffff);
           padding: 1rem;
           border-radius: 12px;
@@ -1045,7 +1046,7 @@ const MemoryCardSetViewer = ({ setId, onClose, onEdit }) => {
         }
 
         .card-counter {
-          font-size: 1rem;
+          font-size: 1.1rem;
           color: var(--color-text, #2c3e50);
           margin-bottom: 0.75rem;
           font-weight: 700;
@@ -1089,8 +1090,20 @@ const MemoryCardSetViewer = ({ setId, onClose, onEdit }) => {
           justify-content: center;
           flex: 1;
           align-items: center;
-          margin-bottom: 1rem;
           min-height: 0;
+          padding: 0 1rem;
+        }
+
+        .study-card-container :global(.memory-card-preview) {
+          width: 100% !important;
+          max-width: min(90vw, 600px) !important;
+          height: auto !important;
+        }
+
+        .study-card-container :global(.memory-card-preview .card-container) {
+          height: min(60vh, 400px) !important;
+          max-height: 400px !important;
+          aspect-ratio: 3/2 !important;
         }
 
         .study-navigation {
@@ -1253,7 +1266,7 @@ const MemoryCardSetViewer = ({ setId, onClose, onEdit }) => {
 
           .cards-grid {
             grid-template-columns: 1fr;
-            gap: 0.75rem;
+            gap: 0.5rem;
             max-height: calc(100vh - 380px);
           }
 

@@ -1,142 +1,105 @@
-/**
- * Test script to verify the card generation fix
- * This script tests the CardGenerationService with mock data to ensure
- * the transcript field issue is resolved
- */
-
 const CardGenerationService = require('./server/services/CardGenerationService');
 
-// Mock TranscriptionService to simulate the database response
-const mockTranscriptionService = {
-  getTranscriptionByRecordingId: async (recordingId, userId) => {
-    // Simulate a transcription record from the database
-    // Note: The database field is 'transcription_text', not 'text'
-    return {
-      id: 1,
-      recording_id: recordingId,
-      user_id: userId,
-      transcription_text: 'זהו טקסט תמליל לדוגמה שמכיל מספיק תוכן ליצירת כרטיסי זיכרון. הטקסט כולל מידע חינוכי על נושא מתמטיקה. אנחנו לומדים על חיבור וחיסור של מספרים. חיבור הוא פעולה מתמטית שבה אנחנו מוסיפים מספרים יחד. לדוגמה, 2 + 3 = 5. חיסור הוא פעולה הפוכה שבה אנחנו מורידים מספר אחד מהשני.',
-      confidence_score: 0.85,
-      language_detected: 'he',
-      processing_duration: 5000,
-      ai_provider: 'openai',
-      model_version: 'whisper-1',
-      segments: [],
-      metadata: {
-        duration: 30,
-        words: null
-      },
-      created_at: new Date().toISOString()
-    };
-  }
-};
+/**
+ * Test script to verify card generation functionality after fixing the database issue
+ */
 
-// Mock the TranscriptionService require
-const originalRequire = require;
-require = function(id) {
-  if (id === './TranscriptionService') {
-    return mockTranscriptionService;
-  }
-  return originalRequire.apply(this, arguments);
-};
-
-// Mock AI provider to avoid actual API calls
-const mockAIProvider = {
-  generateCompletion: async (options) => {
-    return {
-      text: JSON.stringify({
-        cards: [
-          {
-            frontText: "מה זה חיבור?",
-            backText: "חיבור הוא פעולה מתמטית שבה אנחנו מוסיפים מספרים יחד",
-            difficultyLevel: "easy",
-            tags: ["מתמטיקה", "חיבור"]
-          },
-          {
-            frontText: "תן דוגמה לחיבור פשוט",
-            backText: "2 + 3 = 5",
-            difficultyLevel: "easy", 
-            tags: ["מתמטיקה", "דוגמה"]
-          }
-        ]
-      })
-    };
-  }
-};
-
-// Mock the AI services
-const mockAIServices = {
-  AI_PROVIDERS: { OPENAI: 'openai' },
-  getAIProvider: () => mockAIProvider
-};
-
-// Mock database functions
-const mockDatabase = {
-  run: async (query, params) => {
-    console.log('Mock DB run:', query.substring(0, 50) + '...');
-    return { lastID: Math.floor(Math.random() * 1000) };
-  },
-  query: async (query, params) => {
-    console.log('Mock DB query:', query.substring(0, 50) + '...');
-    return { rows: [] };
-  }
-};
-
-async function testCardGenerationFix() {
-  console.log('🧪 Testing Card Generation Fix...\n');
+async function testCardGeneration() {
+  console.log('🧪 Testing Card Generation Service...\n');
 
   try {
-    // Test the generateCardsFromLesson method
-    console.log('1. Testing generateCardsFromLesson with mock data...');
-    
-    const result = await CardGenerationService.generateCardsFromLesson({
-      recordingId: 123,
-      userId: 456,
+    // Test 1: Generate cards from text
+    console.log('📝 Test 1: Generate cards from text');
+    const testText = `
+    מתמטיקה היא תחום מדעי העוסק במספרים, צורות ודפוסים. 
+    היא כוללת ארבע פעולות יסוד: חיבור, חיסור, כפל וחילוק.
+    חיבור הוא פעולה שבה מצרפים מספרים יחד כדי לקבל סכום.
+    חיסור הוא פעולה הפוכה לחיבור, שבה מפחיתים מספר אחד מאחר.
+    כפל הוא חיבור חוזר של אותו מספר.
+    חילוק הוא פעולה הפוכה לכפל, שבה מחלקים מספר למספר שווה של חלקים.
+    `;
+
+    const result = await CardGenerationService.generateCardsFromText({
+      text: testText,
+      userId: 1, // Test user ID
       config: {
-        cardCount: 2,
-        difficultyLevel: 'easy',
+        cardCount: 5,
+        difficultyLevel: 'medium',
         subjectArea: 'מתמטיקה',
         gradeLevel: 'כיתות ד-ו'
       }
     });
 
-    console.log('✅ Card generation successful!');
-    console.log('Generated cards:', result.cards.length);
-    console.log('Cards preview:');
-    result.cards.forEach((card, index) => {
-      console.log(`  Card ${index + 1}:`);
-      console.log(`    Front: ${card.frontText}`);
-      console.log(`    Back: ${card.backText}`);
-      console.log(`    Difficulty: ${card.difficultyLevel}`);
-      console.log('');
-    });
+    console.log('✅ Cards generated successfully!');
+    console.log(`📊 Generated ${result.cards.length} cards`);
+    console.log(`🔧 Job ID: ${result.jobId}`);
+    console.log(`📏 Source text length: ${result.metadata.sourceTextLength} characters`);
+    console.log(`⚡ Processing time: ${result.metadata.processingTime}ms`);
+    
+    // Display first card as example
+    if (result.cards.length > 0) {
+      console.log('\n📋 Example card:');
+      console.log(`Front: ${result.cards[0].frontText}`);
+      console.log(`Back: ${result.cards[0].backText}`);
+      console.log(`Difficulty: ${result.cards[0].difficultyLevel}`);
+      console.log(`Tags: ${result.cards[0].tags.join(', ')}`);
+    }
 
-    console.log('✅ Test passed! The transcript field issue has been fixed.');
-    console.log('The service now correctly accesses transcription_text from the database.');
-
+    console.log('\n✅ All tests passed! Card generation is working correctly.');
+    
   } catch (error) {
     console.error('❌ Test failed:', error.message);
-    console.error('Stack trace:', error.stack);
+    
+    // Provide specific error guidance
+    if (error.message.includes('OpenAI client לא זמין')) {
+      console.log('\n💡 Solution: Make sure OPENAI_API_KEY is set in your .env file');
+    } else if (error.message.includes('שגיאה ביצירת משימת יצירה')) {
+      console.log('\n💡 Solution: Database tables might not be set up. Run: node database/setup-card-generation.js');
+    } else {
+      console.log('\n💡 Check the error details above and ensure all dependencies are properly configured.');
+    }
+    
+    process.exit(1);
   }
 }
 
-// Mock the required modules before running the test
-const Module = require('module');
-const originalLoad = Module._load;
-
-Module._load = function(request, parent) {
-  if (request === '../config/ai-services') {
-    return mockAIServices;
+// Test generation statistics
+async function testGenerationStats() {
+  console.log('\n📈 Testing generation statistics...');
+  
+  try {
+    const stats = await CardGenerationService.getGenerationStats(1);
+    console.log('✅ Stats retrieved successfully:');
+    console.log(`Total generations: ${stats.total_generations}`);
+    console.log(`Total cards generated: ${stats.total_cards_generated}`);
+    console.log(`Average cards per generation: ${stats.avg_cards_per_generation}`);
+    console.log(`Providers used: ${stats.providers_used}`);
+  } catch (error) {
+    console.error('❌ Stats test failed:', error.message);
   }
-  if (request === '../config/database-sqlite') {
-    return mockDatabase;
-  }
-  return originalLoad.apply(this, arguments);
-};
+}
 
-// Run the test
-testCardGenerationFix().then(() => {
-  console.log('\n🎉 Test completed!');
-}).catch((error) => {
-  console.error('\n💥 Test execution failed:', error);
+// Run tests
+async function runTests() {
+  console.log('🚀 Starting Card Generation Tests\n');
+  console.log('=' .repeat(50));
+  
+  await testCardGeneration();
+  await testGenerationStats();
+  
+  console.log('\n' + '='.repeat(50));
+  console.log('🎉 All tests completed!');
+  console.log('\nNext steps:');
+  console.log('1. Start the server: npm run dev');
+  console.log('2. Test card generation from the UI');
+  console.log('3. Try generating cards from a lesson with transcription');
+}
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });
+
+// Run the tests
+runTests().catch(console.error);

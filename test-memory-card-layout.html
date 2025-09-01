@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Card Layout Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .memory-card-set-viewer {
+            max-width: 100vw;
+            margin: 0;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            min-height: 100vh;
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+
+        .viewer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e9ecef;
+            min-height: 60px;
+        }
+
+        .header-center h2 {
+            margin: 0;
+            color: #3498db;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #3498db;
+            border: 1px solid #3498db;
+        }
+
+        .view-mode-toggle {
+            display: flex;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            justify-content: center;
+            background: #ffffff;
+            padding: 0.25rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e9ecef;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .toggle-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            color: #7f8c8d;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .toggle-btn.active {
+            background: #3498db;
+            color: white;
+            box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
+        }
+
+        .study-mode {
+            max-width: 100%;
+            margin: 0;
+            height: calc(100vh - 200px);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow: hidden;
+        }
+
+        .study-header {
+            text-align: center;
+            background: #ffffff;
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e9ecef;
+            flex-shrink: 0;
+        }
+
+        .card-counter {
+            font-size: 1.1rem;
+            color: #2c3e50;
+            margin-bottom: 0.75rem;
+            font-weight: 700;
+        }
+
+        .study-progress {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db 0%, #2980b9 100%);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+            width: 60%;
+        }
+
+        .study-card-container {
+            display: flex;
+            justify-content: center;
+            flex: 1;
+            align-items: center;
+            min-height: 0;
+            padding: 0 1rem;
+        }
+
+        .memory-card-preview {
+            width: 100%;
+            max-width: min(90vw, 600px);
+            height: auto;
+        }
+
+        .card-container {
+            position: relative;
+            width: 100%;
+            height: min(60vh, 400px);
+            max-height: 400px;
+            aspect-ratio: 3/2;
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .card-container:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            transform: translateY(-4px);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #ffffff;
+            border: 2px solid #3498db;
+            overflow: hidden;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .card-text {
+            text-align: center;
+            font-size: 1.4rem;
+            line-height: 1.4;
+            color: #2c3e50;
+            font-weight: 500;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .study-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            background: #ffffff;
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e9ecef;
+            flex-shrink: 0;
+        }
+
+        .nav-btn {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(52, 152, 219, 0.4);
+        }
+
+        .card-info {
+            text-align: center;
+            flex: 1;
+            padding: 0 0.5rem;
+        }
+
+        .difficulty-indicator {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .flip-hint {
+            position: absolute;
+            top: 1.5rem;
+            left: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0.6rem 1rem;
+            border-radius: 25px;
+            font-size: 0.85rem;
+            color: #6c757d;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+
+        .card-container:hover .flip-hint {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .study-mode {
+                height: calc(100vh - 120px);
+            }
+
+            .study-navigation {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .nav-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .memory-card-set-viewer {
+                padding: 0.25rem;
+            }
+
+            .study-mode {
+                height: calc(100vh - 100px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="memory-card-set-viewer">
+        <div class="viewer-header">
+            <div class="header-left">
+                <button class="btn btn-secondary">← חזור</button>
+            </div>
+            
+            <div class="header-center">
+                <h2>מי היה המלכים המפורסים אלמקין אוזה?</h2>
+            </div>
+            
+            <div class="header-right">
+                <button class="btn btn-outline">✏️ עריכה</button>
+            </div>
+        </div>
+
+        <div class="view-mode-toggle">
+            <button class="toggle-btn">📋 רשימה</button>
+            <button class="toggle-btn active">🎯 לימוד</button>
+        </div>
+
+        <div class="study-mode">
+            <div class="study-header">
+                <div class="card-counter">כרטיס 3 מתוך 10</div>
+                <div class="study-progress">
+                    <div class="progress-bar"></div>
+                </div>
+            </div>
+
+            <div class="study-card-container">
+                <div class="memory-card-preview">
+                    <div class="card-container">
+                        <div class="flip-hint">
+                            <span class="flip-icon">🔄</span>
+                            <span class="flip-text">לחץ להיפוך</span>
+                        </div>
+                        <div class="card-face">
+                            <div class="card-text">
+                                מי היה המלכים המפורסים אלמקין אוזה?
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="study-navigation">
+                <button class="nav-btn">← הקודם</button>
+                
+                <div class="card-info">
+                    <div class="difficulty-indicator">רמת קושי: בינוני</div>
+                </div>
+                
+                <button class="nav-btn">הבא →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactivity
+        const cardContainer = document.querySelector('.card-container');
+        let isFlipped = false;
+
+        cardContainer.addEventListener('click', () => {
+            if (isFlipped) {
+                cardContainer.style.transform = 'rotateY(0deg)';
+                document.querySelector('.card-text').textContent = 'מי היה המלכים המפורסים אלמקין אוזה?';
+            } else {
+                cardContainer.style.transform = 'rotateY(180deg)';
+                document.querySelector('.card-text').textContent = 'דוד המלך - מלך ישראל המפורסם ביותר';
+            }
+            isFlipped = !isFlipped;
+        });
+
+        // Navigation buttons
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Reset card flip
+                cardContainer.style.transform = 'rotateY(0deg)';
+                document.querySelector('.card-text').textContent = 'מי היה המלכים המפורסים אלמקין אוזה?';
+                isFlipped = false;
+                
+                // Update progress (simulate)
+                const progressBar = document.querySelector('.progress-bar');
+                const currentWidth = parseInt(progressBar.style.width) || 60;
+                const newWidth = btn.textContent.includes('הבא') ? 
+                    Math.min(currentWidth + 10, 100) : 
+                    Math.max(currentWidth - 10, 10);
+                progressBar.style.width = newWidth + '%';
+            });
+        });
+    </script>
+</body>
+</html>

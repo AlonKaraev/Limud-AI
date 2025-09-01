@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Database path
-const dbPath = path.join(__dirname, '..', 'server', 'database', 'limud_ai.db');
+const dbPath = path.join(__dirname, '..', 'server', 'database', 'limudai.db');
 
 // Read the card generation schema
 const schemaPath = path.join(__dirname, 'card-generation-schema.sql');

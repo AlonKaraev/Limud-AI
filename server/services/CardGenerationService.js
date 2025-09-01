@@ -1,4 +1,4 @@
-const { AI_PROVIDERS, getAIProvider } = require('../config/ai-services');
+const { AI_PROVIDERS, openaiClient, MODEL_CONFIGS } = require('../config/ai-services');
 const { run, query } = require('../config/database-sqlite');
 const TranscriptionService = require('./TranscriptionService');
 
@@ -140,13 +140,52 @@ class CardGenerationService {
       // Get recording metadata for better context
       const recording = await this.getRecordingMetadata(recordingId, userId);
       
-      // Enhance config with recording metadata
+      // Extract field of study and class level from lesson metadata
+      let lessonSubjectArea = 'כללי';
+      let lessonGradeLevel = 'כיתות ד-ו';
+      let lessonTitle = recording?.filename || `שיעור ${recordingId}`;
+      
+      if (recording && recording.metadata) {
+        const metadata = typeof recording.metadata === 'string' 
+          ? JSON.parse(recording.metadata) 
+          : recording.metadata;
+        
+        // Extract subject area from various possible field names
+        lessonSubjectArea = metadata.subjectArea || 
+                           metadata.subject || 
+                           metadata.fieldOfStudy || 
+                           metadata.subject_area || 
+                           'כללי';
+        
+        // Extract grade level from various possible field names
+        lessonGradeLevel = metadata.gradeLevel || 
+                          metadata.classLevel || 
+                          metadata.grade_level || 
+                          metadata.class_level || 
+                          'כיתות ד-ו';
+        
+        // Extract lesson title
+        lessonTitle = metadata.lessonName || 
+                     metadata.title || 
+                     metadata.name || 
+                     recording.filename || 
+                     `שיעור ${recordingId}`;
+      }
+      
+      // Enhance config with recording metadata - prioritize lesson data over config
       const enhancedConfig = {
         ...config,
-        subjectArea: config.subjectArea || recording?.subject_area || 'כללי',
-        gradeLevel: config.gradeLevel || recording?.grade_level || 'כיתות ד-ו',
-        lessonTitle: recording?.title || recording?.filename
+        subjectArea: lessonSubjectArea, // Always use lesson's field of study
+        gradeLevel: lessonGradeLevel,   // Always use lesson's class level
+        lessonTitle: lessonTitle
       };
+
+      console.log('Enhanced config for card generation:', {
+        recordingId,
+        subjectArea: enhancedConfig.subjectArea,
+        gradeLevel: enhancedConfig.gradeLevel,
+        lessonTitle: enhancedConfig.lessonTitle
+      });
 
       // Generate cards from transcription text
       return await this.generateCardsFromText({
@@ -170,25 +209,37 @@ class CardGenerationService {
    */
   async callAIForCardGeneration(text, config) {
     try {
-      const aiProvider = getAIProvider(config.provider);
-      
-      if (!aiProvider) {
-        throw new Error(`ספק AI לא זמין: ${config.provider}`);
+      if (!openaiClient) {
+        throw new Error('OpenAI client לא זמין. בדוק את הגדרות ה-API key.');
       }
 
       // Prepare the prompt for card generation
       const prompt = this.buildCardGenerationPrompt(text, config);
 
-      // Call AI service
-      const response = await aiProvider.generateCompletion({
-        prompt,
-        maxTokens: 2000,
+      // Call OpenAI API
+      const response = await openaiClient.chat.completions.create({
+        model: config.model || 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 2000,
         temperature: 0.7,
-        model: config.model || 'gpt-3.5-turbo'
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0
       });
 
+      const responseText = response.choices[0]?.message?.content;
+      
+      if (!responseText) {
+        throw new Error('לא התקבלה תשובה מ-OpenAI');
+      }
+
       // Parse AI response
-      const generatedCards = this.parseAIResponse(response.text);
+      const generatedCards = this.parseAIResponse(responseText);
 
       if (!generatedCards || generatedCards.length === 0) {
         throw new Error('לא הצלחנו ליצור כרטיסים מהטקסט הנתון.');

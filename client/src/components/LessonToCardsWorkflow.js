@@ -235,9 +235,14 @@ const ProgressSubtext = styled.div`
 
 const CardsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
 `;
 
 const CardContainer = styled.div`
@@ -246,21 +251,28 @@ const CardContainer = styled.div`
   border-radius: var(--radius-md);
   background: ${props => props.selected ? 'var(--color-successLight)' : 'var(--color-surface)'};
   transition: var(--transition-medium);
+  overflow: hidden;
   
   &:hover {
     border-color: ${props => props.selected ? 'var(--color-success)' : 'var(--color-primary)'};
     box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
   }
 `;
 
 const CardCheckbox = styled.input`
   position: absolute;
-  top: 1rem;
-  left: 1rem;
-  width: 20px;
-  height: 20px;
+  top: 0.75rem;
+  left: 0.75rem;
+  width: 24px;
+  height: 24px;
   cursor: pointer;
   z-index: 10;
+  accent-color: var(--color-success);
+  
+  &:checked {
+    transform: scale(1.1);
+  }
 `;
 
 const CardActions = styled.div`
@@ -309,42 +321,118 @@ const ActionButton = styled.button`
 `;
 
 const SelectionSummary = styled.div`
-  background: var(--color-primaryLight);
+  background: linear-gradient(135deg, var(--color-primaryLight) 0%, rgba(52, 152, 219, 0.05) 100%);
   border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  padding: 1rem;
-  margin-bottom: 1rem;
+  border-radius: var(--radius-md);
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    text-align: center;
+  }
+`;
+
+const SelectionInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+`;
+
+const SelectionCount = styled.span`
+  background: var(--color-primary);
+  color: var(--color-textOnPrimary);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  min-width: 120px;
   text-align: center;
+`;
+
+const QuickActions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  
+  @media (max-width: 768px) {
+    justify-content: center;
+  }
 `;
 
 const SetSelector = styled.div`
   margin-bottom: 1.5rem;
+  background: var(--color-surfaceElevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
 `;
 
 const SetOptions = styled.div`
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+  }
 `;
 
 const SetOption = styled.label`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-text);
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: var(--transition-medium);
+  background: var(--color-surface);
+  
+  &:hover {
+    border-color: var(--color-primary);
+    background: var(--color-primaryLight);
+  }
+  
+  &:has(input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primaryLight);
+    color: var(--color-primary);
+  }
 `;
 
 const SetOptionRadio = styled.input`
   margin: 0;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primary);
 `;
 
 const NewSetFields = styled.div`
   display: grid;
-  grid-template-columns: 2fr 3fr;
-  gap: 1rem;
-  margin-top: 1rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 `;
 
 const LessonToCardsWorkflow = ({ userId, onComplete, onCancel }) => {
@@ -368,6 +456,7 @@ const LessonToCardsWorkflow = ({ userId, onComplete, onCancel }) => {
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generatedCards, setGeneratedCards] = useState([]);
   const [selectedCards, setSelectedCards] = useState(new Set());
+  const [generationJobId, setGenerationJobId] = useState(null);
   
   // Set selection
   const [setOption, setSetOption] = useState('existing'); // 'existing' or 'new'
@@ -456,16 +545,40 @@ const LessonToCardsWorkflow = ({ userId, onComplete, onCancel }) => {
     setSelectedLesson(lesson);
     
     if (lesson) {
-      // Auto-populate config from lesson metadata
+      // Extract field of study and class level from lesson metadata
+      let subjectArea = 'כללי';
+      let gradeLevel = 'כיתות ד-ו';
+      
+      if (lesson.metadata) {
+        // Extract subject area from various possible field names
+        subjectArea = lesson.metadata.subjectArea || 
+                     lesson.metadata.subject || 
+                     lesson.metadata.fieldOfStudy || 
+                     lesson.metadata.subject_area || 
+                     'כללי';
+        
+        // Extract grade level from various possible field names
+        gradeLevel = lesson.metadata.gradeLevel || 
+                    lesson.metadata.classLevel || 
+                    lesson.metadata.grade_level || 
+                    lesson.metadata.class_level || 
+                    'כיתות ד-ו';
+      }
+      
+      // Auto-populate config from lesson metadata - always inherit from lesson
       setConfig(prev => ({
         ...prev,
-        subjectArea: lesson.metadata?.subject || prev.subjectArea,
-        gradeLevel: lesson.metadata?.classLevel || prev.gradeLevel
+        subjectArea: subjectArea,
+        gradeLevel: gradeLevel
       }));
       
       // Auto-generate set name if creating new set
       if (setOption === 'new' && !newSetName) {
-        setNewSetName(`כרטיסי זיכרון - ${lesson.metadata?.lessonName || `שיעור ${lesson.id}`}`);
+        const lessonName = lesson.metadata?.lessonName || 
+                          lesson.metadata?.title || 
+                          lesson.metadata?.name || 
+                          `שיעור ${lesson.id}`;
+        setNewSetName(`כרטיסי זיכרון - ${lessonName}`);
       }
     }
   };
@@ -517,6 +630,7 @@ const LessonToCardsWorkflow = ({ userId, onComplete, onCancel }) => {
       if (result.success && result.cards) {
         setGeneratedCards(result.cards);
         setSelectedCards(new Set(result.cards.map((_, index) => index)));
+        setGenerationJobId(result.jobId); // Store the job ID
         setCurrentStep(3);
       } else {
         throw new Error('לא הצלחנו ליצור כרטיסים');
@@ -580,7 +694,7 @@ const LessonToCardsWorkflow = ({ userId, onComplete, onCancel }) => {
         setDescription = null;
       }
 
-      const response = await fetch('/api/memory-cards/generate/approve/0', {
+      const response = await fetch(`/api/memory-cards/generate/approve/${generationJobId || 0}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -749,8 +863,13 @@ const LessonToCardsWorkflow = ({ userId, onComplete, onCancel }) => {
         return (
           <StepContent>
             <SelectionSummary>
-              <strong>{selectedCards.size} מתוך {generatedCards.length} כרטיסים נבחרו</strong>
-              <div style={{ marginTop: '0.5rem' }}>
+              <SelectionInfo>
+                <span>כרטיסים נבחרו:</span>
+                <SelectionCount>
+                  {selectedCards.size} מתוך {generatedCards.length}
+                </SelectionCount>
+              </SelectionInfo>
+              <QuickActions>
                 <ActionButton 
                   className="secondary" 
                   onClick={handleSelectAll}
@@ -758,7 +877,7 @@ const LessonToCardsWorkflow = ({ userId, onComplete, onCancel }) => {
                 >
                   {selectedCards.size === generatedCards.length ? 'בטל בחירת הכל' : 'בחר הכל'}
                 </ActionButton>
-              </div>
+              </QuickActions>
             </SelectionSummary>
 
             <CardsGrid>
