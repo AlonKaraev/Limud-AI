@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
-const AudioProcessingService = require('./server/services/AudioProcessingService');
-const TranscriptionService = require('./server/services/TranscriptionService');
+const AudioProcessingService = require('../server/services/AudioProcessingService');
+const TranscriptionService = require('../server/services/TranscriptionService');
 
 /**
  * Test script for enhanced audio processing pipeline

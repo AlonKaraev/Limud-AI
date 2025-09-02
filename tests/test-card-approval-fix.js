@@ -1,6 +1,6 @@
-const CardGenerationService = require('./server/services/CardGenerationService');
-const MemoryCardSet = require('./server/models/MemoryCardSet');
-const MemoryCard = require('./server/models/MemoryCard');
+const CardGenerationService = require('../server/services/CardGenerationService');
+const MemoryCardSet = require('../server/models/MemoryCardSet');
+const MemoryCard = require('../server/models/MemoryCard');
 
 /**
  * Test script to verify card approval and saving functionality

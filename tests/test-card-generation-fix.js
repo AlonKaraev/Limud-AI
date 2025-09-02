@@ -1,4 +1,4 @@
-const CardGenerationService = require('./server/services/CardGenerationService');
+const CardGenerationService = require('../server/services/CardGenerationService');
 
 /**
  * Test script to verify card generation functionality after fixing the database issue

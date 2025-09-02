@@ -4,7 +4,7 @@
  */
 
 const fetch = require('node-fetch');
-const User = require('./server/models/User');
+const User = require('../server/models/User');
 require('dotenv').config();
 
 class LoginRedirectTester {
@@ -227,7 +227,7 @@ class LoginRedirectTester {
     console.log('================================');
 
     // Simulate the frontend TokenManager behavior
-    const TokenManager = require('./client/src/utils/TokenManager').default;
+    const TokenManager = require('../client/src/utils/TokenManager').default;
     
     try {
       // Test 1: Token storage and retrieval

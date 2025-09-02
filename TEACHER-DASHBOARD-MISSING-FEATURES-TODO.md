@@ -42,13 +42,31 @@
   - Test: Overview displays memory card count
   - Test: Counters update when content is added
   
-- [ ] **Add tests and summaries to statistics**
+- [X] **Add tests and summaries to statistics**
   - Test: Overview displays test count
   - Test: Overview displays summary count
   - Test: Counters reflect actual stored content
 
+- [X] **Add lessons to statistics**
+  - Test: Overview displays lesson count
+  - Test: Counters reflect actual stored content
+
 ## 🔧 **PRIORITY 2: CORE FUNCTIONALITY**
 
+### **2.0 Database Merging**
+- [ ] **Merge Summaries database with lesson summaries database**
+	All Summaries and lesson generated summaries should be part of the same database, lesson specific should have some indicator like a tag.
+	Testable deliverables:
+	- Lesson generated summary is added to summary list when generated directly from lesson card.
+	- Lesson generated summary is counted in the overview tab statistics.
+	
+- [ ] **Merge tests database with lesson tests database**
+	All tests and program should be part of the same database, lesson specific should have some indicator like a tag.
+	Testable deliverables:
+	- Lesson generated test is added to test list when generated directly from card.
+	- Lesson generated test is counted in the overview tab statistics.
+
+	
 ### **2.1 Test Management Features**
 - [ ] **Add test editing capability**
 	Test editing means that title, tags, descriptions, questions and potential answers should be able to be edited.

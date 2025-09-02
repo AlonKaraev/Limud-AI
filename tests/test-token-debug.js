@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const User = require('./server/models/User');
+const User = require('../server/models/User');
 require('dotenv').config();
 
 class TokenDebugger {

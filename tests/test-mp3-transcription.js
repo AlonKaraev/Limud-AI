@@ -82,7 +82,7 @@ async function testMP3Transcription() {
   
   try {
     // Import the service after mocking
-    const TranscriptionService = require('./server/services/TranscriptionService');
+    const TranscriptionService = require('../server/services/TranscriptionService');
     
     console.log('✅ TranscriptionService loaded successfully');
     console.log('📋 Supported formats:', TranscriptionService.supportedFormats);

@@ -1,7 +1,7 @@
-const { initializeDatabase } = require('./server/config/database-sqlite');
-const MemoryCard = require('./server/models/MemoryCard');
-const MemoryCardSet = require('./server/models/MemoryCardSet');
-const User = require('./server/models/User');
+const { initializeDatabase } = require('../server/config/database-sqlite');
+const MemoryCard = require('../server/models/MemoryCard');
+const MemoryCardSet = require('../server/models/MemoryCardSet');
+const User = require('../server/models/User');
 
 async function testMemoryCards() {
   console.log('🧪 Starting Memory Cards Feature Tests...\n');

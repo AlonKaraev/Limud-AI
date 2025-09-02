@@ -80,7 +80,7 @@ async function testWithActualUser() {
 
     console.log('\n3️⃣ Testing with verified user');
     // First, let's verify the user in the database
-    const { query, run } = require('./server/config/database-sqlite');
+    const { query, run } = require('../server/config/database-sqlite');
     
     console.log('Verifying user in database...');
     await run('UPDATE users SET is_verified = 1 WHERE id = ?', [actualUser.id]);

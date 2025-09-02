@@ -43,7 +43,7 @@ async function verifyJWTConsistency() {
     console.log('--------------------------------------------------');
     
     // Import User model to test token generation
-    const User = require('./server/models/User');
+    const User = require('../server/models/User');
     
     // Create a mock user instance
     const mockUser = {
@@ -113,7 +113,7 @@ async function verifyJWTConsistency() {
     console.log('----------------------------------');
     
     // Test the authentication middleware logic
-    const authMiddleware = require('./server/middleware/auth');
+    const authMiddleware = require('../server/middleware/auth');
     
     // Mock request and response objects
     const mockReq = {

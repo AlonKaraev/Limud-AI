@@ -28,8 +28,8 @@ async function createTestServer() {
   app.use(express.json());
   
   // Import required modules
-  const User = require('./server/models/User');
-  const { authenticate } = require('./server/middleware/auth');
+  const User = require('../server/models/User');
+  const { authenticate } = require('../server/middleware/auth');
   
   // Enhanced authentication middleware with detailed logging
   const debugAuthenticate = async (req, res, next) => {

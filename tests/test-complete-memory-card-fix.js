@@ -1,5 +1,5 @@
 const axios = require('axios');
-const User = require('./server/models/User');
+const User = require('../server/models/User');
 require('dotenv').config();
 
 class CompleteMemoryCardFixTester {

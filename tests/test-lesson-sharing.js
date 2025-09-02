@@ -3,7 +3,7 @@
  * This script tests the complete flow from teacher sharing content to student accessing it
  */
 
-const { initializeDatabase, query, run } = require('./server/config/database-sqlite');
+const { initializeDatabase, query, run } = require('../server/config/database-sqlite');
 
 async function testLessonSharing() {
   console.log('🧪 Starting lesson sharing functionality test...\n');

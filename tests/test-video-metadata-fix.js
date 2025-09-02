@@ -1,5 +1,5 @@
-const VideoProcessingService = require('./server/services/VideoProcessingService');
-const { query } = require('./server/config/database-sqlite');
+const VideoProcessingService = require('../server/services/VideoProcessingService');
+const { query } = require('../server/config/database-sqlite');
 
 async function testVideoMetadataFix() {
     console.log('🧪 Testing video metadata fix...');

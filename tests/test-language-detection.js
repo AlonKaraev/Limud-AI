@@ -3,7 +3,7 @@
  * Tests both Hebrew and English language detection capabilities
  */
 
-const TranscriptionService = require('./server/services/TranscriptionService');
+const TranscriptionService = require('../server/services/TranscriptionService');
 const path = require('path');
 const fs = require('fs');
 
@@ -49,7 +49,7 @@ async function testLanguageDetection() {
       // Test 2: Test the configuration changes
       console.log('\n🔧 Testing Configuration Changes...');
       
-      const { MODEL_CONFIGS } = require('./server/config/ai-services');
+      const { MODEL_CONFIGS } = require('../server/config/ai-services');
       const transcriptionConfig = MODEL_CONFIGS.transcription.openai;
       
       console.log('Current transcription configuration:');

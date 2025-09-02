@@ -22,7 +22,7 @@ async function debugMemoryCardToken() {
     // const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     
     // Let's create a test token like the server would
-    const User = require('./server/models/User');
+    const User = require('../server/models/User');
     
     const testUser = {
       id: 1,
@@ -52,7 +52,7 @@ async function debugMemoryCardToken() {
     console.log('--------------------------------------------------');
     
     // Import the authentication middleware
-    const { authenticate } = require('./server/middleware/auth');
+    const { authenticate } = require('../server/middleware/auth');
     
     // Mock request object (simulating the client request)
     const mockReq = {
