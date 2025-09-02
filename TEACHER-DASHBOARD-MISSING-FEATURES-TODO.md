@@ -12,6 +12,7 @@ This document outlines the missing features from the current Limud AI platform c
   - [ ] Test creation interface with manual and AI-generated options (AI Genrated tests should be based on one or multiple lessons)
   - [ ] Test configuration (question count, difficulty, time limits)
   - [ ] Question bank management system
+  - [ ] Test focus text input for AI as extra Guidance
   - [ ] Test preview and editing capabilities
   - [ ] Test distribution to classes
   - [ ] Results analytics and grading system
