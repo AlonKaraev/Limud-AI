@@ -150,18 +150,20 @@ class CardGenerationService {
           ? JSON.parse(recording.metadata) 
           : recording.metadata;
         
-        // Extract subject area from various possible field names
+        // Extract subject area from various possible field names - prioritize lesson metadata
         lessonSubjectArea = metadata.subjectArea || 
                            metadata.subject || 
                            metadata.fieldOfStudy || 
                            metadata.subject_area || 
+                           metadata.lessonSubject ||
                            'כללי';
         
-        // Extract grade level from various possible field names
+        // Extract grade level from various possible field names - prioritize lesson metadata
         lessonGradeLevel = metadata.gradeLevel || 
                           metadata.classLevel || 
                           metadata.grade_level || 
-                          metadata.class_level || 
+                          metadata.class_level ||
+                          metadata.lessonGrade ||
                           'כיתות ד-ו';
         
         // Extract lesson title
@@ -172,12 +174,14 @@ class CardGenerationService {
                      `שיעור ${recordingId}`;
       }
       
-      // Enhance config with recording metadata - prioritize lesson data over config
+      // Enhance config with recording metadata - ALWAYS prioritize lesson data over user config
       const enhancedConfig = {
         ...config,
-        subjectArea: lessonSubjectArea, // Always use lesson's field of study
-        gradeLevel: lessonGradeLevel,   // Always use lesson's class level
-        lessonTitle: lessonTitle
+        subjectArea: lessonSubjectArea, // Always inherit from lesson
+        gradeLevel: lessonGradeLevel,   // Always inherit from lesson
+        lessonTitle: lessonTitle,
+        sourceRecordingId: recordingId,
+        sourceType: 'lesson'
       };
 
       console.log('Enhanced config for card generation:', {

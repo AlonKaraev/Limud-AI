@@ -2285,7 +2285,8 @@ const LessonsManager = ({ t }) => {
   });
   const [recordingAiOptions, setRecordingAiOptions] = useState({
     generateSummary: false,
-    generateTest: false
+    generateTest: false,
+    generateFlashcards: false
   });
 
   // Audio player state
@@ -4214,6 +4215,18 @@ const LessonsManager = ({ t }) => {
                             disabled={!aiContent?.transcription?.transcription_text}
                             onClick={() => {
                               if (aiContent?.transcription?.transcription_text) {
+                                // Auto-populate flashcard config with lesson metadata
+                                const lessonMetadata = lesson.metadata || {};
+                                const metadata = typeof lessonMetadata === 'string' 
+                                  ? JSON.parse(lessonMetadata) 
+                                  : lessonMetadata;
+                                
+                                setFlashcardConfig(prev => ({
+                                  ...prev,
+                                  subjectArea: metadata.subjectArea || metadata.subject || metadata.fieldOfStudy || prev.subjectArea,
+                                  gradeLevel: metadata.gradeLevel || metadata.classLevel || metadata.grade_level || prev.gradeLevel
+                                }));
+                                
                                 setFlashcardModal(lesson);
                                 setExpandedAIMenu(prev => ({
                                   ...prev,
@@ -4661,6 +4674,14 @@ const LessonsManager = ({ t }) => {
                       />
                       צור שאלות בחינה
                     </RecordingCheckboxItem>
+                    <RecordingCheckboxItem>
+                      <input
+                        type="checkbox"
+                        checked={recordingAiOptions.generateFlashcards}
+                        onChange={(e) => setRecordingAiOptions({...recordingAiOptions, generateFlashcards: e.target.checked})}
+                      />
+                      צור כרטיסי זיכרון
+                    </RecordingCheckboxItem>
                   </RecordingCheckboxGroup>
                 </MetadataForm>
 
@@ -4839,6 +4860,122 @@ const LessonsManager = ({ t }) => {
             </TestContent>
           </TestModalContent>
         </TestModal>
+      )}
+
+      {/* Flashcard Generation Modal */}
+      {flashcardModal && (
+        <ProcessingModal>
+          <ModalContent>
+            <ModalTitle>יצירת כרטיסי זיכרון - {flashcardModal.metadata?.lessonName || `הקלטה ${flashcardModal.id}`}</ModalTitle>
+            <p>הגדר את פרמטרי יצירת כרטיסי הזיכרון:</p>
+            
+            <ProcessingOptions>
+              <CheckboxGroup>
+                <CheckboxLabel htmlFor="cardCount">מספר כרטיסים:</CheckboxLabel>
+                <FormInput
+                  type="number"
+                  id="cardCount"
+                  min="5"
+                  max="20"
+                  value={flashcardConfig.cardCount}
+                  onChange={(e) => setFlashcardConfig(prev => ({ 
+                    ...prev, 
+                    cardCount: parseInt(e.target.value) || 10 
+                  }))}
+                  style={{ width: '80px', marginRight: '0.5rem' }}
+                />
+              </CheckboxGroup>
+
+              <CheckboxGroup>
+                <CheckboxLabel htmlFor="difficultyLevel">רמת קושי:</CheckboxLabel>
+                <FilterSelect
+                  id="difficultyLevel"
+                  value={flashcardConfig.difficultyLevel}
+                  onChange={(e) => setFlashcardConfig(prev => ({ 
+                    ...prev, 
+                    difficultyLevel: e.target.value 
+                  }))}
+                  style={{ width: '120px', marginRight: '0.5rem' }}
+                >
+                  <option value="easy">קל</option>
+                  <option value="medium">בינוני</option>
+                  <option value="hard">קשה</option>
+                </FilterSelect>
+              </CheckboxGroup>
+
+              <CheckboxGroup>
+                <CheckboxLabel htmlFor="subjectArea">תחום לימוד:</CheckboxLabel>
+                <FormInput
+                  type="text"
+                  id="subjectArea"
+                  value={flashcardConfig.subjectArea}
+                  onChange={(e) => setFlashcardConfig(prev => ({ 
+                    ...prev, 
+                    subjectArea: e.target.value 
+                  }))}
+                  placeholder="מתמטיקה, עברית, מדעים..."
+                  style={{ width: '200px', marginRight: '0.5rem' }}
+                />
+              </CheckboxGroup>
+
+              <CheckboxGroup>
+                <CheckboxLabel htmlFor="gradeLevel">רמת כיתה:</CheckboxLabel>
+                <FormInput
+                  type="text"
+                  id="gradeLevel"
+                  value={flashcardConfig.gradeLevel}
+                  onChange={(e) => setFlashcardConfig(prev => ({ 
+                    ...prev, 
+                    gradeLevel: e.target.value 
+                  }))}
+                  placeholder="כיתה ג', כיתות ד-ו..."
+                  style={{ width: '150px', marginRight: '0.5rem' }}
+                />
+              </CheckboxGroup>
+            </ProcessingOptions>
+
+            {generatingFlashcards && (
+              <div style={{ margin: '1.5rem 0' }}>
+                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                  יוצר כרטיסי זיכרון...
+                </div>
+                <ProgressBar>
+                  <ProgressFill progress={flashcardProgress} />
+                </ProgressBar>
+                <div style={{ textAlign: 'center', fontSize: '0.9rem', color: '#666' }}>
+                  {flashcardProgress}%
+                </div>
+              </div>
+            )}
+
+            <ActionButtons>
+              <ActionButton 
+                className="success"
+                onClick={handleGenerateFlashcards}
+                disabled={generatingFlashcards || !flashcardConfig.cardCount}
+              >
+                {generatingFlashcards ? 'יוצר...' : `צור ${flashcardConfig.cardCount} כרטיסים`}
+              </ActionButton>
+              <ActionButton 
+                className="secondary"
+                onClick={() => {
+                  setFlashcardModal(null);
+                  setFlashcardProgress(0);
+                  setFlashcardConfig({
+                    cardCount: 10,
+                    difficultyLevel: 'medium',
+                    subjectArea: '',
+                    gradeLevel: '',
+                    language: 'hebrew'
+                  });
+                }}
+                disabled={generatingFlashcards}
+              >
+                ביטול
+              </ActionButton>
+            </ActionButtons>
+          </ModalContent>
+        </ProcessingModal>
       )}
 
       {/* Share Modal */}
