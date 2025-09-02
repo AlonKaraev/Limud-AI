@@ -436,6 +436,67 @@ router.get('/question-set/:recordingId', authenticate, async (req, res) => {
     const recordingId = parseInt(req.params.recordingId);
     const userId = req.user.id;
 
+    // First try to get from unified tests table
+    const { query } = require('../config/database-sqlite');
+    const testResult = await query(`
+      SELECT * FROM tests 
+      WHERE source_type = 'recording' AND source_id = ? AND user_id = ?
+      AND test_type IN ('lesson_generated', 'ai_generated')
+    `, [recordingId, userId]);
+
+    if (testResult.rows.length > 0) {
+      const test = testResult.rows[0];
+      
+      // Get questions for this test
+      const questionsResult = await query(`
+        SELECT tq.*, 
+          (SELECT json_group_array(
+            json_object(
+              'option_text', tqo.option_text,
+              'is_correct', tqo.is_correct,
+              'explanation', tqo.explanation,
+              'option_order', tqo.option_order
+            )
+          ) FROM test_question_options tqo WHERE tqo.question_id = tq.id ORDER BY tqo.option_order) as options
+        FROM test_questions tq
+        WHERE tq.test_id = ?
+        ORDER BY tq.order_index ASC, tq.created_at ASC
+      `, [test.id]);
+
+      const questions = questionsResult.rows.map(q => ({
+        ...q,
+        options: q.options ? JSON.parse(q.options) : [],
+        metadata: q.metadata ? JSON.parse(q.metadata) : {},
+        tags: q.tags ? JSON.parse(q.tags) : []
+      }));
+
+      const questionSet = {
+        id: test.id,
+        set_name: test.title,
+        description: test.description,
+        recording_id: test.source_id,
+        subject_area: test.subject_area,
+        grade_level: test.grade_level,
+        total_questions: test.question_count,
+        estimated_duration: test.time_limit,
+        difficulty_level: test.difficulty_level,
+        learning_objectives: test.learning_objectives ? JSON.parse(test.learning_objectives) : [],
+        ai_provider: test.ai_provider,
+        model_version: test.model_version,
+        confidence_score: test.confidence_score,
+        metadata: test.processing_metadata ? JSON.parse(test.processing_metadata) : {},
+        created_at: test.created_at,
+        updated_at: test.updated_at,
+        questions
+      };
+
+      return res.json({
+        success: true,
+        questionSet
+      });
+    }
+
+    // Fallback to legacy question sets
     const questionSet = await QuestionService.getQuestionSetByRecordingId(recordingId, userId);
     if (!questionSet) {
       return res.status(404).json({

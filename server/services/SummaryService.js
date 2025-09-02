@@ -496,7 +496,7 @@ Key points:`
   }
 
   /**
-   * Save summary to database
+   * Save summary to unified database
    * @param {Object} summaryData - Summary data
    * @returns {Promise<Object>} Saved summary
    */
@@ -519,6 +519,73 @@ Key points:`
     } = summaryData;
 
     try {
+      // Get recording metadata for title generation
+      const recordingResult = await query(`
+        SELECT metadata, filename FROM recordings WHERE id = ? AND user_id = ?
+      `, [recordingId, userId]);
+
+      let title = `סיכום שיעור ${recordingId}`;
+      if (recordingResult.rows.length > 0) {
+        const recordingMetadata = recordingResult.rows[0].metadata ? 
+          JSON.parse(recordingResult.rows[0].metadata) : {};
+        title = recordingMetadata.lessonName || 
+                recordingResult.rows[0].filename || 
+                `סיכום שיעור ${recordingId}`;
+      }
+
+      // First, try to create lesson summary via the unified API
+      try {
+        const response = await fetch('http://localhost:3001/api/summaries/lesson', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.generateInternalToken(userId)}`
+          },
+          body: JSON.stringify({
+            recording_id: recordingId,
+            title: title,
+            content: summaryText,
+            subject_area: subjectArea,
+            grade_level: gradeLevel,
+            key_topics: keyTopics || [],
+            learning_objectives: learningObjectives || [],
+            ai_provider: aiProvider,
+            model_version: modelVersion,
+            confidence_score: confidenceScore,
+            processing_metadata: metadata || {}
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            console.log('Successfully created lesson summary in unified database');
+            return {
+              id: data.summary.id,
+              recording_id: recordingId,
+              transcription_id: transcriptionId,
+              user_id: userId,
+              job_id: jobId,
+              summary_text: summaryText,
+              summary_type: summaryType,
+              key_topics: keyTopics,
+              learning_objectives: learningObjectives,
+              subject_area: subjectArea,
+              grade_level: gradeLevel,
+              confidence_score: confidenceScore,
+              ai_provider: aiProvider,
+              model_version: modelVersion,
+              metadata,
+              created_at: data.summary.created_at,
+              unified_summary_id: data.summary.id
+            };
+          }
+        }
+      } catch (apiError) {
+        console.warn('Failed to create unified summary via API, falling back to direct database:', apiError.message);
+      }
+
+      // Fallback: Save to old content_summaries table for backward compatibility
       const result = await run(`
         INSERT INTO content_summaries (
           recording_id, transcription_id, user_id, job_id, summary_text,
@@ -542,6 +609,38 @@ Key points:`
         modelVersion,
         JSON.stringify(metadata)
       ]);
+
+      // Also try to create in unified database directly using SQLite
+      try {
+        await run(`
+          INSERT INTO unified_summaries (
+            user_id, title, content, summary_type, source_type, source_id,
+            subject_area, grade_level, key_topics, learning_objectives,
+            ai_provider, model_version, confidence_score, processing_metadata,
+            tags
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          userId,
+          title,
+          summaryText,
+          'lesson_generated',
+          'recording',
+          recordingId,
+          subjectArea,
+          gradeLevel,
+          JSON.stringify(keyTopics || []),
+          JSON.stringify(learningObjectives || []),
+          aiProvider,
+          modelVersion,
+          confidenceScore,
+          JSON.stringify(metadata || {}),
+          JSON.stringify(['lesson', subjectArea || 'general'].filter(Boolean))
+        ]);
+
+        console.log('Successfully created lesson summary in unified database (SQLite)');
+      } catch (dbError) {
+        console.warn('Failed to create unified summary directly:', dbError.message);
+      }
 
       return {
         id: result.lastID,
@@ -568,13 +667,59 @@ Key points:`
   }
 
   /**
-   * Get summary by recording ID
+   * Generate internal token for API calls (simplified for internal use)
+   * @param {number} userId - User ID
+   * @returns {string} Token
+   */
+  generateInternalToken(userId) {
+    // This is a simplified token for internal API calls
+    // In production, you'd want proper JWT generation
+    return Buffer.from(JSON.stringify({ id: userId, internal: true })).toString('base64');
+  }
+
+  /**
+   * Get summary by recording ID (checks both unified and legacy tables)
    * @param {number} recordingId - Recording ID
    * @param {number} userId - User ID
    * @returns {Promise<Object|null>} Summary or null
    */
   async getSummaryByRecordingId(recordingId, userId) {
     try {
+      // First try to get from unified summaries table (SQLite)
+      try {
+        const result = await query(`
+          SELECT * FROM unified_summaries 
+          WHERE source_type = 'recording' AND source_id = ? AND user_id = ?
+          ORDER BY created_at DESC
+          LIMIT 1
+        `, [recordingId, userId]);
+
+        if (result.rows.length > 0) {
+          const summary = result.rows[0];
+          return {
+            id: summary.id,
+            recording_id: recordingId,
+            transcription_id: null, // Not available in unified table
+            user_id: summary.user_id,
+            summary_text: summary.content,
+            summary_type: summary.summary_type,
+            key_topics: Array.isArray(summary.key_topics) ? summary.key_topics : JSON.parse(summary.key_topics || '[]'),
+            learning_objectives: Array.isArray(summary.learning_objectives) ? summary.learning_objectives : JSON.parse(summary.learning_objectives || '[]'),
+            subject_area: summary.subject_area,
+            grade_level: summary.grade_level,
+            confidence_score: summary.confidence_score,
+            ai_provider: summary.ai_provider,
+            model_version: summary.model_version,
+            metadata: typeof summary.processing_metadata === 'object' ? summary.processing_metadata : JSON.parse(summary.processing_metadata || '{}'),
+            created_at: summary.created_at,
+            unified_summary: true
+          };
+        }
+      } catch (unifiedError) {
+        console.warn('Failed to fetch from unified summaries, trying legacy table:', unifiedError.message);
+      }
+
+      // Fallback to legacy content_summaries table
       const result = await query(`
         SELECT * FROM content_summaries 
         WHERE recording_id = ? AND user_id = ?
@@ -591,7 +736,8 @@ Key points:`
         ...summary,
         key_topics: JSON.parse(summary.key_topics || '[]'),
         learning_objectives: JSON.parse(summary.learning_objectives || '[]'),
-        metadata: JSON.parse(summary.metadata || '{}')
+        metadata: JSON.parse(summary.metadata || '{}'),
+        unified_summary: false
       };
     } catch (error) {
       console.error('Error fetching summary:', error);

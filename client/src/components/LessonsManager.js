@@ -5,6 +5,7 @@ import AudioPlayer from './AudioPlayer';
 import VideoPlayer from './VideoPlayer';
 import ErrorLogger from '../utils/ErrorLogger';
 import AIContentGenerationInterface from './AIContentGenerationInterface';
+import LessonContentList from './LessonContentList';
 
 const Container = styled.div`
   background: var(--color-surface);
@@ -2344,6 +2345,9 @@ const LessonsManager = ({ t }) => {
   const [generatingFlashcards, setGeneratingFlashcards] = useState(false);
   const [flashcardProgress, setFlashcardProgress] = useState(0);
 
+  // Content list state
+  const [contentListModal, setContentListModal] = useState(null);
+
   const durationIntervalRef = useRef(null);
 
   // Helper functions for tooltips and UI interactions
@@ -4102,24 +4106,21 @@ const handleFileSelect = (file) => {
                       </TooltipContainer>
                     )}
 
-                    {/* Merged AI Menu Button */}
+                    {/* Content List Button */}
                     <TooltipContainer>
                       <AIExpandedMenuButton
-                        className={getAIButtonClass(statusInfo)}
-                        onMouseEnter={() => showTooltip(lesson.id, 'ai-menu', getTooltipText(lesson, 'ai-menu'))}
-                        onMouseLeave={() => hideTooltip(lesson.id, 'ai-menu')}
+                        className="ai-completed"
+                        onMouseEnter={() => showTooltip(lesson.id, 'content-list', 'צפה בכל התוכן של השיעור')}
+                        onMouseLeave={() => hideTooltip(lesson.id, 'content-list')}
                         onClick={() => {
-                          setExpandedAIMenu(prev => ({
-                            ...prev,
-                            [lesson.id]: !prev[lesson.id]
-                          }));
+                          setContentListModal(lesson);
                         }}
                       >
-                        <AIStatusButtonIcon>{getAIButtonIcon(statusInfo)}</AIStatusButtonIcon>
-                        <AIStatusButtonText>AI - {statusInfo.text}</AIStatusButtonText>
+                        <AIStatusButtonIcon>📋</AIStatusButtonIcon>
+                        <AIStatusButtonText>רשימת תוכן</AIStatusButtonText>
                       </AIExpandedMenuButton>
-                      <Tooltip show={tooltips[`${lesson.id}-ai-menu`]}>
-                        {tooltips[`${lesson.id}-ai-menu`]}
+                      <Tooltip show={tooltips[`${lesson.id}-content-list`]}>
+                        {tooltips[`${lesson.id}-content-list`]}
                       </Tooltip>
                     </TooltipContainer>
                   </ButtonsRow>
@@ -5348,6 +5349,15 @@ const handleFileSelect = (file) => {
             </ShareActions>
           </ShareModalContent>
         </ShareModal>
+      )}
+
+      {/* Content List Modal */}
+      {contentListModal && (
+        <LessonContentList
+          lesson={contentListModal}
+          onClose={() => setContentListModal(null)}
+          t={(key) => key} // Simple translation function fallback
+        />
       )}
     </>
   );

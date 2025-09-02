@@ -830,16 +830,42 @@ router.post('/generate/approve/:jobId', async (req, res) => {
 
     let targetSetId = setId;
 
+    // Get job details to determine if this is a lesson-generated set
+    const { query } = require('../config/database-sqlite');
+    const jobResult = await query(`
+      SELECT * FROM card_generation_jobs 
+      WHERE id = ? AND user_id = ?
+    `, [jobId, userId]);
+
+    const job = jobResult.rows[0];
+    const isLessonGenerated = job && job.recording_id;
+
     // Create new set if needed
     if (!targetSetId && setName) {
-      const newSet = await MemoryCardSet.create({
+      const setData = {
         name: setName.trim(),
         description: setDescription ? setDescription.trim() : null,
         userId,
         subjectArea: approvedCards[0]?.metadata?.generationConfig?.subjectArea || null,
         gradeLevel: approvedCards[0]?.metadata?.generationConfig?.gradeLevel || null,
         isPublic: false
-      });
+      };
+
+      // Add unified fields for lesson-generated sets
+      if (isLessonGenerated) {
+        const generationConfig = job.generation_config ? JSON.parse(job.generation_config) : {};
+        setData.setType = 'lesson_generated';
+        setData.sourceType = 'recording';
+        setData.sourceId = job.recording_id;
+        setData.difficultyLevel = generationConfig.difficultyLevel || 'medium';
+        setData.aiProvider = generationConfig.provider || 'openai';
+        setData.modelVersion = generationConfig.model || 'gpt-3.5-turbo';
+        setData.confidenceScore = 0.8;
+        setData.processingMetadata = generationConfig;
+        setData.tags = ['lesson', setData.subjectArea].filter(Boolean);
+      }
+
+      const newSet = await MemoryCardSet.create(setData);
       targetSetId = newSet.id;
     }
 

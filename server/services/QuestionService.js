@@ -770,7 +770,93 @@ Assessment criteria: [How to evaluate the answer]
     } = data;
 
     try {
-      // Create question set
+      // First, try to create in the unified tests table
+      let testId = null;
+      try {
+        // Check if unified tests table exists
+        const tableCheck = await query(`
+          SELECT name FROM sqlite_master 
+          WHERE type='table' AND name='tests'
+        `);
+
+        if (tableCheck.rows.length > 0) {
+          // Create lesson test in unified tests table
+          const testResult = await run(`
+            INSERT INTO tests (
+              user_id, title, description, test_type, source_type, source_id,
+              subject_area, grade_level, question_count, time_limit, difficulty_level,
+              learning_objectives, processing_metadata, tags, status,
+              ai_provider, model_version, confidence_score
+            ) VALUES (?, ?, ?, 'lesson_generated', 'recording', ?, ?, ?, ?, ?, 'medium', '[]', '{}', '["lesson"]', 'draft', 'openai', 'gpt-4', 0.8)
+          `, [
+            userId,
+            setName,
+            `מבחן שנוצר אוטומטית מתוכן השיעור`,
+            recordingId,
+            subjectArea,
+            gradeLevel,
+            questions.length,
+            estimatedDuration,
+          ]);
+
+          testId = testResult.lastID;
+
+          // Add questions to the unified test
+          for (let i = 0; i < questions.length; i++) {
+            const question = questions[i];
+            
+            // Insert question into test_questions
+            const questionResult = await run(`
+              INSERT INTO test_questions (
+                test_id, question_text, question_type, difficulty_level,
+                points, order_index, correct_answer, explanation,
+                metadata, tags, ai_generated, ai_provider, confidence_score
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+            `, [
+              testId,
+              question.question_text,
+              question.question_type || 'multiple_choice',
+              question.difficulty_level || 'medium',
+              1,
+              i,
+              question.correct_answer || '',
+              question.explanation || '',
+              JSON.stringify(question.metadata || {}),
+              JSON.stringify([]),
+              question.ai_provider || 'openai',
+              question.confidence_score || 0.8
+            ]);
+
+            const testQuestionId = questionResult.lastID;
+
+            // Add options if it's a multiple choice question
+            if (question.answer_options && question.answer_options.length > 0) {
+              for (let j = 0; j < question.answer_options.length; j++) {
+                const option = question.answer_options[j];
+                const isCorrect = option === question.correct_answer;
+                
+                await run(`
+                  INSERT INTO test_question_options (
+                    question_id, option_text, is_correct, explanation, option_order
+                  ) VALUES (?, ?, ?, ?, ?)
+                `, [
+                  testQuestionId,
+                  option,
+                  isCorrect ? 1 : 0,
+                  '',
+                  j
+                ]);
+              }
+            }
+          }
+
+          console.log(`Created lesson test in unified tests table with ID: ${testId}`);
+        }
+      } catch (unifiedError) {
+        console.warn('Failed to create in unified tests table, falling back to legacy:', unifiedError.message);
+      }
+
+      // Also create in legacy question_sets table for backward compatibility
       const setResult = await run(`
         INSERT INTO question_sets (
           recording_id, user_id, job_id, set_name, description,
@@ -787,12 +873,12 @@ Assessment criteria: [How to evaluate the answer]
         subjectArea,
         gradeLevel,
         estimatedDuration,
-        JSON.stringify({ auto_generated: true })
+        JSON.stringify({ auto_generated: true, unified_test_id: testId })
       ]);
 
       const questionSetId = setResult.lastID;
 
-      // Add questions to set
+      // Add questions to legacy set
       for (let i = 0; i < questions.length; i++) {
         await run(`
           INSERT INTO question_set_items (
@@ -803,6 +889,7 @@ Assessment criteria: [How to evaluate the answer]
 
       return {
         id: questionSetId,
+        unified_test_id: testId,
         recording_id: recordingId,
         user_id: userId,
         job_id: jobId,

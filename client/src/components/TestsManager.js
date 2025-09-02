@@ -608,44 +608,80 @@ const TestsManager = ({ user, t }) => {
         throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
       }
 
-      // Fetch question sets (which represent our tests)
-      const setsResponse = await fetch('/api/ai-content/question-sets', {
+      // Fetch unified tests
+      const testsResponse = await fetch('/api/tests', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (!setsResponse.ok) {
+      if (!testsResponse.ok) {
         throw new Error('שגיאה בטעינת המבחנים');
       }
 
-      const setsData = await setsResponse.json();
-      const questionSets = setsData.questionSets || [];
+      const testsData = await testsResponse.json();
+      const tests = testsData.tests || [];
       
-      setQuestionSets(questionSets);
-      
-      // Transform question sets to tests format
-      const testsData = questionSets.map(set => ({
-        id: set.id,
-        title: set.set_name,
-        status: 'draft', // Default status, can be enhanced later
-        questionCount: set.total_questions || 0,
-        subjectArea: set.subject_area,
-        gradeLevel: set.grade_level,
-        estimatedDuration: set.estimated_duration || 0,
-        createdAt: set.created_at,
-        recordingId: set.recording_id
+      // Transform tests to the expected format
+      const testsFormatted = tests.map(test => ({
+        id: test.id,
+        title: test.title,
+        status: test.status || 'draft',
+        questionCount: test.question_count || 0,
+        subjectArea: test.subject_area,
+        gradeLevel: test.grade_level,
+        estimatedDuration: test.time_limit || 0,
+        createdAt: test.created_at,
+        recordingId: test.source_id,
+        testType: test.test_type,
+        sourceTitle: test.source_title,
+        description: test.description,
+        tags: test.tags || [],
+        difficultyLevel: test.difficulty_level
       }));
       
-      setTests(testsData);
+      setTests(testsFormatted);
       
-      // Calculate stats
-      setStats({
-        totalTests: testsData.length,
-        activeTests: testsData.filter(test => test.status === 'active').length,
-        totalQuestions: testsData.reduce((sum, test) => sum + test.questionCount, 0),
-        averageScore: 0 // Will be calculated when we have submissions
+      // Also set question sets for backward compatibility with question bank
+      const questionSetsFormatted = tests
+        .filter(test => test.test_type === 'lesson_generated' || test.test_type === 'ai_generated')
+        .map(test => ({
+          id: test.id,
+          set_name: test.title,
+          subject_area: test.subject_area,
+          grade_level: test.grade_level,
+          total_questions: test.question_count || 0,
+          estimated_duration: test.time_limit || 0,
+          created_at: test.created_at,
+          recording_id: test.source_id
+        }));
+      
+      setQuestionSets(questionSetsFormatted);
+
+      // Fetch test statistics
+      const statsResponse = await fetch('/api/tests/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
+
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        setStats({
+          totalTests: statsData.total_tests || 0,
+          activeTests: statsData.active_tests || 0,
+          totalQuestions: statsData.total_questions || 0,
+          averageScore: 0 // Will be calculated when we have submissions
+        });
+      } else {
+        // Fallback to calculated stats
+        setStats({
+          totalTests: testsFormatted.length,
+          activeTests: testsFormatted.filter(test => test.status === 'active').length,
+          totalQuestions: testsFormatted.reduce((sum, test) => sum + test.questionCount, 0),
+          averageScore: 0
+        });
+      }
 
     } catch (error) {
       console.error('Error fetching tests data:', error);

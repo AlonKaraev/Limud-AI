@@ -54,22 +54,27 @@
 ## 🔧 **PRIORITY 2: CORE FUNCTIONALITY**
 
 ### **2.0 Database Merging**
-- [ ] **Merge Summaries database with lesson summaries database**
+- [X] **Merge Summaries database with lesson summaries database**
 	All Summaries and lesson generated summaries should be part of the same database, lesson specific should have some indicator like a tag.
 	Testable deliverables:
 	- Lesson generated summary is added to summary list when generated directly from lesson card.
 	- Lesson generated summary is counted in the overview tab statistics.
 	
-- [ ] **Merge tests database with lesson tests database**
+- [X] **Merge tests database with lesson tests database**
 	All tests and program should be part of the same database, lesson specific should have some indicator like a tag.
 	Testable deliverables:
 	- Lesson generated test is added to test list when generated directly from card.
 	- Lesson generated test is counted in the overview tab statistics.
 
+- [ ] **Merge flashcard database with lesson flashcard database**
+	All flashcard and program should be part of the same database, lesson specific should have some indicator like a tag.
+	Testable deliverables:
+	- Lesson generated flashcard set is added to test list when generated directly from card.
+	- Lesson generated flashcard set is counted in the overview tab statistics.
 	
 ### **2.1 Test Management Features**
 - [ ] **Add test editing capability**
-	Test editing means that title, tags, descriptions, questions and potential answers should be able to be edited.
+	Test editing means that title, tags, descriptions, questions and potential answers should be editable by the teacher.
   - Test: Edit button appears on test items
   - Test: Clicking edit loads test data into form
   - Test: Saving updates store the modified test

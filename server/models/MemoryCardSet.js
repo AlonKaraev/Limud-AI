@@ -12,6 +12,29 @@ class MemoryCardSet {
     this.totalCards = setData.total_cards || 0;
     this.createdAt = setData.created_at;
     this.updatedAt = setData.updated_at;
+    
+    // New unified fields
+    this.setType = setData.set_type || 'manual';
+    this.sourceType = setData.source_type || 'manual';
+    this.sourceId = setData.source_id;
+    this.difficultyLevel = setData.difficulty_level || 'medium';
+    this.learningObjectives = setData.learning_objectives ? 
+      (typeof setData.learning_objectives === 'string' ? 
+        JSON.parse(setData.learning_objectives) : setData.learning_objectives) : [];
+    this.aiProvider = setData.ai_provider;
+    this.modelVersion = setData.model_version;
+    this.confidenceScore = setData.confidence_score || 0.0;
+    this.processingMetadata = setData.processing_metadata ? 
+      (typeof setData.processing_metadata === 'string' ? 
+        JSON.parse(setData.processing_metadata) : setData.processing_metadata) : {};
+    this.tags = setData.tags ? 
+      (typeof setData.tags === 'string' ? 
+        JSON.parse(setData.tags) : setData.tags) : [];
+    this.isActive = setData.is_active !== undefined ? setData.is_active : true;
+    this.isShared = setData.is_shared || false;
+    this.sharedWith = setData.shared_with ? 
+      (typeof setData.shared_with === 'string' ? 
+        JSON.parse(setData.shared_with) : setData.shared_with) : [];
   }
 
   // Create a new memory card set
@@ -22,7 +45,18 @@ class MemoryCardSet {
       userId, 
       subjectArea = null, 
       gradeLevel = null,
-      isPublic = false
+      isPublic = false,
+      // New unified fields
+      setType = 'manual',
+      sourceType = 'manual',
+      sourceId = null,
+      difficultyLevel = 'medium',
+      learningObjectives = [],
+      aiProvider = null,
+      modelVersion = null,
+      confidenceScore = 0.0,
+      processingMetadata = {},
+      tags = []
     } = setData;
 
     // Validate required fields
@@ -37,12 +71,18 @@ class MemoryCardSet {
 
     const queryText = `
       INSERT INTO memory_card_sets (
-        name, description, user_id, subject_area, grade_level, is_public
+        name, description, user_id, subject_area, grade_level, is_public,
+        set_type, source_type, source_id, difficulty_level, learning_objectives,
+        ai_provider, model_version, confidence_score, processing_metadata, tags
       )
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    const values = [name, description, userId, subjectArea, gradeLevel, isPublic ? 1 : 0];
+    const values = [
+      name, description, userId, subjectArea, gradeLevel, isPublic ? 1 : 0,
+      setType, sourceType, sourceId, difficultyLevel, JSON.stringify(learningObjectives),
+      aiProvider, modelVersion, confidenceScore, JSON.stringify(processingMetadata), JSON.stringify(tags)
+    ];
 
     try {
       const result = await run(queryText, values);
@@ -465,6 +505,21 @@ class MemoryCardSet {
       totalCards: this.totalCards,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      // New unified fields
+      setType: this.setType,
+      sourceType: this.sourceType,
+      sourceId: this.sourceId,
+      difficultyLevel: this.difficultyLevel,
+      learningObjectives: this.learningObjectives,
+      aiProvider: this.aiProvider,
+      modelVersion: this.modelVersion,
+      confidenceScore: this.confidenceScore,
+      processingMetadata: this.processingMetadata,
+      tags: this.tags,
+      isActive: this.isActive,
+      isShared: this.isShared,
+      sharedWith: this.sharedWith,
+      // Dynamic fields
       creatorName: this.creatorName || undefined,
       actualCardCount: this.actualCardCount || undefined,
       permissionType: this.permissionType || undefined,

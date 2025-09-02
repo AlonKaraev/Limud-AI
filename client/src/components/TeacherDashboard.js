@@ -54,38 +54,136 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
     await Promise.all([
       loadSummaryStats(),
       loadTestStats(),
-      loadLessonStats()
+      loadLessonStats(),
+      loadMemoryCardStats()
     ]);
+  };
+
+  const loadMemoryCardStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setMemoryCardStats({
+          totalSets: 0,
+          totalCards: 0,
+          recentCards: []
+        });
+        return;
+      }
+      
+      // Load user's memory card sets for stats
+      const setsResponse = await fetch(`/api/memory-cards/sets/user/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (setsResponse.ok) {
+        const setsData = await setsResponse.json();
+        const sets = setsData.data || [];
+        
+        // Calculate stats
+        const totalSets = sets.length;
+        const totalCards = sets.reduce((sum, set) => sum + (set.totalCards || 0), 0);
+        
+        setMemoryCardStats({
+          totalSets,
+          totalCards,
+          recentCards: sets.slice(0, 5)
+        });
+      } else {
+        setMemoryCardStats({
+          totalSets: 0,
+          totalCards: 0,
+          recentCards: []
+        });
+      }
+    } catch (error) {
+      console.error('Error loading memory card stats:', error);
+      setMemoryCardStats({
+        totalSets: 0,
+        totalCards: 0,
+        recentCards: []
+      });
+    }
   };
 
   const loadSummaryStats = async () => {
     try {
-      // Load summaries from localStorage
-      const storedSummaries = localStorage.getItem('limud-ai-summaries');
-      if (storedSummaries) {
-        const summaries = JSON.parse(storedSummaries);
-        
-        // Calculate stats
-        const totalSummaries = summaries.length;
-        const publicSummaries = summaries.filter(summary => summary.isPublic).length;
-        const recentSummaries = summaries.slice(0, 3); // Get 3 most recent
-        
-        setSummaryStats({
-          totalSummaries,
-          publicSummaries,
-          recentSummaries
-        });
-      } else {
+      const token = localStorage.getItem('token');
+      if (!token) {
         setSummaryStats({
           totalSummaries: 0,
+          manualSummaries: 0,
+          lessonSummaries: 0,
           publicSummaries: 0,
           recentSummaries: []
         });
+        return;
+      }
+
+      // Load statistics from unified API
+      const statsResponse = await fetch('/api/summaries/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (statsResponse.ok) {
+        const stats = await statsResponse.json();
+        
+        // Load recent summaries
+        const recentResponse = await fetch('/api/summaries?limit=3&sort=created_at&order=desc', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        let recentSummaries = [];
+        if (recentResponse.ok) {
+          const recentData = await recentResponse.json();
+          recentSummaries = recentData.summaries || [];
+        }
+
+        setSummaryStats({
+          totalSummaries: stats.total_summaries || 0,
+          manualSummaries: stats.manual_summaries || 0,
+          lessonSummaries: stats.lesson_summaries || 0,
+          publicSummaries: stats.public_summaries || 0,
+          recentSummaries
+        });
+      } else {
+        // Fallback to localStorage for backward compatibility
+        const storedSummaries = localStorage.getItem('limud-ai-summaries');
+        if (storedSummaries) {
+          const summaries = JSON.parse(storedSummaries);
+          const totalSummaries = summaries.length;
+          const publicSummaries = summaries.filter(summary => summary.isPublic).length;
+          const recentSummaries = summaries.slice(0, 3);
+          
+          setSummaryStats({
+            totalSummaries,
+            manualSummaries: totalSummaries, // Assume all localStorage summaries are manual
+            lessonSummaries: 0,
+            publicSummaries,
+            recentSummaries
+          });
+        } else {
+          setSummaryStats({
+            totalSummaries: 0,
+            manualSummaries: 0,
+            lessonSummaries: 0,
+            publicSummaries: 0,
+            recentSummaries: []
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading summary stats:', error);
       setSummaryStats({
         totalSummaries: 0,
+        manualSummaries: 0,
+        lessonSummaries: 0,
         publicSummaries: 0,
         recentSummaries: []
       });
@@ -122,12 +220,35 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
 
   const loadLessonStats = async () => {
     try {
-      // Load lessons from localStorage (placeholder - would normally come from API)
-      const storedLessons = localStorage.getItem('limud-ai-lessons');
-      if (storedLessons) {
-        const lessons = JSON.parse(storedLessons);
+      // Load lessons from API (same source as LessonsManager)
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLessonStats({
+          totalLessons: 0,
+          recentLessons: []
+        });
+        return;
+      }
+
+      const response = await fetch('/api/recordings', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const lessons = data.recordings || [];
         const totalLessons = lessons.length;
-        const recentLessons = lessons.slice(0, 2); // Get 2 most recent
+        const recentLessons = lessons
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .slice(0, 2)
+          .map(lesson => ({
+            id: lesson.id,
+            title: lesson.metadata?.lessonName || `הקלטה ${lesson.id}`,
+            subject: lesson.metadata?.subject || 'כללי',
+            created_at: lesson.created_at
+          }));
         
         setLessonStats({
           totalLessons,
@@ -472,7 +593,21 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
                   <div className="compact-stat-icon">📝</div>
                   <div className="compact-stat-info">
                     <div className="compact-stat-number">{summaryStats.totalSummaries}</div>
-                    <div className="compact-stat-label">סיכומים</div>
+                    <div className="compact-stat-label">סיכומים כולל</div>
+                  </div>
+                </div>
+                <div className="compact-stat-card">
+                  <div className="compact-stat-icon">✍️</div>
+                  <div className="compact-stat-info">
+                    <div className="compact-stat-number">{summaryStats.manualSummaries || 0}</div>
+                    <div className="compact-stat-label">סיכומים ידניים</div>
+                  </div>
+                </div>
+                <div className="compact-stat-card">
+                  <div className="compact-stat-icon">🤖</div>
+                  <div className="compact-stat-info">
+                    <div className="compact-stat-number">{summaryStats.lessonSummaries || 0}</div>
+                    <div className="compact-stat-label">סיכומי שיעורים</div>
                   </div>
                 </div>
                 <div className="compact-stat-card">
@@ -513,10 +648,17 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
                 <div className="recent-activity-grid">
                   {summaryStats.recentSummaries.slice(0, 2).map((summary, index) => (
                     <div key={`summary-${index}`} className="recent-activity-card">
-                      <div className="activity-icon">📝</div>
+                      <div className="activity-icon">
+                        {summary.summary_type === 'lesson' ? '🤖' : '📝'}
+                      </div>
                       <div className="activity-content">
-                        <h6>{summary.title}</h6>
-                        <p>סיכום • {summary.subjectArea || 'כללי'}</p>
+                        <div className="activity-header">
+                          <h6>{summary.title}</h6>
+                          <span className={`summary-type-badge ${summary.summary_type === 'lesson' ? 'lesson-badge' : 'manual-badge'}`}>
+                            {summary.summary_type === 'lesson' ? 'שיעור' : 'ידני'}
+                          </span>
+                        </div>
+                        <p>סיכום • {summary.subject_area || summary.subjectArea || 'כללי'}</p>
                       </div>
                     </div>
                   ))}
@@ -994,6 +1136,32 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
           margin: 0;
           color: var(--color-textSecondary, #7f8c8d);
           font-size: 0.8rem;
+        }
+
+        .activity-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.2rem;
+        }
+
+        .summary-type-badge {
+          padding: 0.2rem 0.5rem;
+          border-radius: var(--radius-sm, 4px);
+          font-size: 0.7rem;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+
+        .lesson-badge {
+          background: var(--color-info, #17a2b8);
+          color: white;
+        }
+
+        .manual-badge {
+          background: var(--color-warning, #ffc107);
+          color: var(--color-text, #2c3e50);
         }
 
         .quick-actions {

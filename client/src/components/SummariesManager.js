@@ -6,29 +6,93 @@ const SummariesManager = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showSummaryForm, setShowSummaryForm] = useState(false);
+  const [filterType, setFilterType] = useState('all'); // 'all', 'manual', 'lesson'
+  const [searchTerm, setSearchTerm] = useState('');
+  const [stats, setStats] = useState({
+    total_summaries: 0,
+    manual_summaries: 0,
+    lesson_summaries: 0,
+    public_summaries: 0
+  });
 
   useEffect(() => {
     loadSummaries();
-  }, []);
+    loadStats();
+  }, [filterType, searchTerm]);
 
   const loadSummaries = async () => {
     setLoading(true);
     try {
-      // Load summaries from localStorage
-      const storedSummaries = localStorage.getItem('limud-ai-summaries');
-      if (storedSummaries) {
-        const parsedSummaries = JSON.parse(storedSummaries);
-        setSummaries(parsedSummaries);
-      } else {
-        setSummaries([]);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
       }
-      setError(null);
+
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (filterType !== 'all') {
+        params.append('type', filterType);
+      }
+      if (searchTerm.trim()) {
+        params.append('search', searchTerm.trim());
+      }
+      params.append('limit', '50');
+      params.append('sort', 'created_at');
+      params.append('order', 'desc');
+
+      const response = await fetch(`/api/summaries?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('אין הרשאה. אנא התחבר מחדש למערכת.');
+        }
+        throw new Error(`שגיאה בטעינת הסיכומים: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setSummaries(data.summaries || []);
+        setError(null);
+      } else {
+        throw new Error(data.error || 'שגיאה בטעינת הסיכומים');
+      }
     } catch (error) {
-      console.error('Error loading summaries from localStorage:', error);
-      setError('שגיאה בטעינת הסיכומים');
+      console.error('Error loading summaries:', error);
+      setError(error.message);
       setSummaries([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('/api/summaries/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setStats({
+            total_summaries: data.total_summaries || 0,
+            manual_summaries: data.manual_summaries || 0,
+            lesson_summaries: data.lesson_summaries || 0,
+            public_summaries: data.public_summaries || 0
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading summary statistics:', error);
     }
   };
 
@@ -37,8 +101,9 @@ const SummariesManager = () => {
   };
 
   const handleSummaryCreated = (newSummary) => {
-    // Add the new summary to the list
-    setSummaries(prev => [newSummary, ...prev]);
+    // Refresh the summaries list and stats
+    loadSummaries();
+    loadStats();
     // Hide the form
     setShowSummaryForm(false);
   };
@@ -52,32 +117,45 @@ const SummariesManager = () => {
     console.log('Edit summary:', summaryId);
   };
 
-  const saveSummariesToStorage = (summariesList) => {
-    try {
-      localStorage.setItem('limud-ai-summaries', JSON.stringify(summariesList));
-    } catch (error) {
-      console.error('Error saving summaries to localStorage:', error);
-      setError('שגיאה בשמירת הסיכומים');
-    }
-  };
-
   const handleDeleteSummary = async (summaryId) => {
+    const summary = summaries.find(s => s.id === summaryId);
+    
+    // Only allow deletion of manual summaries
+    if (summary && summary.summary_type !== 'manual') {
+      alert('ניתן למחוק רק סיכומים ידניים. סיכומי שיעורים נוצרים אוטומטית ולא ניתן למחוק אותם.');
+      return;
+    }
+
     if (!window.confirm('האם אתה בטוח שברצונך למחוק את הסיכום?')) {
       return;
     }
 
     try {
-      // Remove the summary from the list
-      const updatedSummaries = summaries.filter(summary => summary.id !== summaryId);
-      setSummaries(updatedSummaries);
-      
-      // Update localStorage
-      saveSummariesToStorage(updatedSummaries);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
+      }
+
+      const response = await fetch(`/api/summaries/${summaryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'שגיאה במחיקת הסיכום');
+      }
+
+      // Refresh the summaries list and stats
+      loadSummaries();
+      loadStats();
       
       console.log('Summary deleted successfully');
     } catch (error) {
       console.error('Error deleting summary:', error);
-      setError('שגיאה במחיקת הסיכום');
+      setError(error.message);
     }
   };
 
@@ -106,12 +184,62 @@ const SummariesManager = () => {
           <h2>📝 מנהל סיכומים</h2>
           <p>נהל וצור סיכומי שיעורים עם תמיכה מלאה בעברית</p>
         </div>
-        <button 
-          className="btn btn-primary"
-          onClick={handleCreateSummary}
-        >
-          + צור סיכום חדש
-        </button>
+        <div className="summaries-actions">
+          <button 
+            className="btn btn-primary"
+            onClick={handleCreateSummary}
+          >
+            + צור סיכום חדש
+          </button>
+        </div>
+      </div>
+
+      {/* Statistics and Filters */}
+      <div className="summaries-controls">
+        <div className="summaries-stats">
+          <div className="stat-item">
+            <span className="stat-number">{stats.total_summaries}</span>
+            <span className="stat-label">סה"כ סיכומים</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-number">{stats.manual_summaries}</span>
+            <span className="stat-label">סיכומים ידניים</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-number">{stats.lesson_summaries}</span>
+            <span className="stat-label">סיכומי שיעורים</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-number">{stats.public_summaries}</span>
+            <span className="stat-label">סיכומים ציבוריים</span>
+          </div>
+        </div>
+
+        <div className="summaries-filters">
+          <div className="filter-group">
+            <label>סינון לפי סוג:</label>
+            <select 
+              value={filterType} 
+              onChange={(e) => setFilterType(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">כל הסיכומים</option>
+              <option value="manual">סיכומים ידניים</option>
+              <option value="lesson">סיכומי שיעורים</option>
+            </select>
+          </div>
+          
+          <div className="filter-group">
+            <label>חיפוש:</label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="חפש בכותרת או תוכן..."
+              className="search-input"
+            />
+          </div>
+        </div>
       </div>
       
       <div className="summaries-content">
@@ -132,10 +260,19 @@ const SummariesManager = () => {
             {summaries.map(summary => (
               <div key={summary.id} className="summary-item">
                 <div className="summary-header">
-                  <h3>{summary.title}</h3>
+                  <div className="summary-title-row">
+                    <h3>{summary.title}</h3>
+                    <div className="summary-type-badge">
+                      {summary.summary_type === 'manual' ? '✍️ ידני' : 
+                       summary.summary_type === 'lesson_generated' ? '🎓 שיעור' : '🤖 AI'}
+                    </div>
+                  </div>
                   <div className="summary-meta">
-                    {summary.subjectArea && <span className="summary-subject">{summary.subjectArea}</span>}
-                    {summary.gradeLevel && <span className="summary-grade">כיתה {summary.gradeLevel}</span>}
+                    {summary.subject_area && <span className="summary-subject">{summary.subject_area}</span>}
+                    {summary.grade_level && <span className="summary-grade">כיתה {summary.grade_level}</span>}
+                    {summary.source_title && (
+                      <span className="summary-source">מקור: {summary.source_title}</span>
+                    )}
                   </div>
                 </div>
                 <div className="summary-content-preview">
@@ -143,7 +280,7 @@ const SummariesManager = () => {
                     ? `${summary.content.substring(0, 150)}...` 
                     : summary.content}
                 </div>
-                {summary.tags && summary.tags.length > 0 && (
+                {summary.tags && Array.isArray(summary.tags) && summary.tags.length > 0 && (
                   <div className="summary-tags">
                     {summary.tags.map((tag, index) => (
                       <span key={index} className="tag">{tag}</span>
@@ -152,21 +289,28 @@ const SummariesManager = () => {
                 )}
                 <div className="summary-footer">
                   <div className="summary-info">
-                    {summary.isPublic && <span className="public-badge">ציבורי</span>}
+                    {summary.is_public && <span className="public-badge">ציבורי</span>}
+                    {summary.ai_provider && (
+                      <span className="ai-badge">AI: {summary.ai_provider}</span>
+                    )}
                     <span className="summary-date">
-                      {summary.createdAt && new Date(summary.createdAt).toLocaleDateString('he-IL')}
+                      {summary.created_at && new Date(summary.created_at).toLocaleDateString('he-IL')}
                     </span>
                   </div>
                   <div className="summary-actions">
-                    <button 
-                      className="btn btn-sm btn-outline"
-                      onClick={() => handleEditSummary(summary.id)}
-                    >
-                      עריכה
-                    </button>
+                    {summary.summary_type === 'manual' && (
+                      <button 
+                        className="btn btn-sm btn-outline"
+                        onClick={() => handleEditSummary(summary.id)}
+                      >
+                        עריכה
+                      </button>
+                    )}
                     <button 
                       className="btn btn-sm btn-danger"
                       onClick={() => handleDeleteSummary(summary.id)}
+                      disabled={summary.summary_type !== 'manual'}
+                      title={summary.summary_type !== 'manual' ? 'ניתן למחוק רק סיכומים ידניים' : 'מחק סיכום'}
                     >
                       מחיקה
                     </button>
@@ -238,9 +382,89 @@ const SummariesManager = () => {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 2rem;
+          margin-bottom: 1.5rem;
           flex-wrap: wrap;
           gap: 1rem;
+        }
+
+        .summaries-actions {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .summaries-controls {
+          background: var(--color-surfaceHover, #f8f9fa);
+          border-radius: var(--radius-md, 8px);
+          padding: 1.5rem;
+          margin-bottom: 2rem;
+          border: 1px solid var(--color-border, #e9ecef);
+        }
+
+        .summaries-stats {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .stat-item {
+          text-align: center;
+          padding: 1rem;
+          background: var(--color-surface, #ffffff);
+          border-radius: var(--radius-sm, 4px);
+          border: 1px solid var(--color-border, #e9ecef);
+        }
+
+        .stat-number {
+          display: block;
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: var(--color-primary, #3498db);
+          margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+          font-size: 0.85rem;
+          color: var(--color-textSecondary, #7f8c8d);
+          font-weight: 500;
+        }
+
+        .summaries-filters {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+        }
+
+        .filter-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .filter-group label {
+          font-weight: 500;
+          color: var(--color-text, #2c3e50);
+          font-size: 0.9rem;
+        }
+
+        .filter-select,
+        .search-input {
+          padding: 0.5rem;
+          border: 1px solid var(--color-border, #e9ecef);
+          border-radius: var(--radius-sm, 4px);
+          font-family: 'Heebo', sans-serif;
+          background: var(--color-surface, #ffffff);
+        }
+
+        .filter-select:focus,
+        .search-input:focus {
+          outline: none;
+          border-color: var(--color-primary, #3498db);
+          box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .search-input {
+          direction: rtl;
         }
 
         .summaries-title h2 {
@@ -305,11 +529,39 @@ const SummariesManager = () => {
           margin-bottom: 1rem;
         }
 
+        .summary-title-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+
         .summary-header h3 {
-          margin: 0 0 0.5rem 0;
+          margin: 0;
           color: var(--color-text, #2c3e50);
           font-size: 1.3rem;
           line-height: 1.4;
+          flex: 1;
+        }
+
+        .summary-type-badge {
+          background: var(--color-primary, #3498db);
+          color: white;
+          padding: 0.25rem 0.5rem;
+          border-radius: var(--radius-sm, 4px);
+          font-size: 0.75rem;
+          font-weight: 500;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .summary-type-badge:has-text("🎓 שיעור") {
+          background: var(--color-success, #27ae60);
+        }
+
+        .summary-type-badge:has-text("🤖 AI") {
+          background: var(--color-warning, #f39c12);
         }
 
         .summary-meta {
@@ -319,7 +571,8 @@ const SummariesManager = () => {
         }
 
         .summary-subject,
-        .summary-grade {
+        .summary-grade,
+        .summary-source {
           background: var(--color-primary, #3498db);
           color: white;
           padding: 0.25rem 0.5rem;
@@ -330,6 +583,19 @@ const SummariesManager = () => {
 
         .summary-grade {
           background: var(--color-textSecondary, #7f8c8d);
+        }
+
+        .summary-source {
+          background: var(--color-success, #27ae60);
+        }
+
+        .ai-badge {
+          background: var(--color-warning, #f39c12);
+          color: white;
+          padding: 0.25rem 0.5rem;
+          border-radius: var(--radius-sm, 4px);
+          font-size: 0.8rem;
+          font-weight: 500;
         }
 
         .summary-content-preview {
@@ -433,8 +699,18 @@ const SummariesManager = () => {
           color: white;
         }
 
-        .btn-danger:hover {
+        .btn-danger:hover:not(:disabled) {
           background: #c0392b;
+        }
+
+        .btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .btn:disabled:hover {
+          transform: none;
+          box-shadow: none;
         }
 
         .btn-sm {

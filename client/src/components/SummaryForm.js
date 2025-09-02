@@ -94,52 +94,65 @@ const SummaryForm = ({ onSummaryCreated, onCancel }) => {
     setSuccessMessage('');
 
     try {
-      // Create new summary object
-      const newSummary = {
-        id: Date.now().toString(), // Simple ID generation
-        title: formData.title.trim(),
-        content: formData.content.trim(),
-        subjectArea: formData.subjectArea,
-        gradeLevel: formData.gradeLevel,
-        tags: formData.tags,
-        isPublic: formData.isPublic,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      // Get existing summaries from localStorage
-      const existingSummaries = localStorage.getItem('limud-ai-summaries');
-      const summariesList = existingSummaries ? JSON.parse(existingSummaries) : [];
-      
-      // Add new summary to the beginning of the list
-      const updatedSummaries = [newSummary, ...summariesList];
-      
-      // Save to localStorage
-      localStorage.setItem('limud-ai-summaries', JSON.stringify(updatedSummaries));
-      
-      setSuccessMessage('הסיכום נוצר בהצלחה!');
-      
-      // Reset form
-      setFormData({
-        title: '',
-        content: '',
-        subjectArea: '',
-        gradeLevel: '',
-        tags: [],
-        isPublic: false
-      });
-
-      // Notify parent component
-      if (onSummaryCreated) {
-        onSummaryCreated(newSummary);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
       }
 
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccessMessage(''), 3000);
+      const summaryData = {
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        subject_area: formData.subjectArea || null,
+        grade_level: formData.gradeLevel || null,
+        tags: formData.tags,
+        is_public: formData.isPublic
+      };
+
+      const response = await fetch('/api/summaries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(summaryData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 401) {
+          throw new Error('אין הרשאה. אנא התחבר מחדש למערכת.');
+        }
+        throw new Error(errorData.error || `שגיאה ביצירת הסיכום: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setSuccessMessage('הסיכום נוצר בהצלחה!');
+        
+        // Reset form
+        setFormData({
+          title: '',
+          content: '',
+          subjectArea: '',
+          gradeLevel: '',
+          tags: [],
+          isPublic: false
+        });
+
+        // Notify parent component
+        if (onSummaryCreated) {
+          onSummaryCreated(data.summary);
+        }
+
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        throw new Error(data.error || 'שגיאה ביצירת הסיכום');
+      }
 
     } catch (error) {
       console.error('Error creating summary:', error);
-      setErrors({ submit: 'שגיאה בשמירת הסיכום' });
+      setErrors({ submit: error.message });
     } finally {
       setIsLoading(false);
     }
