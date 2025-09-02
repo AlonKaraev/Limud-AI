@@ -460,6 +460,164 @@ router.get('/question-set/:recordingId', authenticate, async (req, res) => {
 });
 
 /**
+ * Get all question sets for user
+ */
+router.get('/question-sets', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { page = 1, limit = 20, subject_area, grade_level } = req.query;
+
+    const { query } = require('../config/database-sqlite');
+    
+    let sql = `
+      SELECT 
+        qs.*,
+        COUNT(qsi.question_id) as question_count
+      FROM question_sets qs
+      LEFT JOIN question_set_items qsi ON qs.id = qsi.question_set_id
+      WHERE qs.user_id = ?
+    `;
+    const params = [userId];
+
+    // Add filters
+    if (subject_area) {
+      sql += ` AND qs.subject_area = ?`;
+      params.push(subject_area);
+    }
+
+    if (grade_level) {
+      sql += ` AND qs.grade_level = ?`;
+      params.push(grade_level);
+    }
+
+    sql += ` GROUP BY qs.id ORDER BY qs.created_at DESC`;
+
+    // Add pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    sql += ` LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), offset);
+
+    const result = await query(sql, params);
+
+    // Get total count for pagination
+    let countSql = `SELECT COUNT(DISTINCT qs.id) as total FROM question_sets qs WHERE qs.user_id = ?`;
+    const countParams = [userId];
+
+    if (subject_area) {
+      countSql += ` AND qs.subject_area = ?`;
+      countParams.push(subject_area);
+    }
+
+    if (grade_level) {
+      countSql += ` AND qs.grade_level = ?`;
+      countParams.push(grade_level);
+    }
+
+    const countResult = await query(countSql, countParams);
+    const total = countResult.rows[0]?.total || 0;
+
+    res.json({
+      success: true,
+      questionSets: result.rows.map(set => ({
+        ...set,
+        metadata: set.metadata ? JSON.parse(set.metadata) : {},
+        total_questions: set.question_count || set.total_questions || 0
+      })),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / parseInt(limit))
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching question sets:', error);
+    res.status(500).json({
+      error: 'שגיאה בטעינת סטי השאלות',
+      code: 'QUESTION_SETS_FETCH_ERROR',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Get questions for a specific question set
+ */
+router.get('/question-sets/:setId/questions', authenticate, async (req, res) => {
+  try {
+    const setId = parseInt(req.params.setId);
+    const userId = req.user.id;
+
+    const { query } = require('../config/database-sqlite');
+
+    // First verify the question set belongs to the user
+    const setResult = await query(
+      'SELECT id FROM question_sets WHERE id = ? AND user_id = ?',
+      [setId, userId]
+    );
+
+    if (setResult.rows.length === 0) {
+      return res.status(404).json({
+        error: 'סט שאלות לא נמצא',
+        code: 'QUESTION_SET_NOT_FOUND'
+      });
+    }
+
+    // Get questions with their options
+    const questionsResult = await query(`
+      SELECT 
+        gq.id,
+        gq.question_text,
+        gq.question_type,
+        gq.difficulty_level,
+        gq.correct_answer,
+        gq.explanation,
+        gq.metadata,
+        gq.created_at
+      FROM generated_questions gq
+      INNER JOIN question_set_items qsi ON gq.id = qsi.question_id
+      WHERE qsi.question_set_id = ?
+      ORDER BY qsi.order_index ASC, gq.created_at ASC
+    `, [setId]);
+
+    // Get options for each question
+    const questions = [];
+    for (const question of questionsResult.rows) {
+      const optionsResult = await query(`
+        SELECT 
+          option_text,
+          is_correct,
+          explanation
+        FROM question_options
+        WHERE question_id = ?
+        ORDER BY option_order ASC
+      `, [question.id]);
+
+      questions.push({
+        ...question,
+        metadata: question.metadata ? JSON.parse(question.metadata) : {},
+        options: optionsResult.rows || []
+      });
+    }
+
+    res.json({
+      success: true,
+      questions,
+      total: questions.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching questions for set:', error);
+    res.status(500).json({
+      error: 'שגיאה בטעינת השאלות',
+      code: 'QUESTIONS_FETCH_ERROR',
+      message: error.message
+    });
+  }
+});
+
+/**
  * Rate AI-generated content
  */
 router.post('/rate/:contentType/:contentId', authenticate, async (req, res) => {

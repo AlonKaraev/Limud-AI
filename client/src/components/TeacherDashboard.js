@@ -5,6 +5,8 @@ import MemoryCardSetEditor from './MemoryCardSetEditor';
 import RecordingInterface from './RecordingInterface';
 import SessionManager from './SessionManager';
 import LessonsManager from './LessonsManager';
+import TestsManager from './TestsManager';
+import SummariesManager from './SummariesManager';
 
 const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingRecording, setIsProcessingRecording }) => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -19,14 +21,132 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
     totalCards: 0,
     recentCards: []
   });
+  const [summaryStats, setSummaryStats] = useState({
+    totalSummaries: 0,
+    publicSummaries: 0,
+    recentSummaries: []
+  });
+  const [testStats, setTestStats] = useState({
+    totalTests: 0,
+    recentTests: []
+  });
+  const [lessonStats, setLessonStats] = useState({
+    totalLessons: 0,
+    recentLessons: []
+  });
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Load memory card data when component mounts or when memory cards tab is active
+  // Load data when component mounts or when tabs are active
   useEffect(() => {
     if (activeTab === 'memory-cards') {
       loadMemoryCardData();
+    } else if (activeTab === 'overview') {
+      loadAllStats();
     }
   }, [activeTab]);
+
+  // Load all statistics on component mount
+  useEffect(() => {
+    loadAllStats();
+  }, []);
+
+  const loadAllStats = async () => {
+    await Promise.all([
+      loadSummaryStats(),
+      loadTestStats(),
+      loadLessonStats()
+    ]);
+  };
+
+  const loadSummaryStats = async () => {
+    try {
+      // Load summaries from localStorage
+      const storedSummaries = localStorage.getItem('limud-ai-summaries');
+      if (storedSummaries) {
+        const summaries = JSON.parse(storedSummaries);
+        
+        // Calculate stats
+        const totalSummaries = summaries.length;
+        const publicSummaries = summaries.filter(summary => summary.isPublic).length;
+        const recentSummaries = summaries.slice(0, 3); // Get 3 most recent
+        
+        setSummaryStats({
+          totalSummaries,
+          publicSummaries,
+          recentSummaries
+        });
+      } else {
+        setSummaryStats({
+          totalSummaries: 0,
+          publicSummaries: 0,
+          recentSummaries: []
+        });
+      }
+    } catch (error) {
+      console.error('Error loading summary stats:', error);
+      setSummaryStats({
+        totalSummaries: 0,
+        publicSummaries: 0,
+        recentSummaries: []
+      });
+    }
+  };
+
+  const loadTestStats = async () => {
+    try {
+      // Load tests from localStorage (placeholder - would normally come from API)
+      const storedTests = localStorage.getItem('limud-ai-tests');
+      if (storedTests) {
+        const tests = JSON.parse(storedTests);
+        const totalTests = tests.length;
+        const recentTests = tests.slice(0, 2); // Get 2 most recent
+        
+        setTestStats({
+          totalTests,
+          recentTests
+        });
+      } else {
+        setTestStats({
+          totalTests: 0,
+          recentTests: []
+        });
+      }
+    } catch (error) {
+      console.error('Error loading test stats:', error);
+      setTestStats({
+        totalTests: 0,
+        recentTests: []
+      });
+    }
+  };
+
+  const loadLessonStats = async () => {
+    try {
+      // Load lessons from localStorage (placeholder - would normally come from API)
+      const storedLessons = localStorage.getItem('limud-ai-lessons');
+      if (storedLessons) {
+        const lessons = JSON.parse(storedLessons);
+        const totalLessons = lessons.length;
+        const recentLessons = lessons.slice(0, 2); // Get 2 most recent
+        
+        setLessonStats({
+          totalLessons,
+          recentLessons
+        });
+      } else {
+        setLessonStats({
+          totalLessons: 0,
+          recentLessons: []
+        });
+      }
+    } catch (error) {
+      console.error('Error loading lesson stats:', error);
+      setLessonStats({
+        totalLessons: 0,
+        recentLessons: []
+      });
+    }
+  };
 
   const loadMemoryCardData = async () => {
     setLoadingMemoryCards(true);
@@ -327,36 +447,141 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
             >
               כרטיסי זיכרון
             </button>
+            <button
+              className={`nav-tab ${activeTab === 'tests' ? 'active' : ''}`}
+              onClick={() => setActiveTab('tests')}
+            >
+              מבחנים
+            </button>
+            <button
+              className={`nav-tab ${activeTab === 'summaries' ? 'active' : ''}`}
+              onClick={() => setActiveTab('summaries')}
+            >
+              סיכומים
+            </button>
           </div>
         </div>
 
         {activeTab === 'overview' && (
-          <div className="d-flex gap-2" style={{ flexWrap: 'wrap' }}>
-            <div className="card" style={{ flex: '1', minWidth: '200px', marginBottom: '1rem' }}>
-              <h3 className="card-title">
-                {t('dashboard.recentActivity')}
-              </h3>
-              <p className="card-subtitle">
-                {t('forms.noData')}
-              </p>
+          <div className="overview-container">
+            {/* Compact Statistics Grid */}
+            <div className="overview-section">
+              <h3 className="section-title">📊 סטטיסטיקות כלליות</h3>
+              <div className="compact-stats-grid">
+                <div className="compact-stat-card">
+                  <div className="compact-stat-icon">📝</div>
+                  <div className="compact-stat-info">
+                    <div className="compact-stat-number">{summaryStats.totalSummaries}</div>
+                    <div className="compact-stat-label">סיכומים</div>
+                  </div>
+                </div>
+                <div className="compact-stat-card">
+                  <div className="compact-stat-icon">📚</div>
+                  <div className="compact-stat-info">
+                    <div className="compact-stat-number">{lessonStats.totalLessons}</div>
+                    <div className="compact-stat-label">שיעורים</div>
+                  </div>
+                </div>
+                <div className="compact-stat-card">
+                  <div className="compact-stat-icon">📋</div>
+                  <div className="compact-stat-info">
+                    <div className="compact-stat-number">{testStats.totalTests}</div>
+                    <div className="compact-stat-label">מבחנים</div>
+                  </div>
+                </div>
+                <div className="compact-stat-card">
+                  <div className="compact-stat-icon">🎴</div>
+                  <div className="compact-stat-info">
+                    <div className="compact-stat-number">{memoryCardStats.totalSets}</div>
+                    <div className="compact-stat-label">כרטיסי זיכרון</div>
+                  </div>
+                </div>
+                <div className="compact-stat-card">
+                  <div className="compact-stat-icon">🌐</div>
+                  <div className="compact-stat-info">
+                    <div className="compact-stat-number">{summaryStats.publicSummaries}</div>
+                    <div className="compact-stat-label">תוכן ציבורי</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="card" style={{ flex: '1', minWidth: '200px', marginBottom: '1rem' }}>
-              <h3 className="card-title">
-                {t('dashboard.quickActions')}
-              </h3>
-              <div className="quick-actions">
-                <button 
-                  className="btn btn-outline btn-sm"
-                  onClick={() => setActiveTab('memory-cards')}
-                >
-                  🎴 כרטיסי זיכרון
-                </button>
-                <button 
-                  className="btn btn-outline btn-sm"
-                  onClick={() => setActiveTab('lessons')}
-                >
-                  📚 שיעורים
-                </button>
+
+            {/* Recent Activity */}
+            {(summaryStats.recentSummaries.length > 0 || testStats.recentTests.length > 0 || lessonStats.recentLessons.length > 0) && (
+              <div className="overview-section">
+                <h3 className="section-title">🕒 פעילות אחרונה</h3>
+                <div className="recent-activity-grid">
+                  {summaryStats.recentSummaries.slice(0, 2).map((summary, index) => (
+                    <div key={`summary-${index}`} className="recent-activity-card">
+                      <div className="activity-icon">📝</div>
+                      <div className="activity-content">
+                        <h6>{summary.title}</h6>
+                        <p>סיכום • {summary.subjectArea || 'כללי'}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {testStats.recentTests.slice(0, 2).map((test, index) => (
+                    <div key={`test-${index}`} className="recent-activity-card">
+                      <div className="activity-icon">📋</div>
+                      <div className="activity-content">
+                        <h6>{test.title || `מבחן ${index + 1}`}</h6>
+                        <p>מבחן • {test.subject || 'כללי'}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {lessonStats.recentLessons.slice(0, 2).map((lesson, index) => (
+                    <div key={`lesson-${index}`} className="recent-activity-card">
+                      <div className="activity-icon">📚</div>
+                      <div className="activity-content">
+                        <h6>{lesson.title || `שיעור ${index + 1}`}</h6>
+                        <p>שיעור • {lesson.subject || 'כללי'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Main Dashboard Cards */}
+            <div className="d-flex gap-2" style={{ flexWrap: 'wrap' }}>
+              <div className="card" style={{ flex: '1', minWidth: '200px', marginBottom: '1rem' }}>
+                <h3 className="card-title">
+                  {t('dashboard.recentActivity')}
+                </h3>
+                <p className="card-subtitle">
+                  {t('forms.noData')}
+                </p>
+              </div>
+              <div className="card" style={{ flex: '1', minWidth: '200px', marginBottom: '1rem' }}>
+                <h3 className="card-title">
+                  {t('dashboard.quickActions')}
+                </h3>
+                <div className="quick-actions">
+                  <button 
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setActiveTab('memory-cards')}
+                  >
+                    🎴 כרטיסי זיכרון
+                  </button>
+                  <button 
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setActiveTab('lessons')}
+                  >
+                    📚 שיעורים
+                  </button>
+                  <button 
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setActiveTab('tests')}
+                  >
+                    📋 מבחנים
+                  </button>
+                  <button 
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setActiveTab('summaries')}
+                  >
+                    📝 סיכומים
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -385,6 +610,14 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
 
       {activeTab === 'lessons' && (
         <LessonsManager t={t} />
+      )}
+
+      {activeTab === 'tests' && (
+        <TestsManager user={user} t={t} />
+      )}
+
+      {activeTab === 'summaries' && (
+        <SummariesManager />
       )}
 
       {/* Memory Card Set Viewer Popup */}
@@ -586,6 +819,181 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+
+        .overview-container {
+          padding: 1rem;
+        }
+
+        .overview-section {
+          margin-bottom: 2rem;
+        }
+
+        .section-title {
+          margin: 0 0 1rem 0;
+          color: var(--color-primary, #3498db);
+          font-size: 1.3rem;
+          font-weight: 600;
+        }
+
+        .recent-items-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 1rem;
+        }
+
+        .recent-item-card {
+          background: var(--color-surface, #ffffff);
+          border: 2px solid var(--color-border, #e9ecef);
+          border-radius: var(--radius-md, 8px);
+          padding: 1rem;
+          transition: all 0.3s ease;
+        }
+
+        .recent-item-card:hover {
+          border-color: var(--color-primary, #3498db);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+        }
+
+        .recent-item-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 0.5rem;
+          gap: 0.5rem;
+        }
+
+        .recent-item-header h5 {
+          margin: 0;
+          color: var(--color-text, #2c3e50);
+          font-size: 1rem;
+          font-weight: 600;
+        }
+
+        .public-badge {
+          background: var(--color-success, #27ae60);
+          color: white;
+          padding: 0.2rem 0.5rem;
+          border-radius: var(--radius-sm, 4px);
+          font-size: 0.7rem;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+
+        .recent-item-meta {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .subject-tag,
+        .grade-tag {
+          background: var(--color-surfaceHover, #f8f9fa);
+          color: var(--color-text, #2c3e50);
+          padding: 0.2rem 0.4rem;
+          border-radius: var(--radius-sm, 4px);
+          font-size: 0.75rem;
+          border: 1px solid var(--color-border, #e9ecef);
+        }
+
+        .recent-item-content {
+          color: var(--color-textSecondary, #7f8c8d);
+          font-size: 0.9rem;
+          line-height: 1.4;
+          margin: 0;
+        }
+
+        .compact-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .compact-stat-card {
+          background: var(--color-surface, #ffffff);
+          border: 2px solid var(--color-border, #e9ecef);
+          border-radius: var(--radius-md, 8px);
+          padding: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          transition: all 0.3s ease;
+        }
+
+        .compact-stat-card:hover {
+          border-color: var(--color-primary, #3498db);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+        }
+
+        .compact-stat-icon {
+          font-size: 2rem;
+          flex-shrink: 0;
+        }
+
+        .compact-stat-info {
+          flex: 1;
+        }
+
+        .compact-stat-number {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: var(--color-primary, #3498db);
+          margin-bottom: 0.2rem;
+        }
+
+        .compact-stat-label {
+          color: var(--color-textSecondary, #7f8c8d);
+          font-weight: 500;
+          font-size: 0.9rem;
+        }
+
+        .recent-activity-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          gap: 1rem;
+        }
+
+        .recent-activity-card {
+          background: var(--color-surface, #ffffff);
+          border: 2px solid var(--color-border, #e9ecef);
+          border-radius: var(--radius-md, 8px);
+          padding: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          transition: all 0.3s ease;
+        }
+
+        .recent-activity-card:hover {
+          border-color: var(--color-primary, #3498db);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+        }
+
+        .activity-icon {
+          font-size: 1.5rem;
+          flex-shrink: 0;
+        }
+
+        .activity-content {
+          flex: 1;
+        }
+
+        .activity-content h6 {
+          margin: 0 0 0.2rem 0;
+          color: var(--color-text, #2c3e50);
+          font-size: 0.9rem;
+          font-weight: 600;
+        }
+
+        .activity-content p {
+          margin: 0;
+          color: var(--color-textSecondary, #7f8c8d);
+          font-size: 0.8rem;
         }
 
         .quick-actions {
