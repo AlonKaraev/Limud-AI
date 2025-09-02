@@ -71,10 +71,80 @@ class QuestionService {
 ---`
     };
 
+    this.englishPrompts = {
+      multiple_choice: `You are an expert in creating high-quality educational exam questions in English. Create 10 multiple-choice questions based on the following content.
+
+Each question should:
+1. Be clear and accurate in English
+2. Include 4 answer options (A, B, C, D)
+3. Have one correct answer and 3 reasonable distractors
+4. Focus on understanding, not just memorization
+5. Be appropriate for the grade level
+
+Content:
+{content}
+
+Response format:
+Question 1: [Question text]
+A) [Option 1]
+B) [Option 2]
+C) [Option 3]
+D) [Option 4]
+Correct answer: [A/B/C/D]
+Explanation: [Brief explanation of why the answer is correct]
+
+---
+
+Continue with questions 2-10...`,
+
+      true_false: `Create 10 true/false questions based on the following content. Each question should be clear and test real understanding.
+
+Content:
+{content}
+
+Format:
+Question 1: [Question text]
+Answer: [True/False]
+Explanation: [Brief explanation]
+
+---`,
+
+      short_answer: `Create 10 short-answer questions based on the following content. The questions should encourage critical thinking and deep understanding.
+
+Content:
+{content}
+
+Format:
+Question 1: [Question text]
+Suggested answer: [Short answer]
+Key points: [Points that should appear in the answer]
+
+---`,
+
+      essay: `Create 5 essay/composition questions based on the following content. The questions should encourage analysis, synthesis, and evaluation.
+
+Content:
+{content}
+
+Format:
+Question 1: [Question text]
+Answer guidelines: [What should be included in the answer]
+Assessment criteria: [How to evaluate the answer]
+
+---`
+    };
+
     this.difficultyPrompts = {
-      easy: 'התמקד בזכירה ובהבנה בסיסית של עובדות ומושגים פשוטים.',
-      medium: 'כלול שאלות הבנה, יישום וניתוח של המידע.',
-      hard: 'צור שאלות מורכבות הדורשות סינתזה, הערכה וחשיבה ביקורתית.'
+      hebrew: {
+        easy: 'התמקד בזכירה ובהבנה בסיסית של עובדות ומושגים פשוטים.',
+        medium: 'כלול שאלות הבנה, יישום וניתוח של המידע.',
+        hard: 'צור שאלות מורכבות הדורשות סינתזה, הערכה וחשיבה ביקורתית.'
+      },
+      english: {
+        easy: 'Focus on recall and basic understanding of simple facts and concepts.',
+        medium: 'Include questions that test comprehension, application, and analysis of information.',
+        hard: 'Create complex questions that require synthesis, evaluation, and critical thinking.'
+      }
     };
   }
 
@@ -91,6 +161,8 @@ class QuestionService {
    * @param {number} options.questionCount - Number of questions to generate
    * @param {string} options.subjectArea - Subject area
    * @param {string} options.gradeLevel - Grade level
+   * @param {string} options.language - Output language (hebrew, english)
+   * @param {string} options.customGuidance - Custom guidance for AI
    * @param {string} options.provider - AI provider
    * @returns {Promise<Object>} Question generation result
    */
@@ -106,6 +178,8 @@ class QuestionService {
       questionCount = 10,
       subjectArea,
       gradeLevel,
+      language = 'hebrew',
+      customGuidance = '',
       provider = AI_PROVIDERS.OPENAI
     } = options;
 
@@ -127,7 +201,7 @@ class QuestionService {
             questionType,
             difficultyLevel,
             questionCount,
-            { subjectArea, gradeLevel }
+            { subjectArea, gradeLevel, language, customGuidance }
           );
           break;
         default:
@@ -223,35 +297,58 @@ class QuestionService {
     }
 
     const config = MODEL_CONFIGS.question_generation.openai;
+    const { language = 'hebrew', customGuidance = '', subjectArea, gradeLevel } = context;
     
     try {
-      // Build prompt
-      let prompt = this.hebrewPrompts[questionType] || this.hebrewPrompts.multiple_choice;
+      // Select prompts based on language
+      const prompts = language === 'english' ? this.englishPrompts : this.hebrewPrompts;
+      let prompt = prompts[questionType] || prompts.multiple_choice;
       prompt = prompt.replace('{content}', content);
 
-      // Add difficulty context
-      if (this.difficultyPrompts[difficultyLevel]) {
-        prompt += `\n\nרמת קושי: ${this.difficultyPrompts[difficultyLevel]}`;
+      // Add difficulty context based on language
+      const difficultyPrompts = this.difficultyPrompts[language] || this.difficultyPrompts.hebrew;
+      if (difficultyPrompts[difficultyLevel]) {
+        const difficultyLabel = language === 'english' ? 'Difficulty level:' : 'רמת קושי:';
+        prompt += `\n\n${difficultyLabel} ${difficultyPrompts[difficultyLevel]}`;
       }
 
-      // Add context if provided
-      if (context.subjectArea) {
-        prompt += `\n\nתחום הלימוד: ${context.subjectArea}`;
-      }
-      if (context.gradeLevel) {
-        prompt += `\nרמת כיתה: ${context.gradeLevel}`;
+      // Add context based on language
+      if (language === 'english') {
+        if (subjectArea) {
+          prompt += `\n\nSubject Area: ${subjectArea}`;
+        }
+        if (gradeLevel) {
+          prompt += `\nGrade Level: ${gradeLevel}`;
+        }
+        if (customGuidance) {
+          prompt += `\n\nAdditional Instructions: ${customGuidance}`;
+        }
+      } else {
+        if (subjectArea) {
+          prompt += `\n\nתחום הלימוד: ${subjectArea}`;
+        }
+        if (gradeLevel) {
+          prompt += `\nרמת כיתה: ${gradeLevel}`;
+        }
+        if (customGuidance) {
+          prompt += `\n\nהנחיות נוספות: ${customGuidance}`;
+        }
       }
 
       // Adjust question count for different types
       if (questionType === 'essay') {
         questionCount = Math.min(questionCount, 5);
-        prompt = prompt.replace('10', questionCount.toString());
+        prompt = prompt.replace('10', questionCount.toString()).replace('5', questionCount.toString());
       } else {
         prompt = prompt.replace('10', questionCount.toString());
       }
 
+      // Select system message based on language
+      const systemMessage = language === 'english' 
+        ? 'You are an educational expert specializing in creating high-quality exam questions. You create clear, accurate questions that are appropriate for the student level.'
+        : 'אתה מומחה חינוכי המתמחה ביצירת שאלות בחינה איכותיות בעברית. אתה יוצר שאלות ברורות, מדויקות ומתאימות לרמת התלמידים.';
+
       // Validate context window fit
-      const systemMessage = 'אתה מומחה חינוכי המתמחה ביצירת שאלות בחינה איכותיות בעברית. אתה יוצר שאלות ברורות, מדויקות ומתאימות לרמת התלמידים.';
       const fullPrompt = systemMessage + '\n\n' + prompt;
       
       const validation = validateContentForProcessing(
@@ -277,6 +374,8 @@ class QuestionService {
         config.max_tokens = optimizedMaxTokens;
       }
 
+      console.log(`Generating questions in ${language} with custom guidance: ${!!customGuidance}`);
+
       // Call OpenAI API
       const response = await openaiClient.chat.completions.create({
         model: config.model,
@@ -296,14 +395,15 @@ class QuestionService {
       });
 
       const questionsText = response.choices[0].message.content.trim();
-      const parsedQuestions = this.parseQuestionsFromText(questionsText, questionType);
+      const parsedQuestions = this.parseQuestionsFromText(questionsText, questionType, language);
 
       return {
         questions: parsedQuestions,
         model: config.model,
         usage: response.usage,
         raw_text: questionsText,
-        contextAnalysis: validation.analysis
+        contextAnalysis: validation.analysis,
+        language: language
       };
 
     } catch (error) {
@@ -324,20 +424,27 @@ class QuestionService {
    * Parse questions from generated text
    * @param {string} text - Generated questions text
    * @param {string} questionType - Type of questions
+   * @param {string} language - Language of the questions
    * @returns {Array} Parsed questions
    */
-  parseQuestionsFromText(text, questionType) {
+  parseQuestionsFromText(text, questionType, language = 'hebrew') {
     const questions = [];
     
     try {
-      // Split by question separators
-      const questionBlocks = text.split(/---+|\n\n(?=שאלה \d+)/);
+      // Split by question separators - handle both Hebrew and English
+      const questionPattern = language === 'english' 
+        ? /---+|\n\n(?=Question \d+)/
+        : /---+|\n\n(?=שאלה \d+)/;
+      
+      const questionBlocks = text.split(questionPattern);
       
       for (const block of questionBlocks) {
         const trimmedBlock = block.trim();
-        if (!trimmedBlock || !trimmedBlock.includes('שאלה')) continue;
+        const questionKeyword = language === 'english' ? 'Question' : 'שאלה';
+        
+        if (!trimmedBlock || !trimmedBlock.includes(questionKeyword)) continue;
 
-        const question = this.parseQuestionBlock(trimmedBlock, questionType);
+        const question = this.parseQuestionBlock(trimmedBlock, questionType, language);
         if (question) {
           questions.push(question);
         }
@@ -354,19 +461,24 @@ class QuestionService {
    * Parse individual question block
    * @param {string} block - Question block text
    * @param {string} questionType - Type of question
+   * @param {string} language - Language of the questions
    * @returns {Object|null} Parsed question
    */
-  parseQuestionBlock(block, questionType) {
+  parseQuestionBlock(block, questionType, language = 'hebrew') {
     try {
       const lines = block.split('\n').map(line => line.trim()).filter(line => line);
       
       if (lines.length === 0) return null;
 
-      // Extract question text
-      const questionLine = lines.find(line => line.includes('שאלה'));
+      // Extract question text based on language
+      const questionKeyword = language === 'english' ? 'Question' : 'שאלה';
+      const questionLine = lines.find(line => line.includes(questionKeyword));
       if (!questionLine) return null;
 
-      const questionText = questionLine.replace(/^שאלה \d+:\s*/, '').trim();
+      const questionPattern = language === 'english' 
+        ? /^Question \d+:\s*/
+        : /^שאלה \d+:\s*/;
+      const questionText = questionLine.replace(questionPattern, '').trim();
       
       let correctAnswer = '';
       let answerOptions = [];
@@ -378,62 +490,122 @@ class QuestionService {
 
       switch (questionType) {
         case 'multiple_choice':
-          // Extract options
-          const optionLines = lines.filter(line => /^[א-ד]\)/.test(line));
-          answerOptions = optionLines.map(line => line.replace(/^[א-ד]\)\s*/, ''));
-          
-          // Extract correct answer
-          const correctLine = lines.find(line => line.includes('תשובה נכונה:'));
-          if (correctLine) {
-            const match = correctLine.match(/תשובה נכונה:\s*([א-ד])/);
-            if (match) {
-              correctAnswer = answerOptions[['א', 'ב', 'ג', 'ד'].indexOf(match[1])] || '';
+          if (language === 'english') {
+            // Extract English options (A, B, C, D)
+            const optionLines = lines.filter(line => /^[A-D]\)/.test(line));
+            answerOptions = optionLines.map(line => line.replace(/^[A-D]\)\s*/, ''));
+            
+            // Extract correct answer
+            const correctLine = lines.find(line => line.includes('Correct answer:'));
+            if (correctLine) {
+              const match = correctLine.match(/Correct answer:\s*([A-D])/);
+              if (match) {
+                correctAnswer = answerOptions[['A', 'B', 'C', 'D'].indexOf(match[1])] || '';
+              }
             }
-          }
-          
-          // Extract explanation
-          const explanationLine = lines.find(line => line.includes('הסבר:'));
-          if (explanationLine) {
-            explanation = explanationLine.replace('הסבר:', '').trim();
+            
+            // Extract explanation
+            const explanationLine = lines.find(line => line.includes('Explanation:'));
+            if (explanationLine) {
+              explanation = explanationLine.replace('Explanation:', '').trim();
+            }
+          } else {
+            // Extract Hebrew options (א, ב, ג, ד)
+            const optionLines = lines.filter(line => /^[א-ד]\)/.test(line));
+            answerOptions = optionLines.map(line => line.replace(/^[א-ד]\)\s*/, ''));
+            
+            // Extract correct answer
+            const correctLine = lines.find(line => line.includes('תשובה נכונה:'));
+            if (correctLine) {
+              const match = correctLine.match(/תשובה נכונה:\s*([א-ד])/);
+              if (match) {
+                correctAnswer = answerOptions[['א', 'ב', 'ג', 'ד'].indexOf(match[1])] || '';
+              }
+            }
+            
+            // Extract explanation
+            const explanationLine = lines.find(line => line.includes('הסבר:'));
+            if (explanationLine) {
+              explanation = explanationLine.replace('הסבר:', '').trim();
+            }
           }
           break;
 
         case 'true_false':
-          const answerLine = lines.find(line => line.includes('תשובה:'));
-          if (answerLine) {
-            correctAnswer = answerLine.replace('תשובה:', '').trim();
-          }
-          
-          const explanationLine2 = lines.find(line => line.includes('הסבר:'));
-          if (explanationLine2) {
-            explanation = explanationLine2.replace('הסבר:', '').trim();
+          if (language === 'english') {
+            const answerLine = lines.find(line => line.includes('Answer:'));
+            if (answerLine) {
+              correctAnswer = answerLine.replace('Answer:', '').trim();
+            }
+            
+            const explanationLine = lines.find(line => line.includes('Explanation:'));
+            if (explanationLine) {
+              explanation = explanationLine.replace('Explanation:', '').trim();
+            }
+          } else {
+            const answerLine = lines.find(line => line.includes('תשובה:'));
+            if (answerLine) {
+              correctAnswer = answerLine.replace('תשובה:', '').trim();
+            }
+            
+            const explanationLine = lines.find(line => line.includes('הסבר:'));
+            if (explanationLine) {
+              explanation = explanationLine.replace('הסבר:', '').trim();
+            }
           }
           break;
 
         case 'short_answer':
-          const suggestedLine = lines.find(line => line.includes('תשובה מוצעת:'));
-          if (suggestedLine) {
-            suggestedAnswer = suggestedLine.replace('תשובה מוצעת:', '').trim();
-            correctAnswer = suggestedAnswer;
-          }
-          
-          const keyPointsLine = lines.find(line => line.includes('נקודות מפתח:'));
-          if (keyPointsLine) {
-            keyPoints = [keyPointsLine.replace('נקודות מפתח:', '').trim()];
+          if (language === 'english') {
+            const suggestedLine = lines.find(line => line.includes('Suggested answer:'));
+            if (suggestedLine) {
+              suggestedAnswer = suggestedLine.replace('Suggested answer:', '').trim();
+              correctAnswer = suggestedAnswer;
+            }
+            
+            const keyPointsLine = lines.find(line => line.includes('Key points:'));
+            if (keyPointsLine) {
+              keyPoints = [keyPointsLine.replace('Key points:', '').trim()];
+            }
+          } else {
+            const suggestedLine = lines.find(line => line.includes('תשובה מוצעת:'));
+            if (suggestedLine) {
+              suggestedAnswer = suggestedLine.replace('תשובה מוצעת:', '').trim();
+              correctAnswer = suggestedAnswer;
+            }
+            
+            const keyPointsLine = lines.find(line => line.includes('נקודות מפתח:'));
+            if (keyPointsLine) {
+              keyPoints = [keyPointsLine.replace('נקודות מפתח:', '').trim()];
+            }
           }
           break;
 
         case 'essay':
-          const guidelinesLine = lines.find(line => line.includes('הנחיות לתשובה:'));
-          if (guidelinesLine) {
-            guidelines = guidelinesLine.replace('הנחיות לתשובה:', '').trim();
-            correctAnswer = guidelines;
-          }
-          
-          const criteriaLine = lines.find(line => line.includes('קריטריונים להערכה:'));
-          if (criteriaLine) {
-            criteria = criteriaLine.replace('קריטריונים להערכה:', '').trim();
-            explanation = criteria;
+          if (language === 'english') {
+            const guidelinesLine = lines.find(line => line.includes('Answer guidelines:'));
+            if (guidelinesLine) {
+              guidelines = guidelinesLine.replace('Answer guidelines:', '').trim();
+              correctAnswer = guidelines;
+            }
+            
+            const criteriaLine = lines.find(line => line.includes('Assessment criteria:'));
+            if (criteriaLine) {
+              criteria = criteriaLine.replace('Assessment criteria:', '').trim();
+              explanation = criteria;
+            }
+          } else {
+            const guidelinesLine = lines.find(line => line.includes('הנחיות לתשובה:'));
+            if (guidelinesLine) {
+              guidelines = guidelinesLine.replace('הנחיות לתשובה:', '').trim();
+              correctAnswer = guidelines;
+            }
+            
+            const criteriaLine = lines.find(line => line.includes('קריטריונים להערכה:'));
+            if (criteriaLine) {
+              criteria = criteriaLine.replace('קריטריונים להערכה:', '').trim();
+              explanation = criteria;
+            }
           }
           break;
       }

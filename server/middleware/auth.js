@@ -15,13 +15,23 @@ const authLimiter = rateLimit({
   skip: (req) => process.env.NODE_ENV !== 'production', // Skip rate limiting in development
 });
 
-// General rate limiting
+// General rate limiting - increased for educational platform usage
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 300, // Increased from 100 to 300 requests per 15 minutes for legitimate usage
   message: {
     error: 'יותר מדי בקשות. נסה שוב מאוחר יותר',
     code: 'RATE_LIMIT_EXCEEDED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip rate limiting for certain endpoints that are frequently accessed
+  skip: (req) => {
+    // Skip rate limiting for health checks and static assets
+    return req.path === '/health' || 
+           req.path.startsWith('/static/') ||
+           req.path.startsWith('/assets/') ||
+           (process.env.NODE_ENV !== 'production' && req.ip === '127.0.0.1');
   }
 });
 

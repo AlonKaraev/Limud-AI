@@ -4,19 +4,24 @@ const FormData = require('form-data');
 const { openaiClient, AI_PROVIDERS, MODEL_CONFIGS, calculateEstimatedCost } = require('../config/ai-services');
 const { run, query } = require('../config/database-sqlite');
 const AudioProcessingService = require('./AudioProcessingService');
+const VideoProcessingService = require('./VideoProcessingService');
+const apiRateLimiter = require('../utils/APIRateLimiter');
 
 /**
- * Hebrew Transcription Service
- * Handles audio-to-text conversion with Hebrew language support
+ * Multi-Language Transcription Service
+ * Handles audio-to-text conversion with automatic language detection (Hebrew/English)
  */
 class TranscriptionService {
   constructor() {
-    this.supportedFormats = ['.webm', '.mp3', '.wav', '.m4a', '.ogg'];
-    this.maxFileSize = 25 * 1024 * 1024; // 25MB OpenAI limit
+    this.supportedAudioFormats = ['.webm', '.mp3', '.wav', '.m4a', '.ogg'];
+    this.supportedVideoFormats = ['.mp4', '.avi', '.mov', '.wmv', '.mkv', '.webm', '.flv', '.3gp'];
+    this.maxFileSize = 25 * 1024 * 1024; // 25MB OpenAI limit for audio
+    this.maxVideoFileSize = 200 * 1024 * 1024; // 200MB limit for video files
+    this.videoProcessingService = new VideoProcessingService();
   }
 
   /**
-   * Transcribe audio file to Hebrew text with enhanced processing
+   * Transcribe audio file with automatic language detection (Hebrew/English)
    * @param {Object} options - Transcription options
    * @param {string} options.filePath - Path to audio file
    * @param {number} options.recordingId - Recording ID
@@ -24,7 +29,7 @@ class TranscriptionService {
    * @param {number} options.jobId - Processing job ID
    * @param {string} options.provider - AI provider (default: openai)
    * @param {boolean} options.useEnhancedProcessing - Use compression and segmentation (default: true)
-   * @returns {Promise<Object>} Transcription result
+   * @returns {Promise<Object>} Transcription result with detected language
    */
   async transcribeAudio(options) {
     const {
@@ -37,25 +42,64 @@ class TranscriptionService {
     } = options;
 
     const startTime = Date.now();
+    let extractedAudioPath = null;
 
     try {
-      // Validate file
-      await this.validateAudioFile(filePath);
+      // Validate file and check if it's a video
+      const validation = await this.validateAudioFile(filePath);
+      let actualFilePath = filePath;
+
+      // If it's a video file, extract audio first
+      if (validation.isVideoFile) {
+        console.log(`Video file detected: ${path.basename(filePath)}. Extracting audio for transcription...`);
+        
+        if (!this.videoProcessingService.isFFmpegAvailable()) {
+          throw new Error('FFmpeg לא זמין - לא ניתן לחלץ אודיו מקובץ וידאו. אנא התקן FFmpeg או העלה קובץ אודיו ישירות.');
+        }
+
+        // Create temp directory for audio extraction
+        const tempDir = path.join(__dirname, '../uploads/temp/audio-extraction');
+        await fs.promises.mkdir(tempDir, { recursive: true });
+
+        // Generate unique filename for extracted audio
+        const audioFilename = `extracted_audio_${recordingId}_${Date.now()}.mp3`;
+        extractedAudioPath = path.join(tempDir, audioFilename);
+
+        // Extract audio from video
+        await this.videoProcessingService.extractAudioFromVideo(filePath, extractedAudioPath);
+        
+        console.log(`Audio extracted successfully: ${audioFilename}`);
+        actualFilePath = extractedAudioPath;
+      }
 
       let transcriptionResult;
       
       if (useEnhancedProcessing) {
         // Use enhanced processing with compression and segmentation
-        transcriptionResult = await this.transcribeWithEnhancedProcessing(filePath, provider);
+        transcriptionResult = await this.transcribeWithEnhancedProcessing(actualFilePath, provider);
       } else {
-        // Use original single-file transcription
+        // Use original single-file transcription with rate limiter
         switch (provider) {
           case AI_PROVIDERS.OPENAI:
-            transcriptionResult = await this.transcribeWithOpenAI(filePath);
+            transcriptionResult = await apiRateLimiter.queueRequest('openai', async () => {
+              return await this.transcribeWithOpenAIRateLimited(actualFilePath);
+            }, {
+              maxRetries: 3,
+              priority: 'high' // Single files get higher priority than segments
+            });
             break;
           default:
             throw new Error(`Unsupported AI provider: ${provider}`);
         }
+      }
+
+      // Add video processing info to metadata if audio was extracted
+      if (validation.isVideoFile && extractedAudioPath) {
+        transcriptionResult.videoProcessing = {
+          originalVideoFile: path.basename(filePath),
+          audioExtracted: true,
+          extractedAudioPath: path.basename(extractedAudioPath)
+        };
       }
 
       const processingDuration = Date.now() - startTime;
@@ -117,6 +161,16 @@ class TranscriptionService {
       }
 
       throw new Error(`Transcription failed: ${error.message}`);
+    } finally {
+      // Cleanup extracted audio file if it was created
+      if (extractedAudioPath) {
+        try {
+          await fs.promises.unlink(extractedAudioPath);
+          console.log(`Cleaned up extracted audio file: ${path.basename(extractedAudioPath)}`);
+        } catch (cleanupError) {
+          console.warn(`Failed to cleanup extracted audio file: ${cleanupError.message}`);
+        }
+      }
     }
   }
 
@@ -175,62 +229,60 @@ class TranscriptionService {
   }
 
   /**
-   * Transcribe multiple audio segments
+   * Transcribe multiple audio segments using rate limiter
    * @param {Array} segments - Array of segment objects
    * @param {string} provider - AI provider
    * @returns {Promise<Array>} Array of transcription results
    */
   async transcribeSegments(segments, provider = AI_PROVIDERS.OPENAI) {
     const transcriptions = [];
-    const maxConcurrent = 3; // Limit concurrent requests to avoid rate limiting
     
-    console.log(`Transcribing ${segments.length} segments with max ${maxConcurrent} concurrent requests`);
+    console.log(`Transcribing ${segments.length} segments sequentially using rate limiter`);
 
-    // Process segments in batches
-    for (let i = 0; i < segments.length; i += maxConcurrent) {
-      const batch = segments.slice(i, i + maxConcurrent);
-      const batchPromises = batch.map(async (segment) => {
-        try {
-          console.log(`Transcribing segment ${segment.index + 1}/${segments.length}: ${segment.filename}`);
-          
-          let segmentResult;
-          switch (provider) {
-            case AI_PROVIDERS.OPENAI:
-              segmentResult = await this.transcribeWithOpenAI(segment.path);
-              break;
-            default:
-              throw new Error(`Unsupported AI provider: ${provider}`);
-          }
-
-          return {
-            segmentIndex: segment.index,
-            startTime: segment.startTime,
-            endTime: segment.endTime,
-            duration: segment.duration,
-            transcription: segmentResult,
-            filename: segment.filename
-          };
-        } catch (error) {
-          console.error(`Error transcribing segment ${segment.index}:`, error);
-          return {
-            segmentIndex: segment.index,
-            startTime: segment.startTime,
-            endTime: segment.endTime,
-            duration: segment.duration,
-            transcription: null,
-            error: error.message,
-            filename: segment.filename
-          };
+    // Process segments one by one to avoid overwhelming the rate limiter
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      
+      try {
+        console.log(`Transcribing segment ${segment.index + 1}/${segments.length}: ${segment.filename}`);
+        
+        let segmentResult;
+        switch (provider) {
+          case AI_PROVIDERS.OPENAI:
+            // Use rate limiter for OpenAI requests
+            segmentResult = await apiRateLimiter.queueRequest('openai', async () => {
+              return await this.transcribeWithOpenAIRateLimited(segment.path);
+            }, {
+              maxRetries: 3,
+              priority: 'normal'
+            });
+            break;
+          default:
+            throw new Error(`Unsupported AI provider: ${provider}`);
         }
-      });
 
-      const batchResults = await Promise.all(batchPromises);
-      transcriptions.push(...batchResults);
+        transcriptions.push({
+          segmentIndex: segment.index,
+          startTime: segment.startTime,
+          endTime: segment.endTime,
+          duration: segment.duration,
+          transcription: segmentResult,
+          filename: segment.filename
+        });
 
-      // Add delay between batches to avoid rate limiting
-      if (i + maxConcurrent < segments.length) {
-        console.log('Waiting 2 seconds before next batch to avoid rate limiting...');
-        await this.sleep(2000);
+        console.log(`Successfully transcribed segment ${segment.index + 1}/${segments.length}`);
+
+      } catch (error) {
+        console.error(`Error transcribing segment ${segment.index}:`, error);
+        transcriptions.push({
+          segmentIndex: segment.index,
+          startTime: segment.startTime,
+          endTime: segment.endTime,
+          duration: segment.duration,
+          transcription: null,
+          error: error.message,
+          filename: segment.filename
+        });
       }
     }
 
@@ -398,7 +450,69 @@ class TranscriptionService {
   }
 
   /**
-   * Transcribe using OpenAI Whisper with retry logic
+   * Transcribe using OpenAI Whisper with rate limiter (for segments)
+   * @param {string} filePath - Path to audio file
+   * @returns {Promise<Object>} OpenAI transcription result
+   */
+  async transcribeWithOpenAIRateLimited(filePath) {
+    if (!openaiClient) {
+      throw new Error('OpenAI client not initialized');
+    }
+
+    const config = MODEL_CONFIGS.transcription.openai;
+    
+    console.log(`OpenAI transcription (rate limited) for file: ${path.basename(filePath)}`);
+    
+    // Create file stream
+    const audioFile = fs.createReadStream(filePath);
+    
+    try {
+      // Set up timeout promise - shorter timeout for segments
+      const stats = fs.statSync(filePath);
+      const fileSizeMB = stats.size / (1024 * 1024);
+      const timeoutMs = Math.min(300000, 60000 + (fileSizeMB * 15000)); // 1 min base + 15s per MB, max 5 minutes
+      
+      console.log(`Setting timeout to ${Math.round(timeoutMs/1000)}s for ${fileSizeMB.toFixed(1)}MB segment`);
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
+      });
+      
+      // Call OpenAI transcription API with timeout
+      const transcriptionPromise = openaiClient.audio.transcriptions.create({
+        file: audioFile,
+        model: config.model,
+        response_format: config.response_format,
+        temperature: config.temperature
+      });
+
+      const response = await Promise.race([transcriptionPromise, timeoutPromise]);
+
+      console.log(`OpenAI transcription successful (rate limited)`);
+      return {
+        text: response.text,
+        language: response.language,
+        duration: response.duration,
+        segments: response.segments || [],
+        words: response.words || null,
+        model: config.model,
+        task: response.task || 'transcribe',
+        usage: response.usage || {} // Include usage for rate limiter tracking
+      };
+
+    } catch (error) {
+      console.error(`OpenAI transcription (rate limited) failed:`, error.message);
+      throw error;
+    } finally {
+      // Always close file stream
+      if (audioFile) {
+        audioFile.destroy();
+      }
+    }
+  }
+
+  /**
+   * Transcribe using OpenAI Whisper with retry logic (for single files)
    * @param {string} filePath - Path to audio file
    * @returns {Promise<Object>} OpenAI transcription result
    */
@@ -433,10 +547,10 @@ class TranscriptionService {
         });
         
         // Call OpenAI transcription API with timeout using Whisper model
+        // Language parameter removed to enable automatic language detection
         const transcriptionPromise = openaiClient.audio.transcriptions.create({
           file: audioFile,
           model: config.model, // Uses 'whisper-1'
-          language: config.language,
           response_format: config.response_format,
           temperature: config.temperature
         });
@@ -541,33 +655,40 @@ class TranscriptionService {
   }
 
   /**
-   * Validate audio file
-   * @param {string} filePath - Path to audio file
+   * Validate audio or video file for transcription
+   * @param {string} filePath - Path to audio or video file
    */
   async validateAudioFile(filePath) {
     try {
       // Check if file exists
       if (!fs.existsSync(filePath)) {
-        throw new Error('Audio file not found');
+        throw new Error('Media file not found');
       }
 
       // Check file extension
       const ext = path.extname(filePath).toLowerCase();
-      if (!this.supportedFormats.includes(ext)) {
-        throw new Error(`Unsupported audio format: ${ext}. Supported formats: ${this.supportedFormats.join(', ')}`);
+      const isVideoFile = this.supportedVideoFormats.includes(ext);
+      const isAudioFile = this.supportedAudioFormats.includes(ext);
+      
+      if (!isVideoFile && !isAudioFile) {
+        const allSupportedFormats = [...this.supportedAudioFormats, ...this.supportedVideoFormats];
+        throw new Error(`Unsupported media format: ${ext}. Supported formats: ${allSupportedFormats.join(', ')}`);
       }
 
-      // Check file size
+      // Check file size based on file type
       const stats = fs.statSync(filePath);
       const fileSizeMB = stats.size / (1024 * 1024);
+      const maxSize = isVideoFile ? this.maxVideoFileSize : this.maxFileSize;
+      const maxSizeMB = maxSize / (1024 * 1024);
       
-      if (stats.size > this.maxFileSize) {
-        throw new Error(`File too large: ${fileSizeMB.toFixed(1)}MB. Maximum size: ${this.maxFileSize / 1024 / 1024}MB`);
+      if (stats.size > maxSize) {
+        throw new Error(`File too large: ${fileSizeMB.toFixed(1)}MB. Maximum size for ${isVideoFile ? 'video' : 'audio'}: ${maxSizeMB}MB`);
       }
       
       // Warn about large files that might timeout
-      if (fileSizeMB > 15) {
-        console.warn(`Large file detected (${fileSizeMB.toFixed(1)}MB). Transcription may take longer and could timeout. Consider compressing the audio file.`);
+      const warnSize = isVideoFile ? 100 : 15; // 100MB for video, 15MB for audio
+      if (fileSizeMB > warnSize) {
+        console.warn(`Large ${isVideoFile ? 'video' : 'audio'} file detected (${fileSizeMB.toFixed(1)}MB). Transcription may take longer and could timeout.`);
       }
 
       // Additional validation for MP3 files
@@ -588,8 +709,8 @@ class TranscriptionService {
         }
       }
 
-      console.log(`File validation passed: ${path.basename(filePath)} (${ext}, ${Math.round(stats.size / 1024 / 1024)}MB)`);
-      return true;
+      console.log(`File validation passed: ${path.basename(filePath)} (${ext}, ${Math.round(stats.size / 1024 / 1024)}MB, ${isVideoFile ? 'video' : 'audio'})`);
+      return { isVideoFile, isAudioFile };
     } catch (error) {
       throw new Error(`File validation failed: ${error.message}`);
     }

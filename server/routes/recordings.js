@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const { authenticate } = require('../middleware/auth');
 const AudioProcessingService = require('../services/AudioProcessingService');
+const VideoProcessingService = require('../services/VideoProcessingService');
 
 const router = express.Router();
 
@@ -47,17 +48,20 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit
+    fileSize: 200 * 1024 * 1024, // 200MB limit for video support
   },
   fileFilter: (req, file, cb) => {
-    // Accept audio files
-    if (file.mimetype.startsWith('audio/')) {
+    // Accept audio and video files
+    if (file.mimetype.startsWith('audio/') || file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
-      cb(new Error('רק קבצי אודיו מותרים'), false);
+      cb(new Error('רק קבצי אודיו ווידאו מותרים'), false);
     }
   }
 });
+
+// Initialize video processing service
+const videoProcessingService = new VideoProcessingService();
 
 // Store for chunked uploads
 const chunkUploads = new Map();
@@ -231,16 +235,16 @@ router.post('/upload/finalize', authenticate, async (req, res) => {
 });
 
 /**
- * Simple upload (non-chunked)
+ * Simple upload (non-chunked) - supports both audio and video
  */
-router.post('/upload', authenticate, upload.single('audio'), async (req, res) => {
+router.post('/upload', authenticate, upload.single('media'), async (req, res) => {
   try {
     const { recordingId, metadata } = req.body;
     const userId = req.user.id;
 
     if (!req.file) {
       return res.status(400).json({
-        error: 'לא נמצא קובץ אודיו',
+        error: 'לא נמצא קובץ מדיה',
         code: 'NO_FILE'
       });
     }
@@ -255,6 +259,29 @@ router.post('/upload', authenticate, upload.single('audio'), async (req, res) =>
       }
     }
 
+    // Determine media type
+    const isVideo = req.file.mimetype.startsWith('video/');
+    const mediaType = isVideo ? 'video' : 'audio';
+
+    // Validate video file if it's a video
+    if (isVideo) {
+      try {
+        videoProcessingService.validateVideoFile(req.file.path, req.file.size, req.file.originalname);
+      } catch (validationError) {
+        // Delete uploaded file if validation fails
+        try {
+          await fs.unlink(req.file.path);
+        } catch (unlinkError) {
+          console.warn('Error deleting invalid file:', unlinkError);
+        }
+        
+        return res.status(400).json({
+          error: validationError.message,
+          code: 'INVALID_VIDEO_FILE'
+        });
+      }
+    }
+
     // Save recording to database
     const recording = await saveRecordingToDatabase({
       userId,
@@ -262,8 +289,15 @@ router.post('/upload', authenticate, upload.single('audio'), async (req, res) =>
       filename: req.file.filename,
       filePath: req.file.path,
       fileSize: req.file.size,
-      metadata: parsedMetadata
+      metadata: parsedMetadata,
+      mediaType: mediaType
     });
+
+    // Start async video processing if it's a video file
+    if (isVideo) {
+      // Don't await - process in background
+      processVideoAsync(recording.id, req.file.path, req.file.originalname);
+    }
 
     res.json({
       success: true,
@@ -271,17 +305,32 @@ router.post('/upload', authenticate, upload.single('audio'), async (req, res) =>
         id: recording.id,
         filename: recording.filename,
         size: recording.file_size,
+        mediaType: mediaType,
+        processingStatus: isVideo ? 'processing' : 'completed',
         createdAt: recording.created_at
       }
     });
   } catch (error) {
-    console.error('Error uploading recording:', error);
+    console.error('Error uploading media:', error);
     res.status(500).json({
-      error: 'שגיאה בהעלאת ההקלטה',
+      error: 'שגיאה בהעלאת הקובץ',
       code: 'UPLOAD_ERROR'
     });
   }
 });
+
+/**
+ * Async video processing function
+ */
+async function processVideoAsync(recordingId, filePath, originalFilename) {
+  try {
+    console.log(`Starting background video processing for recording ${recordingId}`);
+    await videoProcessingService.processVideoFile(recordingId, filePath, originalFilename);
+    console.log(`Background video processing completed for recording ${recordingId}`);
+  } catch (error) {
+    console.error(`Background video processing failed for recording ${recordingId}:`, error);
+  }
+}
 
 /**
  * Get user's recordings
@@ -377,7 +426,7 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 /**
- * Download recording
+ * Download recording (audio or video)
  */
 router.get('/:id/download', authenticate, async (req, res) => {
   try {
@@ -397,33 +446,65 @@ router.get('/:id/download', authenticate, async (req, res) => {
       await fs.access(recording.file_path);
     } catch (error) {
       return res.status(404).json({
-        error: 'קובץ ההקלטה לא נמצא',
+        error: 'קובץ המדיה לא נמצא',
         code: 'FILE_NOT_FOUND'
       });
     }
 
-    // Determine content type based on file extension
+    // Determine content type based on file extension and media type
     const fileExt = path.extname(recording.filename).toLowerCase();
-    let contentType = 'audio/webm'; // default
+    let contentType = 'application/octet-stream'; // default
     
-    switch (fileExt) {
-      case '.mp3':
-        contentType = 'audio/mpeg';
-        break;
-      case '.wav':
-        contentType = 'audio/wav';
-        break;
-      case '.ogg':
-        contentType = 'audio/ogg';
-        break;
-      case '.m4a':
-        contentType = 'audio/mp4';
-        break;
-      case '.webm':
-        contentType = 'audio/webm';
-        break;
-      default:
-        contentType = 'audio/webm';
+    if (recording.media_type === 'video') {
+      switch (fileExt) {
+        case '.mp4':
+          contentType = 'video/mp4';
+          break;
+        case '.avi':
+          contentType = 'video/x-msvideo';
+          break;
+        case '.mov':
+          contentType = 'video/quicktime';
+          break;
+        case '.wmv':
+          contentType = 'video/x-ms-wmv';
+          break;
+        case '.mkv':
+          contentType = 'video/x-matroska';
+          break;
+        case '.webm':
+          contentType = 'video/webm';
+          break;
+        case '.flv':
+          contentType = 'video/x-flv';
+          break;
+        case '.3gp':
+          contentType = 'video/3gpp';
+          break;
+        default:
+          contentType = 'video/mp4';
+      }
+    } else {
+      // Audio files
+      switch (fileExt) {
+        case '.mp3':
+          contentType = 'audio/mpeg';
+          break;
+        case '.wav':
+          contentType = 'audio/wav';
+          break;
+        case '.ogg':
+          contentType = 'audio/ogg';
+          break;
+        case '.m4a':
+          contentType = 'audio/mp4';
+          break;
+        case '.webm':
+          contentType = 'audio/webm';
+          break;
+        default:
+          contentType = 'audio/webm';
+      }
     }
 
     // Set appropriate headers
@@ -435,10 +516,155 @@ router.get('/:id/download', authenticate, async (req, res) => {
     const fileStream = require('fs').createReadStream(recording.file_path);
     fileStream.pipe(res);
   } catch (error) {
-    console.error('Error downloading recording:', error);
+    console.error('Error downloading media:', error);
     res.status(500).json({
-      error: 'שגיאה בהורדת ההקלטה',
+      error: 'שגיאה בהורדת הקובץ',
       code: 'DOWNLOAD_ERROR'
+    });
+  }
+});
+
+/**
+ * Get video thumbnails for a recording
+ */
+router.get('/:id/thumbnails', authenticate, async (req, res) => {
+  try {
+    const recordingId = req.params.id;
+    const userId = req.user.id;
+
+    const recording = await getRecordingById(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    if (recording.media_type !== 'video') {
+      return res.status(400).json({
+        error: 'הקלטה זו אינה וידאו',
+        code: 'NOT_VIDEO'
+      });
+    }
+
+    const thumbnails = await videoProcessingService.getVideoThumbnails(recordingId);
+
+    res.json({
+      success: true,
+      thumbnails
+    });
+  } catch (error) {
+    console.error('Error fetching video thumbnails:', error);
+    res.status(500).json({
+      error: 'שגיאה בטעינת תמונות ממוזערות',
+      code: 'THUMBNAILS_ERROR'
+    });
+  }
+});
+
+/**
+ * Get video processing status
+ */
+router.get('/:id/processing-status', authenticate, async (req, res) => {
+  try {
+    const recordingId = req.params.id;
+    const userId = req.user.id;
+
+    const recording = await getRecordingById(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    const status = await videoProcessingService.getProcessingStatus(recordingId);
+
+    res.json({
+      success: true,
+      status: status || {
+        status: recording.processing_status || 'completed',
+        metadata: recording.video_metadata || null,
+        thumbnailPath: recording.thumbnail_path || null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching processing status:', error);
+    res.status(500).json({
+      error: 'שגיאה בטעינת סטטוס עיבוד',
+      code: 'STATUS_ERROR'
+    });
+  }
+});
+
+/**
+ * Serve video thumbnail
+ */
+router.get('/:id/thumbnail/:size?', authenticate, async (req, res) => {
+  try {
+    const recordingId = req.params.id;
+    const size = req.params.size || 'medium';
+    const userId = req.user.id;
+
+    const recording = await getRecordingById(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    if (recording.media_type !== 'video') {
+      return res.status(400).json({
+        error: 'הקלטה זו אינה וידאו',
+        code: 'NOT_VIDEO'
+      });
+    }
+
+    // Get thumbnail path
+    let thumbnailPath;
+    if (recording.thumbnail_path && size === 'medium') {
+      // Use primary thumbnail
+      thumbnailPath = path.join(__dirname, '../uploads', recording.thumbnail_path);
+    } else {
+      // Find specific size thumbnail
+      const thumbnails = await videoProcessingService.getVideoThumbnails(recordingId);
+      const thumbnail = thumbnails.find(t => 
+        t.thumbnail_size === size && t.timestamp_percent === 25
+      ) || thumbnails.find(t => t.thumbnail_size === size) || thumbnails[0];
+
+      if (!thumbnail) {
+        return res.status(404).json({
+          error: 'תמונה ממוזערת לא נמצאה',
+          code: 'THUMBNAIL_NOT_FOUND'
+        });
+      }
+
+      thumbnailPath = path.join(__dirname, '../uploads', thumbnail.thumbnail_path);
+    }
+
+    // Check if thumbnail exists
+    try {
+      await fs.access(thumbnailPath);
+    } catch (error) {
+      return res.status(404).json({
+        error: 'קובץ תמונה ממוזערת לא נמצא',
+        code: 'THUMBNAIL_FILE_NOT_FOUND'
+      });
+    }
+
+    // Set appropriate headers
+    res.setHeader('Content-Type', 'image/webp');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+
+    // Stream the thumbnail
+    const thumbnailStream = require('fs').createReadStream(thumbnailPath);
+    thumbnailStream.pipe(res);
+  } catch (error) {
+    console.error('Error serving thumbnail:', error);
+    res.status(500).json({
+      error: 'שגיאה בהגשת תמונה ממוזערת',
+      code: 'THUMBNAIL_SERVE_ERROR'
     });
   }
 });
@@ -459,14 +685,24 @@ router.delete('/:id', authenticate, async (req, res) => {
       });
     }
 
-    // Delete file from filesystem
+    // Delete main file from filesystem
     try {
       await fs.unlink(recording.file_path);
     } catch (error) {
-      console.warn('Error deleting file:', error);
+      console.warn('Error deleting main file:', error);
     }
 
-    // Delete from database
+    // Delete thumbnails if it's a video
+    if (recording.media_type === 'video') {
+      try {
+        const thumbnailDir = path.join(__dirname, '../uploads/thumbnails', recordingId.toString());
+        await fs.rmdir(thumbnailDir, { recursive: true });
+      } catch (error) {
+        console.warn('Error deleting thumbnails:', error);
+      }
+    }
+
+    // Delete from database (this will cascade delete thumbnails via foreign key)
     await deleteRecordingFromDatabase(recordingId, userId);
 
     res.json({
@@ -483,8 +719,12 @@ router.delete('/:id', authenticate, async (req, res) => {
 });
 
 // Database helper functions
-async function saveRecordingToDatabase({ userId, recordingId, filename, filePath, fileSize, metadata }) {
+async function saveRecordingToDatabase({ userId, recordingId, filename, filePath, fileSize, metadata, mediaType = 'audio' }) {
   const { query, run } = require('../config/database-sqlite');
+  
+  // Check which columns exist in the recordings table
+  const tableInfoResult = await query(`PRAGMA table_info(recordings)`);
+  const existingColumns = tableInfoResult.rows.map(row => row.name);
   
   // Check if recording already exists to prevent duplicates
   const existingResult = await query(`
@@ -505,30 +745,56 @@ async function saveRecordingToDatabase({ userId, recordingId, filename, filePath
       filename: fullRecord.filename,
       file_path: fullRecord.file_path,
       file_size: fullRecord.file_size,
+      media_type: fullRecord.media_type || 'audio',
+      processing_status: fullRecord.processing_status || 'completed',
       metadata: JSON.parse(fullRecord.metadata || '{}'),
+      video_metadata: fullRecord.video_metadata ? JSON.parse(fullRecord.video_metadata) : {},
       created_at: fullRecord.created_at
     };
   }
   
-  const result = await run(`
-    INSERT INTO recordings (
-      user_id, recording_id, filename, file_path, file_size, 
-      metadata, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-  `, [
-    userId,
-    recordingId,
-    filename,
-    filePath,
-    fileSize,
-    JSON.stringify(metadata)
-  ]);
+  // Build INSERT statement based on existing columns
+  const baseColumns = ['user_id', 'recording_id', 'filename', 'file_path', 'file_size', 'metadata', 'created_at', 'updated_at'];
+  const baseValues = [userId, recordingId, filename, filePath, fileSize, JSON.stringify(metadata), 'datetime(\'now\')', 'datetime(\'now\')'];
+  
+  const videoColumns = [];
+  const videoValues = [];
+  
+  if (existingColumns.includes('media_type')) {
+    videoColumns.push('media_type');
+    videoValues.push(mediaType);
+  }
+  
+  if (existingColumns.includes('processing_status')) {
+    videoColumns.push('processing_status');
+    videoValues.push(mediaType === 'video' ? 'pending' : 'completed');
+  }
+  
+  if (existingColumns.includes('video_metadata')) {
+    videoColumns.push('video_metadata');
+    videoValues.push(JSON.stringify({}));
+  }
+  
+  const allColumns = baseColumns.concat(videoColumns);
+  const allValues = baseValues.concat(videoValues);
+  const placeholders = allValues.map((val, index) => 
+    (val === 'datetime(\'now\')') ? 'datetime(\'now\')' : '?'
+  );
+  const actualValues = allValues.filter(val => val !== 'datetime(\'now\')');
+  
+  const sql = `
+    INSERT INTO recordings (${allColumns.join(', ')})
+    VALUES (${placeholders.join(', ')})
+  `;
+  
+  const result = await run(sql, actualValues);
 
   console.log('Recording saved to database:', {
     id: result.lastID,
     recordingId,
     filename,
-    fileSize
+    fileSize,
+    mediaType
   });
 
   return {
@@ -537,7 +803,10 @@ async function saveRecordingToDatabase({ userId, recordingId, filename, filePath
     filename,
     file_path: filePath,
     file_size: fileSize,
+    media_type: mediaType,
+    processing_status: mediaType === 'video' ? 'pending' : 'completed',
     metadata,
+    video_metadata: {},
     created_at: new Date().toISOString()
   };
 }
@@ -545,8 +814,20 @@ async function saveRecordingToDatabase({ userId, recordingId, filename, filePath
 async function getUserRecordings({ userId, page, limit, search, sortBy, sortOrder }) {
   const { query } = require('../config/database-sqlite');
   
+  // First, check which columns exist in the recordings table
+  const tableInfoResult = await query(`PRAGMA table_info(recordings)`);
+  const existingColumns = tableInfoResult.rows.map(row => row.name);
+  
+  // Build SELECT clause based on existing columns
+  const baseColumns = ['id', 'recording_id', 'filename', 'file_size', 'metadata', 'created_at', 'updated_at'];
+  const videoColumns = ['media_type', 'processing_status', 'thumbnail_path', 'video_metadata'];
+  
+  const selectColumns = baseColumns.concat(
+    videoColumns.filter(col => existingColumns.includes(col))
+  );
+  
   let sql = `
-    SELECT id, recording_id, filename, file_size, metadata, created_at, updated_at
+    SELECT ${selectColumns.join(', ')}
     FROM recordings 
     WHERE user_id = ?
   `;
@@ -558,8 +839,12 @@ async function getUserRecordings({ userId, page, limit, search, sortBy, sortOrde
     params.push(`%${search}%`, `%${search}%`);
   }
 
-  // Validate sortBy to prevent SQL injection
+  // Validate sortBy to prevent SQL injection - only use columns that exist
   const allowedSortFields = ['created_at', 'updated_at', 'filename', 'file_size'];
+  if (existingColumns.includes('media_type')) {
+    allowedSortFields.push('media_type');
+  }
+  
   const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
   const validSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
   
@@ -588,7 +873,11 @@ async function getUserRecordings({ userId, page, limit, search, sortBy, sortOrde
   return {
     data: recordings.map(r => ({
       ...r,
-      metadata: JSON.parse(r.metadata || '{}')
+      media_type: r.media_type || 'audio',
+      processing_status: r.processing_status || 'completed',
+      thumbnail_path: r.thumbnail_path || null,
+      metadata: JSON.parse(r.metadata || '{}'),
+      video_metadata: r.video_metadata ? JSON.parse(r.video_metadata) : {}
     })),
     page,
     limit,
@@ -608,6 +897,9 @@ async function getRecordingById(recordingId, userId) {
   if (result.rows.length > 0) {
     const recording = result.rows[0];
     recording.metadata = JSON.parse(recording.metadata || '{}');
+    recording.video_metadata = recording.video_metadata ? JSON.parse(recording.video_metadata) : {};
+    recording.media_type = recording.media_type || 'audio';
+    recording.processing_status = recording.processing_status || 'completed';
     return recording;
   }
 

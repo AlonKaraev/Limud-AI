@@ -35,7 +35,7 @@ const MODEL_CONFIGS = {
   transcription: {
     openai: {
       model: 'whisper-1',
-      language: 'he', // Hebrew
+      // Removed hardcoded language - let Whisper auto-detect Hebrew/English
       response_format: 'verbose_json',
       temperature: 0.0
     }

@@ -4,7 +4,7 @@ const AIProcessingService = require('../services/AIProcessingService');
 const TranscriptionService = require('../services/TranscriptionService');
 const SummaryService = require('../services/SummaryService');
 const QuestionService = require('../services/QuestionService');
-const { validateServiceConfig } = require('../config/ai-services');
+const { validateServiceConfig, AI_PROVIDERS } = require('../config/ai-services');
 
 const router = express.Router();
 
@@ -54,6 +54,121 @@ router.post('/process/:recordingId', authenticate, async (req, res) => {
     res.status(500).json({
       error: 'שגיאה בהתחלת עיבוד AI',
       code: 'AI_PROCESSING_ERROR',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Enhanced AI content generation with custom guidance and language selection
+ */
+router.post('/generate/:recordingId', authenticate, async (req, res) => {
+  try {
+    const recordingId = parseInt(req.params.recordingId);
+    const userId = req.user.id;
+    const { 
+      contentTypes = [], 
+      language = 'hebrew', 
+      customGuidance = '',
+      lessonMetadata = {}
+    } = req.body;
+
+    // Validate input
+    if (!Array.isArray(contentTypes) || contentTypes.length === 0) {
+      return res.status(400).json({
+        error: 'יש לבחור לפחות סוג תוכן אחד ליצירה',
+        code: 'NO_CONTENT_TYPES_SELECTED'
+      });
+    }
+
+    const validContentTypes = ['transcription', 'summary', 'questions', 'memoryCards'];
+    const invalidTypes = contentTypes.filter(type => !validContentTypes.includes(type));
+    if (invalidTypes.length > 0) {
+      return res.status(400).json({
+        error: `סוגי תוכן לא תקינים: ${invalidTypes.join(', ')}`,
+        code: 'INVALID_CONTENT_TYPES'
+      });
+    }
+
+    // Validate language
+    const validLanguages = ['hebrew', 'english'];
+    if (!validLanguages.includes(language)) {
+      return res.status(400).json({
+        error: 'שפה לא תקינה. שפות נתמכות: עברית, אנגלית',
+        code: 'INVALID_LANGUAGE'
+      });
+    }
+
+    // Validate custom guidance length
+    if (customGuidance && customGuidance.length > 500) {
+      return res.status(400).json({
+        error: 'הנחיות מותאמות אישית חייבות להיות עד 500 תווים',
+        code: 'GUIDANCE_TOO_LONG'
+      });
+    }
+
+    // Validate AI service configuration
+    const configValidation = validateServiceConfig();
+    if (!configValidation.valid) {
+      return res.status(503).json({
+        error: 'שירותי AI אינם זמינים כרגע',
+        code: 'AI_SERVICE_UNAVAILABLE',
+        issues: configValidation.issues
+      });
+    }
+
+    // Get recording to validate it exists and get file path
+    const recording = await AIProcessingService.getRecording(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    // Build enhanced configuration
+    const enhancedConfig = {
+      contentTypes,
+      language,
+      customGuidance: customGuidance.trim(),
+      lessonMetadata,
+      // Legacy support for existing processing
+      generateSummary: contentTypes.includes('summary'),
+      generateQuestions: contentTypes.includes('questions'),
+      generateTranscription: contentTypes.includes('transcription'),
+      generateMemoryCards: contentTypes.includes('memoryCards'),
+      // AI provider settings
+      aiProvider: AI_PROVIDERS.OPENAI,
+      // Content-specific settings
+      summaryType: 'educational',
+      questionType: 'multiple_choice',
+      difficultyLevel: 'medium',
+      questionCount: 10
+    };
+
+    // Start enhanced processing
+    const result = await AIProcessingService.processRecordingEnhanced({
+      recordingId,
+      userId,
+      filePath: recording.file_path,
+      config: enhancedConfig
+    });
+
+    res.json({
+      success: true,
+      message: 'יצירת תוכן AI החלה בהצלחה',
+      jobId: result.jobId,
+      contentTypes,
+      language,
+      customGuidance: customGuidance.trim(),
+      ...result
+    });
+
+  } catch (error) {
+    console.error('Error starting enhanced AI generation:', error);
+    res.status(500).json({
+      error: 'שגיאה ביצירת תוכן AI',
+      code: 'AI_GENERATION_ERROR',
       message: error.message
     });
   }

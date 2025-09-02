@@ -45,6 +45,44 @@ class SummaryService {
 
 נקודות מפתח:`
     };
+
+    this.englishPrompts = {
+      educational: `You are an educational expert specializing in lesson analysis. Analyze the following lesson transcript and create a comprehensive educational summary.
+
+The summary should include:
+1. Main lesson topic
+2. Primary learning objectives
+3. Key points learned
+4. Important concepts
+5. Main examples or explanations
+6. Conclusions or takeaways
+
+Transcript:
+{transcription}
+
+Please provide a structured summary in English:`,
+
+      brief: `Create a brief and concise summary of the following lesson in English. Focus only on the main points.
+
+Transcript:
+{transcription}
+
+Brief summary:`,
+
+      detailed: `Create a detailed and comprehensive summary of the following lesson. Include thorough analysis of content, context, and examples.
+
+Transcript:
+{transcription}
+
+Detailed summary:`,
+
+      key_points: `Extract the main key points from the following lesson. Organize them as a structured list.
+
+Transcript:
+{transcription}
+
+Key points:`
+    };
   }
 
   /**
@@ -57,6 +95,8 @@ class SummaryService {
    * @param {string} options.summaryType - Type of summary (educational, brief, detailed, key_points)
    * @param {string} options.subjectArea - Subject area
    * @param {string} options.gradeLevel - Grade level
+   * @param {string} options.language - Output language (hebrew, english)
+   * @param {string} options.customGuidance - Custom guidance for AI
    * @param {string} options.provider - AI provider
    * @returns {Promise<Object>} Summary result
    */
@@ -69,6 +109,8 @@ class SummaryService {
       summaryType = 'educational',
       subjectArea,
       gradeLevel,
+      language = 'hebrew',
+      customGuidance = '',
       provider = AI_PROVIDERS.OPENAI
     } = options;
 
@@ -88,7 +130,7 @@ class SummaryService {
           summaryResult = await this.generateWithOpenAI(
             transcription.transcription_text,
             summaryType,
-            { subjectArea, gradeLevel }
+            { subjectArea, gradeLevel, language, customGuidance }
           );
           break;
         default:
@@ -174,22 +216,43 @@ class SummaryService {
     }
 
     const config = MODEL_CONFIGS.summary_generation.openai;
+    const { language = 'hebrew', customGuidance = '', subjectArea, gradeLevel } = context;
     
     try {
-      // Build prompt
-      let prompt = this.hebrewPrompts[summaryType] || this.hebrewPrompts.educational;
+      // Select prompts based on language
+      const prompts = language === 'english' ? this.englishPrompts : this.hebrewPrompts;
+      let prompt = prompts[summaryType] || prompts.educational;
       prompt = prompt.replace('{transcription}', transcriptionText);
 
-      // Add context if provided
-      if (context.subjectArea) {
-        prompt += `\n\nתחום הלימוד: ${context.subjectArea}`;
-      }
-      if (context.gradeLevel) {
-        prompt += `\nרמת כיתה: ${context.gradeLevel}`;
+      // Add context based on language
+      if (language === 'english') {
+        if (subjectArea) {
+          prompt += `\n\nSubject Area: ${subjectArea}`;
+        }
+        if (gradeLevel) {
+          prompt += `\nGrade Level: ${gradeLevel}`;
+        }
+        if (customGuidance) {
+          prompt += `\n\nAdditional Instructions: ${customGuidance}`;
+        }
+      } else {
+        if (subjectArea) {
+          prompt += `\n\nתחום הלימוד: ${subjectArea}`;
+        }
+        if (gradeLevel) {
+          prompt += `\nרמת כיתה: ${gradeLevel}`;
+        }
+        if (customGuidance) {
+          prompt += `\n\nהנחיות נוספות: ${customGuidance}`;
+        }
       }
 
+      // Select system message based on language
+      const systemMessage = language === 'english' 
+        ? 'You are an educational expert specializing in educational content analysis. You create clear, understandable, and useful summaries for teachers and students.'
+        : 'אתה מומחה חינוכי המתמחה בניתוח תוכן לימודי בעברית. אתה יוצר סיכומים ברורים, מובנים ומועילים למורים ותלמידים.';
+
       // Validate context window fit
-      const systemMessage = 'אתה מומחה חינוכי המתמחה בניתוח תוכן לימודי בעברית. אתה יוצר סיכומים ברורים, מובנים ומועילים למורים ותלמידים.';
       const fullPrompt = systemMessage + '\n\n' + prompt;
       
       const validation = validateContentForProcessing(
@@ -214,6 +277,8 @@ class SummaryService {
         console.log(`Optimized max_tokens from ${config.max_tokens} to ${optimizedMaxTokens}`);
         config.max_tokens = optimizedMaxTokens;
       }
+
+      console.log(`Generating summary in ${language} with custom guidance: ${!!customGuidance}`);
 
       // Call OpenAI API
       const response = await openaiClient.chat.completions.create({
@@ -240,7 +305,8 @@ class SummaryService {
         model: config.model,
         usage: response.usage,
         confidence: this.calculateSummaryConfidence(summaryText, transcriptionText),
-        contextAnalysis: validation.analysis
+        contextAnalysis: validation.analysis,
+        language: language
       };
 
     } catch (error) {

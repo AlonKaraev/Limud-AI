@@ -9,7 +9,7 @@ This document outlines the missing features from the current Limud AI platform c
 
 ### **1.1 Tests Tab - Complete Implementation**
 - [ ] **Create TestsManager component** (completely missing)
-  - [ ] Test creation interface with manual and AI-generated options
+  - [ ] Test creation interface with manual and AI-generated options (AI Genrated tests should be based on one or multiple lessons)
   - [ ] Test configuration (question count, difficulty, time limits)
   - [ ] Question bank management system
   - [ ] Test preview and editing capabilities
@@ -62,11 +62,11 @@ This document outlines the missing features from the current Limud AI platform c
 
 ### **2.1 Advanced Lesson Management**
 - [ ] **Video Support Enhancement**
-  - [ ] Video player integration in LessonsManager
-  - [ ] Video format validation (MP4, AVI, MOV, WMV, MKV, WebM, FLV, 3GP)
-  - [ ] Video file size limit (200MB) implementation
-  - [ ] Video metadata extraction
-  - [ ] Video thumbnail generation
+  - [X] Video player integration in LessonsManager
+  - [X] Video format validation (MP4, AVI, MOV, WMV, MKV, WebM, FLV, 3GP)
+  - [X] Video file size limit (200MB) implementation
+  - [X] Video metadata extraction
+  - [X] Video thumbnail generation
 
 - [ ] **Enhanced File Upload**
   - [ ] Drag & drop interface improvements

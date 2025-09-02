@@ -77,6 +77,7 @@ app.use('/api/content-sharing', require('./routes/content-sharing'));
 app.use('/api/principal', require('./routes/principal'));
 app.use('/api/student', require('./routes/student'));
 app.use('/api/memory-cards', require('./routes/memory-cards'));
+app.use('/api/debug', require('./routes/debug'));
 
 // Serve static files from React app in production
 if (process.env.NODE_ENV === 'production') {

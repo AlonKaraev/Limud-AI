@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import AudioRecordingService from '../services/AudioRecordingService';
 import AudioPlayer from './AudioPlayer';
+import VideoPlayer from './VideoPlayer';
 import ErrorLogger from '../utils/ErrorLogger';
+import AIContentGenerationInterface from './AIContentGenerationInterface';
 
 const Container = styled.div`
   background: var(--color-surface);
@@ -2248,6 +2250,11 @@ const LessonsManager = ({ t }) => {
     generateSummary: true,
     generateQuestions: true
   });
+  
+  // Enhanced AI Content Generation state
+  const [aiGenerationModal, setAiGenerationModal] = useState(null);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState({});
   const [processingJobs, setProcessingJobs] = useState({});
   const [aiServiceHealth, setAiServiceHealth] = useState(null);
   const [uploadModal, setUploadModal] = useState(false);
@@ -2917,9 +2924,18 @@ const LessonsManager = ({ t }) => {
       // Ensure we have recordings array
       const recordings = data.recordings || [];
       
-      // Fetch AI content for each recording with better error handling
-      const lessonsWithContent = await Promise.all(
-        recordings.map(async (recording) => {
+      // Fetch AI content for each recording with throttling to avoid rate limits
+      const lessonsWithContent = [];
+      const maxConcurrent = 3; // Limit concurrent requests
+      const delayBetweenBatches = 1000; // 1 second delay between batches
+      
+      console.log(`Fetching AI content for ${recordings.length} recordings with throttling`);
+      
+      // Process recordings in batches to avoid overwhelming the server
+      for (let i = 0; i < recordings.length; i += maxConcurrent) {
+        const batch = recordings.slice(i, i + maxConcurrent);
+        
+        const batchPromises = batch.map(async (recording) => {
           // Always return the recording, even if AI content fetch fails
           const lessonData = {
             ...recording,
@@ -2966,8 +2982,19 @@ const LessonsManager = ({ t }) => {
           }
 
           return lessonData;
-        })
-      );
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        lessonsWithContent.push(...batchResults);
+        
+        // Add delay between batches to avoid rate limiting (except for last batch)
+        if (i + maxConcurrent < recordings.length) {
+          console.log(`Processed batch ${Math.floor(i/maxConcurrent) + 1}, waiting ${delayBetweenBatches}ms before next batch...`);
+          await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+        }
+      }
+      
+      console.log(`AI content fetching completed for ${lessonsWithContent.length} recordings`);
 
       setLessons(lessonsWithContent);
       console.log(`Successfully loaded ${lessonsWithContent.length} lessons`);
@@ -3406,50 +3433,67 @@ const LessonsManager = ({ t }) => {
     );
   };
 
-  const handleFileSelect = (file) => {
+const handleFileSelect = (file) => {
     // Clear previous errors
     setUploadError('');
     setUploadSuccess('');
     
-    // Validate file type - be more specific about supported formats
-    const supportedTypes = [
+    // Validate file type - support both audio and video
+    const supportedAudioTypes = [
       'audio/mpeg',     // MP3
       'audio/mp3',      // MP3 (alternative)
       'audio/wav',      // WAV
-      'audio/webm',     // WebM
+      'audio/webm',     // WebM audio
       'audio/ogg',      // OGG
       'audio/m4a',      // M4A
       'audio/mp4',      // MP4 audio
       'audio/x-m4a'     // M4A (alternative)
     ];
+
+    const supportedVideoTypes = [
+      'video/mp4',      // MP4
+      'video/avi',      // AVI
+      'video/quicktime', // MOV
+      'video/x-ms-wmv', // WMV
+      'video/x-matroska', // MKV
+      'video/webm',     // WebM video
+      'video/x-flv',    // FLV
+      'video/3gpp'      // 3GP
+    ];
     
-    const isValidType = file.type.startsWith('audio/') || supportedTypes.includes(file.type);
+    const isValidAudio = file.type.startsWith('audio/') || supportedAudioTypes.includes(file.type);
+    const isValidVideo = file.type.startsWith('video/') || supportedVideoTypes.includes(file.type);
     
-    if (!isValidType) {
-      setUploadError('אנא בחר קובץ אודיו תקין (MP3, WAV, WebM, M4A, OGG)');
+    if (!isValidAudio && !isValidVideo) {
+      setUploadError('אנא בחר קובץ אודיו או וידאו תקין (MP3, WAV, MP4, AVI, MOV, WMV, MKV, WebM, FLV, 3GP)');
       return;
     }
 
     // Additional validation for file extensions
     const fileName = file.name.toLowerCase();
-    const supportedExtensions = ['.mp3', '.wav', '.webm', '.ogg', '.m4a', '.mp4'];
+    const supportedExtensions = [
+      // Audio
+      '.mp3', '.wav', '.webm', '.ogg', '.m4a',
+      // Video
+      '.mp4', '.avi', '.mov', '.wmv', '.mkv', '.flv', '.3gp'
+    ];
     const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
     
     if (!hasValidExtension) {
-      setUploadError('אנא בחר קובץ עם סיומת תקינה: MP3, WAV, WebM, M4A, OGG');
+      setUploadError('אנא בחר קובץ עם סיומת תקינה: MP3, WAV, MP4, AVI, MOV, WMV, MKV, WebM, FLV, 3GP');
       return;
     }
 
-    // Validate file size (100MB limit)
-    if (file.size > 100 * 1024 * 1024) {
-      setUploadError('גודל הקובץ חייב להיות קטן מ-100MB');
+    // Validate file size (200MB limit for video support)
+    if (file.size > 200 * 1024 * 1024) {
+      setUploadError('גודל הקובץ חייב להיות קטן מ-200MB');
       return;
     }
 
-    // Warn about large files that might cause transcription timeouts
+    // Warn about large files that might cause processing timeouts
     const fileSizeMB = file.size / (1024 * 1024);
-    if (fileSizeMB > 15) {
-      console.warn(`Large file detected: ${fileSizeMB.toFixed(1)}MB. Transcription may take longer.`);
+    if (fileSizeMB > 50) {
+      console.warn(`Large file detected: ${fileSizeMB.toFixed(1)}MB. Processing may take longer.`);
     }
 
     setSelectedFile(file);
@@ -3486,7 +3530,7 @@ const LessonsManager = ({ t }) => {
       }
 
       const formData = new FormData();
-      formData.append('audio', selectedFile);
+      formData.append('media', selectedFile); // Changed from 'audio' to 'media'
       formData.append('recordingId', `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
       formData.append('metadata', JSON.stringify({
         lessonName: lessonName.trim(),
@@ -4261,7 +4305,7 @@ const LessonsManager = ({ t }) => {
                           <AIStageCard
                             as="button"
                             onClick={() => {
-                              setProcessingModal(lesson);
+                              setAiGenerationModal(lesson);
                               setExpandedAIMenu(prev => ({
                                 ...prev,
                                 [lesson.id]: false
@@ -4335,63 +4379,133 @@ const LessonsManager = ({ t }) => {
         )}
       </Container>
 
-      {processingModal && (
-        <ProcessingModal>
-          <ModalContent>
-            <ModalTitle>
-              {getAIStatusInfo(processingModal).status === 'failed' ? 'נסה שוב ליצור תוכן AI' : 'צור תוכן AI עבור השיעור'}
-            </ModalTitle>
-            <p>בחר איזה תוכן תרצה ליצור:</p>
-            
-            <ProcessingOptions>
-              <CheckboxGroup>
-                <Checkbox
-                  type="checkbox"
-                  id="generateSummary"
-                  checked={processingOptions.generateSummary}
-                  onChange={(e) => setProcessingOptions({
-                    ...processingOptions,
-                    generateSummary: e.target.checked
-                  })}
-                />
-                <CheckboxLabel htmlFor="generateSummary">
-                  צור סיכום של השיעור
-                </CheckboxLabel>
-              </CheckboxGroup>
+      {aiGenerationModal && (
+        <AIContentGenerationInterface
+          lesson={aiGenerationModal}
+          onClose={() => setAiGenerationModal(null)}
+          onGenerate={async (config) => {
+            try {
+              setIsGeneratingAI(true);
+              setGenerationProgress({});
+              
+              const token = localStorage.getItem('token');
+              if (!token) {
+                throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
+              }
 
-              <CheckboxGroup>
-                <Checkbox
-                  type="checkbox"
-                  id="generateQuestions"
-                  checked={processingOptions.generateQuestions}
-                  onChange={(e) => setProcessingOptions({
-                    ...processingOptions,
-                    generateQuestions: e.target.checked
-                  })}
-                />
-                <CheckboxLabel htmlFor="generateQuestions">
-                  צור שאלות בחינה (10 שאלות)
-                </CheckboxLabel>
-              </CheckboxGroup>
-            </ProcessingOptions>
+              console.log('Starting AI generation with config:', config);
 
-            <ActionButtons>
-              <ActionButton 
-                className="success"
-                onClick={() => startAIProcessing(processingModal.id)}
-                disabled={!processingOptions.generateSummary && !processingOptions.generateQuestions}
-              >
-                התחל עיבוד
-              </ActionButton>
-              <ActionButton 
-                className="secondary"
-                onClick={() => setProcessingModal(null)}
-              >
-                ביטול
-              </ActionButton>
-            </ActionButtons>
-          </ModalContent>
-        </ProcessingModal>
+              // Start AI processing with the selected content types
+              const response = await fetch(`/api/ai-content/process/${aiGenerationModal.id}`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  generateTranscription: config.contentTypes.includes('transcription'),
+                  generateSummary: config.contentTypes.includes('summary'),
+                  generateQuestions: config.contentTypes.includes('questions'),
+                  generateMemoryCards: config.contentTypes.includes('memoryCards'),
+                  language: config.language || 'hebrew',
+                  customGuidance: config.customGuidance,
+                  lessonMetadata: config.lessonMetadata,
+                  forceRegenerate: true // Add flag to force regeneration
+                })
+              });
+
+              if (!response.ok) {
+                const errorData = await response.json();
+                
+                // Handle rate limit specifically
+                if (response.status === 429) {
+                  throw new Error('הגעת למגבלת הקריאות. אנא המתן מספר דקות ונסה שוב.');
+                }
+                
+                throw new Error(errorData.message || `שגיאה בהתחלת עיבוד AI (${response.status})`);
+              }
+
+              const result = await response.json();
+              console.log('AI generation response:', result);
+              
+              if (result.success) {
+                // Close modal first
+                setAiGenerationModal(null);
+                
+                // Show success message
+                const typeNames = {
+                  transcription: 'תמליל',
+                  summary: 'סיכום', 
+                  questions: 'שאלות בחינה',
+                  memoryCards: 'כרטיסי זיכרון'
+                };
+                const selectedTypeNames = config.contentTypes.map(type => typeNames[type]).join(', ');
+                alert(`עיבוד AI התחיל בהצלחה!\n\nסוגי תוכן שנבחרו: ${selectedTypeNames}\n\nהמערכת תעדכן את התוכן כשהעיבוד יסתיים.`);
+                
+                // Wait a moment then refresh to get updated data
+                setTimeout(() => {
+                  fetchLessons();
+                }, 2000);
+                
+                // Set up periodic refresh to check for completion
+                const refreshInterval = setInterval(async () => {
+                  try {
+                    await fetchLessons();
+                    
+                    // Check if processing is complete by looking at the updated lesson
+                    const updatedLessons = lessons.find(l => l.id === aiGenerationModal.id);
+                    if (updatedLessons?.aiContent) {
+                      const hasNewContent = config.contentTypes.some(type => {
+                        switch (type) {
+                          case 'transcription':
+                            return updatedLessons.aiContent.transcription?.transcription_text;
+                          case 'summary':
+                            return updatedLessons.aiContent.summary?.summary_text;
+                          case 'questions':
+                            return updatedLessons.aiContent.questions?.length > 0;
+                          default:
+                            return false;
+                        }
+                      });
+                      
+                      if (hasNewContent) {
+                        clearInterval(refreshInterval);
+                        console.log('AI processing completed, content updated');
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error during periodic refresh:', error);
+                  }
+                }, 5000); // Check every 5 seconds
+                
+                // Clear interval after 5 minutes to prevent infinite polling
+                setTimeout(() => {
+                  clearInterval(refreshInterval);
+                }, 300000);
+                
+              } else {
+                throw new Error(result.message || 'שגיאה בהתחלת עיבוד AI');
+              }
+            } catch (error) {
+              console.error('AI generation error:', error);
+              
+              // Provide more specific error messages
+              let errorMessage = error.message;
+              if (error.message.includes('fetch')) {
+                errorMessage = 'שגיאת רשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.';
+              } else if (error.message.includes('429') || error.message.includes('rate limit')) {
+                errorMessage = 'הגעת למגבלת הקריאות. אנא המתן 5-10 דקות ונסה שוב.';
+              }
+              
+              alert(`שגיאה בעיבוד AI:\n\n${errorMessage}`);
+            } finally {
+              setIsGeneratingAI(false);
+              setGenerationProgress({});
+            }
+          }}
+          isGenerating={isGeneratingAI}
+          generationProgress={generationProgress}
+        />
       )}
 
       {uploadModal && (
@@ -4432,14 +4546,14 @@ const LessonsManager = ({ t }) => {
                 </div>
               ) : (
                 <div>
-                  <p>גרור קובץ אודיו לכאן או</p>
+                  <p>גרור קובץ אודיו או וידאו לכאן או</p>
                   <FileInputLabel htmlFor="fileInput">
                     בחר קובץ
                   </FileInputLabel>
                   <FileInput
                     id="fileInput"
                     type="file"
-                    accept="audio/*"
+                    accept="audio/*,video/*"
                     onChange={(e) => {
                       if (e.target.files.length > 0) {
                         handleFileSelect(e.target.files[0]);
@@ -4447,7 +4561,8 @@ const LessonsManager = ({ t }) => {
                     }}
                   />
                   <p style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>
-                    קבצי אודיו עד 100MB
+                    קבצי אודיו ווידאו עד 200MB<br/>
+                    פורמטים נתמכים: MP3, WAV, MP4, AVI, MOV, WMV, MKV, WebM, FLV, 3GP
                   </p>
                 </div>
               )}

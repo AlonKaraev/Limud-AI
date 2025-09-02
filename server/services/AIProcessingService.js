@@ -67,6 +67,69 @@ class AIProcessingService {
   }
 
   /**
+   * Enhanced processing with custom guidance and language selection
+   * @param {Object} options - Enhanced processing options
+   * @param {number} options.recordingId - Recording ID
+   * @param {number} options.userId - User ID
+   * @param {string} options.filePath - Path to audio file
+   * @param {Object} options.config - Enhanced processing configuration
+   * @returns {Promise<Object>} Processing result
+   */
+  async processRecordingEnhanced(options) {
+    const {
+      recordingId,
+      userId,
+      filePath,
+      config = {}
+    } = options;
+
+    try {
+      console.log('Starting enhanced AI processing:', {
+        recordingId,
+        userId,
+        contentTypes: config.contentTypes,
+        language: config.language,
+        hasCustomGuidance: !!config.customGuidance
+      });
+
+      // Create processing job with enhanced config
+      const job = await this.createProcessingJob({
+        recordingId,
+        userId,
+        jobType: 'enhanced_processing',
+        processingConfig: config
+      });
+
+      // Add to queue with enhanced processing flag
+      this.addToQueue(job.id, {
+        recordingId,
+        userId,
+        filePath,
+        config,
+        jobId: job.id,
+        enhanced: true
+      });
+
+      // Start processing if capacity allows
+      this.processQueue();
+
+      return {
+        success: true,
+        jobId: job.id,
+        status: 'queued',
+        message: 'יצירת תוכן AI החלה בהצלחה',
+        contentTypes: config.contentTypes,
+        language: config.language,
+        customGuidance: config.customGuidance
+      };
+
+    } catch (error) {
+      console.error('Error starting enhanced AI processing:', error);
+      throw new Error(`Failed to start enhanced processing: ${error.message}`);
+    }
+  }
+
+  /**
    * Process individual AI service
    * @param {Object} options - Service processing options
    * @param {string} options.serviceType - Type of service (transcription, summary, questions)
@@ -197,6 +260,8 @@ class AIProcessingService {
             summaryType: config.summaryType || 'educational',
             subjectArea: config.subjectArea,
             gradeLevel: config.gradeLevel,
+            language: config.language || 'hebrew',
+            customGuidance: config.customGuidance || '',
             provider: config.aiProvider || AI_PROVIDERS.OPENAI
           });
           
@@ -224,6 +289,8 @@ class AIProcessingService {
             questionCount: config.questionCount || 10,
             subjectArea: config.subjectArea,
             gradeLevel: config.gradeLevel,
+            language: config.language || 'hebrew',
+            customGuidance: config.customGuidance || '',
             provider: config.aiProvider || AI_PROVIDERS.OPENAI
           });
           
@@ -298,6 +365,8 @@ class AIProcessingService {
       summaryType: config.summaryType || 'educational',
       subjectArea: config.subjectArea,
       gradeLevel: config.gradeLevel,
+      language: config.language || 'hebrew',
+      customGuidance: config.customGuidance || '',
       provider: config.aiProvider || AI_PROVIDERS.OPENAI
     });
   }
