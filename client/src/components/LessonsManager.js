@@ -3937,7 +3937,7 @@ const handleFileSelect = (file) => {
             <UploadButton className="record" onClick={() => setRecordingModal(true)}>
               הקלט שיעור
             </UploadButton>
-            <UploadButton onClick={() => setUploadModal(true)}>
+            <UploadButton data-action="upload-lesson" onClick={() => setUploadModal(true)}>
               העלה הקלטה
             </UploadButton>
             <RefreshButton onClick={fetchLessons}>רענן</RefreshButton>

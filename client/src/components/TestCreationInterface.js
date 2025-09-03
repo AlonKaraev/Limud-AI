@@ -400,9 +400,9 @@ const ErrorMessage = styled.div`
   border: 1px solid var(--color-dangerLighter);
 `;
 
-const TestCreationInterface = ({ onClose, onTestCreated }) => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [creationMode, setCreationMode] = useState(''); // 'manual' or 'ai'
+const TestCreationInterface = ({ onClose, onTestCreated, initialMode = 'manual', editingTest = null }) => {
+  const [currentStep, setCurrentStep] = useState(editingTest ? 2 : 1);
+  const [creationMode, setCreationMode] = useState(editingTest ? 'edit' : initialMode); // 'manual', 'ai', or 'edit'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [lessons, setLessons] = useState([]);
@@ -410,16 +410,16 @@ const TestCreationInterface = ({ onClose, onTestCreated }) => {
 
   // Test configuration
   const [testConfig, setTestConfig] = useState({
-    title: '',
-    description: '',
-    subjectArea: '',
-    gradeLevel: '',
-    estimatedDuration: 30,
-    instructions: '',
+    title: editingTest?.title || '',
+    description: editingTest?.description || '',
+    subjectArea: editingTest?.subjectArea || '',
+    gradeLevel: editingTest?.gradeLevel || '',
+    estimatedDuration: editingTest?.estimatedDuration || 30,
+    instructions: editingTest?.instructions || '',
     // AI-specific config
     questionCount: 10,
     questionType: 'multiple_choice',
-    difficultyLevel: 'medium',
+    difficultyLevel: editingTest?.difficultyLevel || 'medium',
     language: 'hebrew',
     customGuidance: ''
   });
@@ -494,7 +494,32 @@ const TestCreationInterface = ({ onClose, onTestCreated }) => {
 
       const token = localStorage.getItem('token');
 
-      if (creationMode === 'ai') {
+      if (creationMode === 'edit') {
+        // Update existing test
+        const response = await fetch(`/api/tests/${editingTest.id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            title: testConfig.title,
+            description: testConfig.description,
+            subject_area: testConfig.subjectArea,
+            grade_level: testConfig.gradeLevel,
+            time_limit: testConfig.estimatedDuration,
+            difficulty_level: testConfig.difficultyLevel
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'שגיאה בעדכון המבחן');
+        }
+
+        const result = await response.json();
+        onTestCreated(result.test);
+      } else if (creationMode === 'ai') {
         // Create test from AI-generated content
         if (selectedLessons.length === 0) {
           throw new Error('יש לבחור לפחות שיעור אחד');
@@ -528,20 +553,25 @@ const TestCreationInterface = ({ onClose, onTestCreated }) => {
         onTestCreated(result.test);
       } else {
         // Create manual test
-        const response = await fetch('/api/tests/create', {
+        const response = await fetch('/api/tests', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            ...testConfig,
-            creationMode: 'manual'
+            title: testConfig.title,
+            description: testConfig.description,
+            subject_area: testConfig.subjectArea,
+            grade_level: testConfig.gradeLevel,
+            time_limit: testConfig.estimatedDuration,
+            difficulty_level: testConfig.difficultyLevel
           })
         });
 
         if (!response.ok) {
-          throw new Error('שגיאה ביצירת מבחן ידני');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'שגיאה ביצירת מבחן ידני');
         }
 
         const result = await response.json();
@@ -550,7 +580,7 @@ const TestCreationInterface = ({ onClose, onTestCreated }) => {
 
       onClose();
     } catch (error) {
-      console.error('Error creating test:', error);
+      console.error('Error creating/updating test:', error);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -802,7 +832,7 @@ const TestCreationInterface = ({ onClose, onTestCreated }) => {
         <Header>
           <Title>
             <span>📝</span>
-            יצירת מבחן חדש
+            {editingTest ? 'עריכת מבחן' : 'יצירת מבחן חדש'}
           </Title>
           <CloseButton onClick={onClose}>
             ✕
@@ -852,7 +882,7 @@ const TestCreationInterface = ({ onClose, onTestCreated }) => {
               disabled={loading || !canProceed()}
             >
               {loading && <LoadingSpinner />}
-              {loading ? 'יוצר מבחן...' : 'צור מבחן'}
+              {loading ? (editingTest ? 'מעדכן מבחן...' : 'יוצר מבחן...') : (editingTest ? 'עדכן מבחן' : 'צור מבחן')}
             </ActionButton>
           )}
         </Actions>

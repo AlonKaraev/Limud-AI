@@ -132,73 +132,73 @@
 	- Lesson generated test is counted in the overview tab statistics.
 	
 ### **2.1 Test Management Features**
-- [ ] **Add test editing capability**
+- [X] **Add test editing capability**
 	Test editing means that title, tags, descriptions, questions and potential answers should be editable by the teacher.
   - Test: Edit button appears on test items
   - Test: Clicking edit loads test data into form
   - Test: Saving updates store the modified test
   
-- [ ] **Add test deletion capability**
+- [X] **Add test deletion capability**
   - Test: Delete button appears on test items
   - Test: Clicking delete removes test from list
   - Test: Deleted tests don't reappear after refresh
   
-- [ ] **Implement test preview modal**
+- [X] **Implement test preview modal**
   - Test: Preview button shows test content
   - Test: Modal displays test questions properly
   - Test: Modal can be closed without affecting test
 
 ### **2.2 Summary Management Features**
-- [ ] **Add summary editing capability**
+- [X] **Add summary editing capability**
   - Test: Edit button appears on summary items
   - Test: Clicking edit loads summary data into form
   - Test: Saving updates store the modified summary
   
-- [ ] **Add summary deletion capability**
+- [X] **Add summary deletion capability**
   - Test: Delete button appears on summary items
   - Test: Clicking delete removes summary from list
   - Test: Deleted summaries don't reappear after refresh
   
-- [ ] **Implement summary preview modal**
+- [X] **Implement summary preview modal**
   - Test: Preview button shows summary content
   - Test: Modal displays formatted summary
   - Test: Modal can be closed without affecting summary
 
 ### **2.3 Enhanced Overview Dashboard**
-- [ ] **Add quick action buttons**
+- [X] **Add quick action buttons**
   - Test: "Create Test" button navigates to Tests tab
   - Test: "Create Summary" button navigates to Summaries tab
   - Test: "Upload Lesson" button opens upload modal
   
-- [ ] **Add recent activity list**
+- [X] **Add recent activity list**
   - Test: Shows last 5 created items across all types
   - Test: Items show creation date and type
   - Test: Clicking items navigates to relevant tab
 
 
   ### **2.4 Media Management Features**
-  - [ ] **Add audio deletion capability**
+  - [X] **Add audio deletion capability**
     - Test: Delete button appears on audio items
     - Test: Clicking delete removes audio from list
     - Test: Deleted audio files don't reappear after refresh
 
-  - [ ] **Implement audio preview modal**
+  - [X] **Implement audio preview modal**
     - Test: Preview button plays audio file
     - Test: Modal displays audio controls properly
     - Test: Modal can be closed without affecting audio
 
-  - [ ] **Add video deletion capability**
+  - [X] **Add video deletion capability**
     - Test: Delete button appears on video items
     - Test: Clicking delete removes video from list
     - Test: Deleted video files don't reappear after refresh
 
-  - [ ] **Implement video preview modal**
+  - [X] **Implement video preview modal**
     - Test: Preview button plays video file
     - Test: Modal displays video player properly
     - Test: Modal can be closed without affecting video
 
 ### **2.5 Media Compression Option**
-- [ ] **Add media compression option before uploading**
+- [X] **Add media compression option before uploading**
   - Test: Compression toggle appears in audio, video, and document upload forms
   - Test: Selecting compression reduces file size before upload
   - Test: Compressed files maintain acceptable quality

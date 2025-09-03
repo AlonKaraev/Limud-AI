@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת דחיסת ווידאו עם לוגים</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-area {
+            border: 2px dashed #3498db;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #2980b9;
+            background-color: #e3f2fd;
+        }
+        .upload-area.dragover {
+            border-color: #27ae60;
+            background-color: #d5f4e6;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .upload-btn {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .upload-btn:hover {
+            background-color: #2980b9;
+        }
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #3498db;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .file-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #3498db;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d5f4e6;
+            border-left: 4px solid #27ae60;
+            color: #27ae60;
+        }
+        .error {
+            background-color: #fadbd8;
+            border-left: 4px solid #e74c3c;
+            color: #e74c3c;
+        }
+        .console-logs {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+        .quality-controls {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .quality-slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+        video {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 בדיקת דחיסת ווידאו עם לוגים מפורטים</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                🎬 בחר קובץ ווידאו
+            </button>
+            <p>או גרור קובץ ווידאו לכאן</p>
+            <small>תומך ב: MP4, WebM, AVI, MOV (עד 1GB)</small>
+        </div>
+        
+        <input type="file" id="fileInput" accept="video/*" />
+        
+        <div class="quality-controls">
+            <label for="qualitySlider">איכות דחיסה: <span id="qualityValue">70%</span></label>
+            <input type="range" id="qualitySlider" class="quality-slider" min="10" max="100" value="70" />
+            <small>איכות נמוכה יותר = קובץ קטן יותר</small>
+        </div>
+        
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">מתחיל דחיסה...</div>
+        </div>
+        
+        <div id="fileInfo"></div>
+        <div id="results"></div>
+        
+        <div class="console-logs" id="consoleLogs">
+            <strong>📋 לוגי קונסול:</strong><br>
+            ממתין לקובץ ווידאו...
+        </div>
+    </div>
+
+    <script type="module">
+        // Import compression utilities
+        import { compressVideo, getCompressionRatio } from '../client/src/utils/mediaCompression.js';
+        
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const fileInfo = document.getElementById('fileInfo');
+        const results = document.getElementById('results');
+        const consoleLogs = document.getElementById('consoleLogs');
+        const qualitySlider = document.getElementById('qualitySlider');
+        const qualityValue = document.getElementById('qualityValue');
+        
+        let originalConsoleLog = console.log;
+        let originalConsoleError = console.error;
+        let originalConsoleWarn = console.warn;
+        
+        // Capture console logs
+        function captureConsole() {
+            console.log = function(...args) {
+                originalConsoleLog.apply(console, args);
+                addToConsoleLog('LOG', args.join(' '));
+            };
+            
+            console.error = function(...args) {
+                originalConsoleError.apply(console, args);
+                addToConsoleLog('ERROR', args.join(' '));
+            };
+            
+            console.warn = function(...args) {
+                originalConsoleWarn.apply(console, args);
+                addToConsoleLog('WARN', args.join(' '));
+            };
+        }
+        
+        function addToConsoleLog(type, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type}: ${message}\n`;
+            consoleLogs.innerHTML += logEntry;
+            consoleLogs.scrollTop = consoleLogs.scrollHeight;
+        }
+        
+        // Quality slider
+        qualitySlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            qualityValue.textContent = value + '%';
+        });
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function formatDuration(seconds) {
+            if (!seconds || isNaN(seconds)) return 'לא ידוע';
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+        
+        async function getVideoDuration(file) {
+            return new Promise((resolve) => {
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                video.muted = true;
+                
+                video.onloadedmetadata = () => {
+                    resolve(video.duration);
+                    URL.revokeObjectURL(video.src);
+                };
+                
+                video.onerror = () => {
+                    resolve(null);
+                    URL.revokeObjectURL(video.src);
+                };
+                
+                video.src = URL.createObjectURL(file);
+            });
+        }
+        
+        async function handleFile(file) {
+            // Clear previous results
+            results.innerHTML = '';
+            fileInfo.innerHTML = '';
+            consoleLogs.innerHTML = '<strong>📋 לוגי קונסול:</strong><br>';
+            
+            // Start capturing console logs
+            captureConsole();
+            
+            console.log(`🎬 Selected file: ${file.name}`);
+            console.log(`📊 File size: ${formatFileSize(file.size)}`);
+            console.log(`📁 File type: ${file.type}`);
+            
+            // Validate file
+            if (!file.type.startsWith('video/')) {
+                showError('קובץ זה אינו קובץ ווידאו תקין');
+                return;
+            }
+            
+            if (file.size > 1024 * 1024 * 1024) { // 1GB
+                showError('קובץ גדול מדי (מעל 1GB)');
+                return;
+            }
+            
+            try {
+                // Get video duration
+                const duration = await getVideoDuration(file);
+                console.log(`⏱️ Video duration: ${formatDuration(duration)}`);
+                
+                // Show file info
+                fileInfo.innerHTML = `
+                    <div class="file-info">
+                        <strong>📁 מידע על הקובץ:</strong><br>
+                        שם: ${file.name}<br>
+                        גודל: ${formatFileSize(file.size)}<br>
+                        סוג: ${file.type}<br>
+                        משך: ${formatDuration(duration)}
+                    </div>
+                `;
+                
+                // Show original video
+                const originalVideoUrl = URL.createObjectURL(file);
+                fileInfo.innerHTML += `
+                    <div class="file-info">
+                        <strong>🎬 ווידאו מקורי:</strong><br>
+                        <video controls>
+                            <source src="${originalVideoUrl}" type="${file.type}">
+                            הדפדפן לא תומך בנגן הווידאו
+                        </video>
+                    </div>
+                `;
+                
+                // Start compression
+                progressContainer.style.display = 'block';
+                const quality = qualitySlider.value / 100;
+                
+                console.log(`🎯 Starting compression with quality: ${Math.round(quality * 100)}%`);
+                
+                const startTime = Date.now();
+                
+                const compressedFile = await compressVideo(file, quality, (progress, message) => {
+                    progressFill.style.width = progress + '%';
+                    progressText.textContent = `${Math.round(progress)}% - ${message}`;
+                    console.log(`📈 Progress: ${Math.round(progress)}% - ${message}`);
+                });
+                
+                const endTime = Date.now();
+                const compressionTime = (endTime - startTime) / 1000;
+                
+                console.log(`✅ Compression completed in ${compressionTime.toFixed(2)} seconds`);
+                
+                // Show results
+                const compressionRatio = getCompressionRatio(file.size, compressedFile.size);
+                const savedSpace = file.size - compressedFile.size;
+                
+                const compressedVideoUrl = URL.createObjectURL(compressedFile);
+                
+                results.innerHTML = `
+                    <div class="results success">
+                        <strong>✅ דחיסה הושלמה בהצלחה!</strong><br><br>
+                        <strong>📊 תוצאות הדחיסה:</strong><br>
+                        גודל מקורי: ${formatFileSize(file.size)}<br>
+                        גודל דחוס: ${formatFileSize(compressedFile.size)}<br>
+                        חיסכון: ${formatFileSize(savedSpace)} (${compressionRatio}%)<br>
+                        זמן דחיסה: ${compressionTime.toFixed(2)} שניות<br>
+                        איכות: ${Math.round(quality * 100)}%<br><br>
+                        
+                        <strong>🎬 ווידאו דחוס:</strong><br>
+                        <video controls>
+                            <source src="${compressedVideoUrl}" type="${compressedFile.type}">
+                            הדפדפן לא תומך בנגן הווידאו
+                        </video>
+                    </div>
+                `;
+                
+                progressContainer.style.display = 'none';
+                
+                console.log(`💾 Final compressed file: ${compressedFile.name}`);
+                console.log(`📉 Compression ratio: ${compressionRatio}%`);
+                console.log(`💰 Space saved: ${formatFileSize(savedSpace)}`);
+                
+            } catch (error) {
+                console.error(`❌ Compression failed: ${error.message}`);
+                showError(`שגיאה בדחיסה: ${error.message}`);
+                progressContainer.style.display = 'none';
+            }
+        }
+        
+        function showError(message) {
+            results.innerHTML = `
+                <div class="results error">
+                    <strong>❌ שגיאה:</strong><br>
+                    ${message}
+                </div>
+            `;
+        }
+        
+        // Initialize
+        console.log('🚀 Video compression test page loaded');
+        console.log('📋 Console logging is active - all compression logs will appear below');
+    </script>
+</body>
+</html>

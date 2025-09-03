@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import CompressionControls from './CompressionControls';
+import ProgressBar from './ProgressBar';
+import { compressFile, supportsCompression, getCompressionRatio, shouldCompress } from '../utils/mediaCompression';
 
 const Container = styled.div`
   background: var(--color-surface);
@@ -232,19 +235,91 @@ const VideoManager = ({ t }) => {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [compressionEnabled, setCompressionEnabled] = useState(false);
+  const [compressionQuality, setCompressionQuality] = useState(0.7);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [fileProgress, setFileProgress] = useState({});
+  const [currentProcessingFile, setCurrentProcessingFile] = useState(null);
 
-  // Load saved video files from localStorage on component mount
+  // Load saved video files from server and localStorage on component mount
   useEffect(() => {
+    loadSavedVideoFiles();
+  }, []);
+
+  // Load saved video files from server
+  const loadSavedVideoFiles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // Fallback to localStorage if no token
+        loadFromLocalStorage();
+        return;
+      }
+
+      // Load from server
+      const response = await fetch('/api/recordings?mediaType=video', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const serverVideos = (data.recordings || [])
+          .filter(recording => recording.media_type === 'video')
+          .map(recording => ({
+            id: recording.id,
+            name: recording.metadata?.originalFileName || recording.filename,
+            size: recording.file_size,
+            type: recording.metadata?.type || 'video/mp4',
+            duration: recording.metadata?.duration,
+            serverRecordingId: recording.id,
+            filename: recording.filename,
+            mediaType: recording.media_type,
+            processingStatus: recording.processing_status,
+            savedAt: recording.created_at,
+            isFromServer: true
+          }));
+
+        // Also load from localStorage for backward compatibility
+        const localVideos = loadFromLocalStorage(false);
+        
+        // Combine and deduplicate (server takes priority)
+        const allVideos = [...serverVideos];
+        localVideos.forEach(localVideo => {
+          if (!serverVideos.find(sv => sv.name === localVideo.name)) {
+            allVideos.push(localVideo);
+          }
+        });
+
+        setSavedVideoFiles(allVideos);
+      } else {
+        // Fallback to localStorage
+        loadFromLocalStorage();
+      }
+    } catch (error) {
+      console.error('Error loading saved video files from server:', error);
+      // Fallback to localStorage
+      loadFromLocalStorage();
+    }
+  };
+
+  // Load from localStorage (fallback)
+  const loadFromLocalStorage = (setSate = true) => {
     try {
       const saved = localStorage.getItem('limud-ai-video-files');
       if (saved) {
         const parsedVideoFiles = JSON.parse(saved);
-        setSavedVideoFiles(parsedVideoFiles);
+        if (setSate) {
+          setSavedVideoFiles(parsedVideoFiles);
+        }
+        return parsedVideoFiles;
       }
     } catch (error) {
-      console.error('Error loading saved video files:', error);
+      console.error('Error loading saved video files from localStorage:', error);
     }
-  }, []);
+    return [];
+  };
 
   // Save video files to localStorage
   const saveVideoFilesToStorage = (videoFiles) => {
@@ -256,7 +331,7 @@ const VideoManager = ({ t }) => {
     }
   };
 
-  // Save selected files to localStorage
+  // Upload selected files to server with progress tracking and silent saving
   const saveSelectedFiles = async () => {
     if (selectedFiles.length === 0) {
       setError('אין קבצי ווידאו לשמירה');
@@ -264,33 +339,216 @@ const VideoManager = ({ t }) => {
     }
 
     try {
-      const videoFilesToSave = await Promise.all(
-        selectedFiles.map(async (fileData) => {
-          // Convert file to base64 for storage
-          const base64Data = await fileToBase64(fileData.file);
-          
-          return {
-            id: fileData.id,
-            name: fileData.name,
-            size: fileData.size,
-            type: fileData.type,
-            duration: fileData.duration || null,
-            base64Data: base64Data,
-            savedAt: new Date().toISOString()
-          };
-        })
-      );
-
-      const updatedSavedVideoFiles = [...savedVideoFiles, ...videoFilesToSave];
-      setSavedVideoFiles(updatedSavedVideoFiles);
-      saveVideoFilesToStorage(updatedSavedVideoFiles);
-      
-      setSelectedFiles([]);
-      setSuccess(`נשמרו ${videoFilesToSave.length} קבצי ווידאו בהצלחה`);
+      setIsCompressing(true);
       setError('');
+      setSuccess('');
+      setFileProgress({});
+      setCurrentProcessingFile(null);
+
+      // Mute all video elements during processing (silent saving)
+      const videoElements = document.querySelectorAll('video');
+      const originalVolumes = [];
+      videoElements.forEach((video, index) => {
+        originalVolumes[index] = video.volume;
+        video.volume = 0;
+        video.pause();
+      });
+
+      const uploadedVideos = [];
+      
+      // Process files sequentially to show individual progress
+      for (let index = 0; index < selectedFiles.length; index++) {
+        const fileData = selectedFiles[index];
+        setCurrentProcessingFile(fileData.name);
+        
+        let fileToProcess = fileData.file;
+        let processedName = fileData.name;
+        let processedSize = fileData.size;
+        let processedType = fileData.type;
+        let compressionInfo = null;
+
+        // Initialize progress for this file
+        setFileProgress(prev => ({
+          ...prev,
+          [fileData.id]: { progress: 0, status: 'idle', message: 'מתחיל עיבוד...' }
+        }));
+
+        try {
+          // Apply compression if enabled and file supports it
+          if (compressionEnabled && supportsCompression(fileData.type)) {
+            setFileProgress(prev => ({
+              ...prev,
+              [fileData.id]: { progress: 10, status: 'compressing', message: 'מתחיל דחיסה...' }
+            }));
+
+            const compressedFile = await compressFile(
+              fileData.file, 
+              compressionQuality,
+              (progress, message) => {
+                setFileProgress(prev => ({
+                  ...prev,
+                  [fileData.id]: { 
+                    progress: Math.round(10 + (progress * 0.6)), // 10-70% for compression
+                    status: 'compressing', 
+                    message: message || 'דוחס...' 
+                  }
+                }));
+              }
+            );
+
+            const originalSize = fileData.size;
+            const compressedSize = compressedFile.size;
+            const compressionRatio = getCompressionRatio(originalSize, compressedSize);
+            
+            fileToProcess = compressedFile;
+            processedName = compressedFile.name;
+            processedSize = compressedFile.size;
+            processedType = compressedFile.type;
+            
+            compressionInfo = {
+              originalSize,
+              compressedSize,
+              compressionRatio,
+              quality: compressionQuality
+            };
+            
+            console.log(`Compressed ${fileData.name}: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} (${compressionRatio}% reduction)`);
+          } else {
+            // Skip compression, go directly to upload
+            setFileProgress(prev => ({
+              ...prev,
+              [fileData.id]: { progress: 70, status: 'saving', message: 'מתחיל העלאה...' }
+            }));
+          }
+
+          // Prepare upload
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 75, status: 'saving', message: 'מכין העלאה...' }
+          }));
+
+          const formData = new FormData();
+          formData.append('media', fileToProcess);
+          formData.append('recordingId', `video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+          formData.append('metadata', JSON.stringify({
+            lessonName: processedName.replace(/\.[^/.]+$/, ""), // Remove file extension
+            subject: 'ווידאו',
+            description: `קובץ ווידאו: ${processedName}`,
+            duration: fileData.duration,
+            originalFileName: fileData.name,
+            compressionInfo
+          }));
+
+          const token = localStorage.getItem('token');
+          if (!token) {
+            throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
+          }
+
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 80, status: 'saving', message: 'מעלה לשרת...' }
+          }));
+
+          const response = await fetch('/api/recordings/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `שגיאה בהעלאת ${processedName}`);
+          }
+
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 95, status: 'saving', message: 'מסיים העלאה...' }
+          }));
+
+          const result = await response.json();
+          uploadedVideos.push({
+            id: result.recording.id,
+            name: processedName,
+            size: processedSize,
+            type: processedType,
+            duration: fileData.duration,
+            serverRecordingId: result.recording.id,
+            filename: result.recording.filename,
+            mediaType: result.recording.mediaType,
+            processingStatus: result.recording.processingStatus,
+            compressionInfo,
+            savedAt: new Date().toISOString()
+          });
+
+          // Mark as complete
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 100, status: 'complete', message: 'הועלה בהצלחה' }
+          }));
+
+          // Clean up object URL
+          if (fileData.url) {
+            URL.revokeObjectURL(fileData.url);
+          }
+
+        } catch (fileError) {
+          console.error(`Failed to process ${fileData.name}:`, fileError);
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 0, status: 'error', message: `שגיאה: ${fileError.message}` }
+          }));
+          setError(prev => prev + `\nשגיאה בעיבוד ${fileData.name}: ${fileError.message}`);
+        }
+      }
+
+      // Save all processed files
+      if (uploadedVideos.length > 0) {
+        // Save uploaded video info to localStorage for quick access
+        const updatedSavedVideoFiles = [...savedVideoFiles, ...uploadedVideos];
+        setSavedVideoFiles(updatedSavedVideoFiles);
+        saveVideoFilesToStorage(updatedSavedVideoFiles);
+        
+        // Calculate total compression savings
+        const totalOriginalSize = uploadedVideos.reduce((sum, file) => 
+          sum + (file.compressionInfo?.originalSize || file.size), 0
+        );
+        const totalCompressedSize = uploadedVideos.reduce((sum, file) => file.size, 0);
+        const totalSavings = totalOriginalSize - totalCompressedSize;
+        
+        let successMessage = `הועלו בהצלחה ${uploadedVideos.length} מתוך ${selectedFiles.length} קבצי ווידאו לשרת`;
+        if (compressionEnabled && totalSavings > 0) {
+          const savingsRatio = getCompressionRatio(totalOriginalSize, totalCompressedSize);
+          successMessage += `\nחיסכון בדחיסה: ${formatFileSize(totalSavings)} (${savingsRatio}%)`;
+        }
+        
+        setSuccess(successMessage);
+        
+        // Clear selected files after successful upload
+        setSelectedFiles([]);
+      } else {
+        setError('לא הצליח להעלות אף קובץ ווידאו');
+      }
+
+      // Restore video volumes (end silent saving)
+      videoElements.forEach((video, index) => {
+        if (originalVolumes[index] !== undefined) {
+          video.volume = originalVolumes[index];
+        }
+      });
+
     } catch (error) {
-      console.error('Error saving video files:', error);
-      setError('שגיאה בשמירת קבצי הווידאו. אנא נסה שוב.');
+      console.error('Error uploading video files:', error);
+      setError('שגיאה כללית בהעלאת קבצי הווידאו לשרת. אנא נסה שוב.');
+    } finally {
+      setIsCompressing(false);
+      setCurrentProcessingFile(null);
+      
+      // Clear progress after a delay
+      setTimeout(() => {
+        setFileProgress({});
+      }, 3000);
     }
   };
 
@@ -341,9 +599,9 @@ const VideoManager = ({ t }) => {
       }
     }
 
-    // Check file size (500MB limit for video files)
-    if (file.size > 500 * 1024 * 1024) {
-      return `קובץ הווידאו ${file.name} גדול מדי. גודל מקסימלי: 500MB`;
+    // Check file size (1GB limit for video files)
+    if (file.size > 1024 * 1024 * 1024) {
+      return `קובץ הווידאו ${file.name} גדול מדי. גודל מקסימלי: 1GB`;
     }
 
     return null;
@@ -405,6 +663,8 @@ const VideoManager = ({ t }) => {
     return new Promise((resolve) => {
       const video = document.createElement('video');
       video.preload = 'metadata';
+      video.muted = true;
+      video.volume = 0;
       
       video.onloadedmetadata = () => {
         resolve(video.duration);
@@ -526,7 +786,7 @@ const VideoManager = ({ t }) => {
         <SupportedFormats>
           קבצי ווידאו נתמכים: MP4, AVI, MOV, WMV, FLV, WebM, MKV, M4V, 3GP
           <br />
-          גודל מקסימלי: 500MB לכל קובץ
+          גודל מקסימלי: 1GB לכל קובץ
         </SupportedFormats>
       </UploadSection>
 
@@ -545,6 +805,14 @@ const VideoManager = ({ t }) => {
 
       {selectedFiles.length > 0 && (
         <div>
+          <CompressionControls
+            files={selectedFiles}
+            compressionEnabled={compressionEnabled}
+            onCompressionToggle={setCompressionEnabled}
+            compressionQuality={compressionQuality}
+            onQualityChange={setCompressionQuality}
+          />
+          
           <h3 style={{ color: 'var(--color-text)', marginBottom: '1rem' }}>
             קבצי ווידאו נבחרים ({selectedFiles.length})
           </h3>
@@ -559,7 +827,7 @@ const VideoManager = ({ t }) => {
                   {formatFileSize(fileData.size)}
                   {fileData.duration && ` • ${formatDuration(fileData.duration)}`}
                 </FileSize>
-                {fileData.url && (
+                {fileData.url && !isCompressing && (
                   <VideoPreview>
                     <VideoPlayer controls>
                       <source src={fileData.url} type={fileData.type} />
@@ -567,14 +835,23 @@ const VideoManager = ({ t }) => {
                     </VideoPlayer>
                   </VideoPreview>
                 )}
+                {fileProgress[fileData.id] && (
+                  <ProgressBar
+                    progress={fileProgress[fileData.id].progress}
+                    status={fileProgress[fileData.id].status}
+                    title={fileData.name}
+                    message={fileProgress[fileData.id].message}
+                    animated={fileProgress[fileData.id].status === 'compressing' || fileProgress[fileData.id].status === 'saving'}
+                  />
+                )}
               </FileInfo>
-              <RemoveButton onClick={() => removeFile(fileData.id)}>
+              <RemoveButton onClick={() => removeFile(fileData.id)} disabled={isCompressing}>
                 הסר
               </RemoveButton>
             </FilePreview>
           ))}
-          <SaveButton onClick={saveSelectedFiles}>
-            💾 שמור קבצי ווידאו
+          <SaveButton onClick={saveSelectedFiles} disabled={isCompressing}>
+            {isCompressing ? '🗜️ דוחס קבצים...' : '💾 שמור קבצי ווידאו'}
           </SaveButton>
         </div>
       )}

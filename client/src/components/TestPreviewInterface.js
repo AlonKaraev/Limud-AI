@@ -416,7 +416,7 @@ const TestPreviewInterface = ({
         throw new Error('לא נמצא טוקן אימות');
       }
 
-      const response = await fetch(`/api/ai-content/question-sets/${test.id}/questions`, {
+      const response = await fetch(`/api/tests/${test.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -441,7 +441,8 @@ const TestPreviewInterface = ({
         throw new Error(data.error || 'שגיאה בטעינת השאלות');
       }
       
-      setQuestions(data.questions || []);
+      // The API returns test data with questions array
+      setQuestions(data.test?.questions || []);
     } catch (error) {
       console.error('Error fetching questions:', error);
       setError(`שגיאה בטעינת השאלות: ${error.message}`);

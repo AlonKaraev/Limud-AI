@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const SummaryForm = ({ onSummaryCreated, onCancel }) => {
+const SummaryForm = ({ editingSummary, onSummaryCreated, onCancel }) => {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -13,6 +13,21 @@ const SummaryForm = ({ onSummaryCreated, onCancel }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editingSummary) {
+      setFormData({
+        title: editingSummary.title || '',
+        content: editingSummary.content || '',
+        subjectArea: editingSummary.subject_area || '',
+        gradeLevel: editingSummary.grade_level || '',
+        tags: Array.isArray(editingSummary.tags) ? editingSummary.tags : 
+              (typeof editingSummary.tags === 'string' ? JSON.parse(editingSummary.tags || '[]') : []),
+        isPublic: editingSummary.is_public || false
+      });
+    }
+  }, [editingSummary]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -108,8 +123,12 @@ const SummaryForm = ({ onSummaryCreated, onCancel }) => {
         is_public: formData.isPublic
       };
 
-      const response = await fetch('/api/summaries', {
-        method: 'POST',
+      const isEditing = !!editingSummary;
+      const url = isEditing ? `/api/summaries/${editingSummary.id}` : '/api/summaries';
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -122,12 +141,12 @@ const SummaryForm = ({ onSummaryCreated, onCancel }) => {
         if (response.status === 401) {
           throw new Error('אין הרשאה. אנא התחבר מחדש למערכת.');
         }
-        throw new Error(errorData.error || `שגיאה ביצירת הסיכום: ${response.status}`);
+        throw new Error(errorData.error || `שגיאה ב${isEditing ? 'עדכון' : 'יצירת'} הסיכום: ${response.status}`);
       }
 
       const data = await response.json();
       if (data.success) {
-        setSuccessMessage('הסיכום נוצר בהצלחה!');
+        setSuccessMessage(isEditing ? 'הסיכום עודכן בהצלחה!' : 'הסיכום נוצר בהצלחה!');
         
         // Reset form
         setFormData({
@@ -175,8 +194,8 @@ const SummaryForm = ({ onSummaryCreated, onCancel }) => {
     <div className="summary-form-container">
       <div className="summary-form-header">
         <div className="header-content">
-          <h2>יצירת סיכום חדש</h2>
-          <p>צור סיכום מקיף עם תמיכה מלאה בעברית</p>
+          <h2>{editingSummary ? 'עריכת סיכום' : 'יצירת סיכום חדש'}</h2>
+          <p>{editingSummary ? 'ערוך את הסיכום שלך' : 'צור סיכום מקיף עם תמיכה מלאה בעברית'}</p>
         </div>
         <button 
           type="button"

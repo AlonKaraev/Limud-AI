@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import CompressionControls from './CompressionControls';
+import ProgressBar from './ProgressBar';
+import { compressFile, supportsCompression, getCompressionRatio, shouldCompress } from '../utils/mediaCompression';
 
 const Container = styled.div`
   background: var(--color-surface);
@@ -231,6 +234,11 @@ const AudioManager = ({ t }) => {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [compressionEnabled, setCompressionEnabled] = useState(false);
+  const [compressionQuality, setCompressionQuality] = useState(0.7);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [fileProgress, setFileProgress] = useState({});
+  const [currentProcessingFile, setCurrentProcessingFile] = useState(null);
 
   // Load saved audio files from localStorage on component mount
   useEffect(() => {
@@ -255,7 +263,7 @@ const AudioManager = ({ t }) => {
     }
   };
 
-  // Save selected files to localStorage
+  // Save selected files to localStorage with progress tracking and silent saving
   const saveSelectedFiles = async () => {
     if (selectedFiles.length === 0) {
       setError('אין קבצי אודיו לשמירה');
@@ -263,33 +271,175 @@ const AudioManager = ({ t }) => {
     }
 
     try {
-      const audioFilesToSave = await Promise.all(
-        selectedFiles.map(async (fileData) => {
+      setIsCompressing(true);
+      setError('');
+      setSuccess('');
+      setFileProgress({});
+      setCurrentProcessingFile(null);
+
+      // Mute all audio elements during processing (silent saving)
+      const audioElements = document.querySelectorAll('audio');
+      const originalVolumes = [];
+      audioElements.forEach((audio, index) => {
+        originalVolumes[index] = audio.volume;
+        audio.volume = 0;
+        audio.pause();
+      });
+
+      const audioFilesToSave = [];
+      
+      // Process files sequentially to show individual progress
+      for (let index = 0; index < selectedFiles.length; index++) {
+        const fileData = selectedFiles[index];
+        setCurrentProcessingFile(fileData.name);
+        
+        let fileToProcess = fileData.file;
+        let processedName = fileData.name;
+        let processedSize = fileData.size;
+        let processedType = fileData.type;
+        let compressionInfo = null;
+
+        // Initialize progress for this file
+        setFileProgress(prev => ({
+          ...prev,
+          [fileData.id]: { progress: 0, status: 'idle', message: 'מתחיל עיבוד...' }
+        }));
+
+        try {
+          // Apply compression if enabled and file supports it
+          if (compressionEnabled && supportsCompression(fileData.type)) {
+            setFileProgress(prev => ({
+              ...prev,
+              [fileData.id]: { progress: 10, status: 'compressing', message: 'מתחיל דחיסה...' }
+            }));
+
+            const compressedFile = await compressFile(
+              fileData.file, 
+              compressionQuality,
+              (progress, message) => {
+                setFileProgress(prev => ({
+                  ...prev,
+                  [fileData.id]: { 
+                    progress: Math.round(10 + (progress * 0.7)), // 10-80% for compression
+                    status: 'compressing', 
+                    message: message || 'דוחס...' 
+                  }
+                }));
+              }
+            );
+
+            const originalSize = fileData.size;
+            const compressedSize = compressedFile.size;
+            const compressionRatio = getCompressionRatio(originalSize, compressedSize);
+            
+            fileToProcess = compressedFile;
+            processedName = compressedFile.name;
+            processedSize = compressedFile.size;
+            processedType = compressedFile.type;
+            
+            compressionInfo = {
+              originalSize,
+              compressedSize,
+              compressionRatio,
+              quality: compressionQuality
+            };
+            
+            console.log(`Compressed ${fileData.name}: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} (${compressionRatio}% reduction)`);
+          } else {
+            // Skip compression, go directly to saving
+            setFileProgress(prev => ({
+              ...prev,
+              [fileData.id]: { progress: 80, status: 'saving', message: 'מתחיל שמירה...' }
+            }));
+          }
+
           // Convert file to base64 for storage
-          const base64Data = await fileToBase64(fileData.file);
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 85, status: 'saving', message: 'ממיר לפורמט שמירה...' }
+          }));
+
+          const base64Data = await fileToBase64(fileToProcess);
           
-          return {
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 95, status: 'saving', message: 'שומר קובץ...' }
+          }));
+
+          const savedFile = {
             id: fileData.id,
-            name: fileData.name,
-            size: fileData.size,
-            type: fileData.type,
+            name: processedName,
+            size: processedSize,
+            type: processedType,
             duration: fileData.duration || null,
             base64Data: base64Data,
+            compressionInfo,
             savedAt: new Date().toISOString()
           };
-        })
-      );
 
-      const updatedSavedAudioFiles = [...savedAudioFiles, ...audioFilesToSave];
-      setSavedAudioFiles(updatedSavedAudioFiles);
-      saveAudioFilesToStorage(updatedSavedAudioFiles);
-      
-      setSelectedFiles([]);
-      setSuccess(`נשמרו ${audioFilesToSave.length} קבצי אודיו בהצלחה`);
-      setError('');
+          audioFilesToSave.push(savedFile);
+
+          // Mark as complete
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 100, status: 'complete', message: 'הושלם בהצלחה' }
+          }));
+
+        } catch (fileError) {
+          console.error(`Failed to process ${fileData.name}:`, fileError);
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 0, status: 'error', message: `שגיאה: ${fileError.message}` }
+          }));
+          setError(prev => prev + `\nשגיאה בעיבוד ${fileData.name}: ${fileError.message}`);
+        }
+      }
+
+      // Save all processed files
+      if (audioFilesToSave.length > 0) {
+        const updatedSavedAudioFiles = [...savedAudioFiles, ...audioFilesToSave];
+        setSavedAudioFiles(updatedSavedAudioFiles);
+        saveAudioFilesToStorage(updatedSavedAudioFiles);
+        
+        // Calculate total compression savings
+        const totalOriginalSize = audioFilesToSave.reduce((sum, file) => 
+          sum + (file.compressionInfo?.originalSize || file.size), 0
+        );
+        const totalCompressedSize = audioFilesToSave.reduce((sum, file) => file.size, 0);
+        const totalSavings = totalOriginalSize - totalCompressedSize;
+        
+        let successMessage = `נשמרו ${audioFilesToSave.length} מתוך ${selectedFiles.length} קבצי אודיו בהצלחה`;
+        if (compressionEnabled && totalSavings > 0) {
+          const savingsRatio = getCompressionRatio(totalOriginalSize, totalCompressedSize);
+          successMessage += `\nחיסכון בדחיסה: ${formatFileSize(totalSavings)} (${savingsRatio}%)`;
+        }
+        
+        setSuccess(successMessage);
+        
+        // Clear selected files after successful save
+        setSelectedFiles([]);
+      } else {
+        setError('לא הצליח לשמור אף קובץ אודיו');
+      }
+
+      // Restore audio volumes (end silent saving)
+      audioElements.forEach((audio, index) => {
+        if (originalVolumes[index] !== undefined) {
+          audio.volume = originalVolumes[index];
+        }
+      });
+
     } catch (error) {
       console.error('Error saving audio files:', error);
-      setError('שגיאה בשמירת קבצי האודיו. אנא נסה שוב.');
+      setError('שגיאה כללית בשמירת קבצי האודיו. אנא נסה שוב.');
+    } finally {
+      setIsCompressing(false);
+      setCurrentProcessingFile(null);
+      
+      // Clear progress after a delay
+      setTimeout(() => {
+        setFileProgress({});
+      }, 3000);
     }
   };
 
@@ -538,6 +688,14 @@ const AudioManager = ({ t }) => {
 
       {selectedFiles.length > 0 && (
         <div>
+          <CompressionControls
+            files={selectedFiles}
+            compressionEnabled={compressionEnabled}
+            onCompressionToggle={setCompressionEnabled}
+            compressionQuality={compressionQuality}
+            onQualityChange={setCompressionQuality}
+          />
+          
           <h3 style={{ color: 'var(--color-text)', marginBottom: '1rem' }}>
             קבצי אודיו נבחרים ({selectedFiles.length})
           </h3>
@@ -552,7 +710,7 @@ const AudioManager = ({ t }) => {
                   {formatFileSize(fileData.size)}
                   {fileData.duration && ` • ${formatDuration(fileData.duration)}`}
                 </FileSize>
-                {fileData.url && (
+                {fileData.url && !isCompressing && (
                   <AudioPreview>
                     <AudioPlayer controls>
                       <source src={fileData.url} type={fileData.type} />
@@ -560,14 +718,23 @@ const AudioManager = ({ t }) => {
                     </AudioPlayer>
                   </AudioPreview>
                 )}
+                {fileProgress[fileData.id] && (
+                  <ProgressBar
+                    progress={fileProgress[fileData.id].progress}
+                    status={fileProgress[fileData.id].status}
+                    title={fileData.name}
+                    message={fileProgress[fileData.id].message}
+                    animated={fileProgress[fileData.id].status === 'compressing' || fileProgress[fileData.id].status === 'saving'}
+                  />
+                )}
               </FileInfo>
-              <RemoveButton onClick={() => removeFile(fileData.id)}>
+              <RemoveButton onClick={() => removeFile(fileData.id)} disabled={isCompressing}>
                 הסר
               </RemoveButton>
             </FilePreview>
           ))}
-          <SaveButton onClick={saveSelectedFiles}>
-            💾 שמור קבצי אודיו
+          <SaveButton onClick={saveSelectedFiles} disabled={isCompressing}>
+            {isCompressing ? '🗜️ דוחס קבצים...' : '💾 שמור קבצי אודיו'}
           </SaveButton>
         </div>
       )}

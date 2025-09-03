@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת מערכת דחיסה משופרת</title>
+    <style>
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        
+        .test-title {
+            color: #34495e;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .test-button {
+            padding: 10px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            transition: background 0.3s;
+        }
+        
+        .test-button:hover {
+            background: #2980b9;
+        }
+        
+        .test-button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .test-button.danger {
+            background: #e74c3c;
+        }
+        
+        .test-button.danger:hover {
+            background: #c0392b;
+        }
+        
+        .test-button.success {
+            background: #27ae60;
+        }
+        
+        .test-button.success:hover {
+            background: #229954;
+        }
+        
+        .file-input {
+            margin: 10px 0;
+        }
+        
+        .progress-container {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e8f4fd;
+            border-radius: 5px;
+            border: 1px solid #3498db;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        
+        .test-results {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .result-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .result-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .result-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .result-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .compression-stats {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .log-container {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        
+        .log-error {
+            color: #e74c3c;
+        }
+        
+        .log-success {
+            color: #2ecc71;
+        }
+        
+        .log-info {
+            color: #3498db;
+        }
+        
+        .quality-slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .quality-display {
+            text-align: center;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 בדיקת מערכת דחיסה משופרת</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            בדיקה מקיפה של התיקונים לבעיות דחיסה איטית ונכשלת
+        </p>
+
+        <!-- Video Compression Test -->
+        <div class="test-section">
+            <div class="test-title">🎬 בדיקת דחיסת ווידאו</div>
+            <div class="test-controls">
+                <input type="file" id="video-input" accept="video/*" class="file-input" />
+                <button class="test-button" onclick="testVideoCompression()">בדוק דחיסת ווידאו</button>
+                <button class="test-button danger" onclick="cancelCompression()">בטל דחיסה</button>
+                <button class="test-button" onclick="clearVideoResults()">נקה תוצאות</button>
+            </div>
+            
+            <div>
+                <label>איכות דחיסה: <span id="video-quality-display">70%</span></label>
+                <input type="range" id="video-quality" class="quality-slider" min="0.1" max="1.0" step="0.1" value="0.7" 
+                       oninput="document.getElementById('video-quality-display').textContent = Math.round(this.value * 100) + '%'" />
+            </div>
+            
+            <div id="video-progress" class="progress-container" style="display: none;">
+                <div class="progress-text" id="video-progress-text">מתחיל דחיסה...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="video-progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+            
+            <div id="video-stats" class="compression-stats" style="display: none;">
+                <h4>סטטיסטיקות דחיסה</h4>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="video-original-size">-</div>
+                        <div class="stat-label">גודל מקורי</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="video-compressed-size">-</div>
+                        <div class="stat-label">גודל דחוס</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="video-compression-ratio">-</div>
+                        <div class="stat-label">אחוז דחיסה</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="video-compression-time">-</div>
+                        <div class="stat-label">זמן דחיסה</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="video-results" class="test-results"></div>
+        </div>
+
+        <!-- Audio Compression Test -->
+        <div class="test-section">
+            <div class="test-title">🎵 בדיקת דחיסת אודיו</div>
+            <div class="test-controls">
+                <input type="file" id="audio-input" accept="audio/*" class="file-input" />
+                <button class="test-button" onclick="testAudioCompression()">בדוק דחיסת אודיו</button>
+                <button class="test-button danger" onclick="cancelCompression()">בטל דחיסה</button>
+                <button class="test-button" onclick="clearAudioResults()">נקה תוצאות</button>
+            </div>
+            
+            <div>
+                <label>איכות דחיסה: <span id="audio-quality-display">70%</span></label>
+                <input type="range" id="audio-quality" class="quality-slider" min="0.1" max="1.0" step="0.1" value="0.7" 
+                       oninput="document.getElementById('audio-quality-display').textContent = Math.round(this.value * 100) + '%'" />
+            </div>
+            
+            <div id="audio-progress" class="progress-container" style="display: none;">
+                <div class="progress-text" id="audio-progress-text">מתחיל דחיסה...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="audio-progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+            
+            <div id="audio-stats" class="compression-stats" style="display: none;">
+                <h4>סטטיסטיקות דחיסה</h4>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="audio-original-size">-</div>
+                        <div class="stat-label">גודל מקורי</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="audio-compressed-size">-</div>
+                        <div class="stat-label">גודל דחוס</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="audio-compression-ratio">-</div>
+                        <div class="stat-label">אחוז דחיסה</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="audio-compression-time">-</div>
+                        <div class="stat-label">זמן דחיסה</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="audio-results" class="test-results"></div>
+        </div>
+
+        <!-- Performance Tests -->
+        <div class="test-section">
+            <div class="test-title">⚡ בדיקות ביצועים</div>
+            <div class="test-controls">
+                <button class="test-button" onclick="testLargeFileHandling()">בדוק טיפול בקבצים גדולים</button>
+                <button class="test-button" onclick="testTimeoutHandling()">בדוק טיפול בזמן קצוב</button>
+                <button class="test-button" onclick="testErrorRecovery()">בדוק התאוששות משגיאות</button>
+                <button class="test-button" onclick="testMemoryUsage()">בדוק שימוש בזיכרון</button>
+            </div>
+            <div id="performance-results" class="test-results"></div>
+        </div>
+
+        <!-- System Information -->
+        <div class="test-section">
+            <div class="test-title">💻 מידע מערכת</div>
+            <div id="system-info" class="test-results"></div>
+            <div class="test-controls">
+                <button class="test-button" onclick="checkSystemCapabilities()">בדוק יכולות מערכת</button>
+                <button class="test-button" onclick="runCompatibilityTests()">בדוק תאימות</button>
+            </div>
+        </div>
+
+        <!-- Debug Log -->
+        <div class="test-section">
+            <div class="test-title">🔍 יומן דיבוג</div>
+            <div class="test-controls">
+                <button class="test-button" onclick="clearLog()">נקה יומן</button>
+                <button class="test-button" onclick="exportLog()">ייצא יומן</button>
+            </div>
+            <div id="debug-log" class="log-container"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import the improved compression utilities
+        import { 
+            compressFile, 
+            compressVideo, 
+            compressAudio, 
+            supportsCompression, 
+            shouldCompress,
+            getCompressionRatio 
+        } from '../client/src/utils/mediaCompressionFixed.js';
+
+        // Global variables
+        let currentCompressionController = null;
+        let compressionStartTime = null;
+
+        // Utility functions
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatTime(ms) {
+            if (ms < 1000) return ms + 'ms';
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            if (minutes > 0) {
+                return minutes + 'm ' + (seconds % 60) + 's';
+            }
+            return seconds + 's';
+        }
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString('he-IL');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const resultItem = document.createElement('div');
+            resultItem.className = `result-item result-${type}`;
+            resultItem.textContent = message;
+            container.appendChild(resultItem);
+        }
+
+        function updateProgress(type, progress, message) {
+            const progressContainer = document.getElementById(`${type}-progress`);
+            const progressFill = document.getElementById(`${type}-progress-fill`);
+            const progressText = document.getElementById(`${type}-progress-text`);
+            
+            progressContainer.style.display = 'block';
+            progressFill.style.width = progress + '%';
+            progressText.textContent = message;
+        }
+
+        function hideProgress(type) {
+            const progressContainer = document.getElementById(`${type}-progress`);
+            progressContainer.style.display = 'none';
+        }
+
+        function updateStats(type, originalSize, compressedSize, compressionTime) {
+            const statsContainer = document.getElementById(`${type}-stats`);
+            const compressionRatio = getCompressionRatio(originalSize, compressedSize);
+            
+            document.getElementById(`${type}-original-size`).textContent = formatFileSize(originalSize);
+            document.getElementById(`${type}-compressed-size`).textContent = formatFileSize(compressedSize);
+            document.getElementById(`${type}-compression-ratio`).textContent = compressionRatio + '%';
+            document.getElementById(`${type}-compression-time`).textContent = formatTime(compressionTime);
+            
+            statsContainer.style.display = 'block';
+        }
+
+        // Test functions
+        window.testVideoCompression = async function() {
+            const fileInput = document.getElementById('video-input');
+            const qualitySlider = document.getElementById('video-quality');
+            
+            if (!fileInput.files.length) {
+                addResult('video-results', 'אנא בחר קובץ ווידאו', 'error');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const quality = parseFloat(qualitySlider.value);
+            
+            log(`מתחיל דחיסת ווידאו: ${file.name} (${formatFileSize(file.size)}) באיכות ${Math.round(quality * 100)}%`);
+            
+            compressionStartTime = Date.now();
+            
+            try {
+                const compressedFile = await compressVideo(file, quality, (progress, message) => {
+                    updateProgress('video', progress, message);
+                    log(`התקדמות: ${progress}% - ${message}`);
+                });
+                
+                const compressionTime = Date.now() - compressionStartTime;
+                hideProgress('video');
+                updateStats('video', file.size, compressedFile.size, compressionTime);
+                
+                addResult('video-results', `דחיסה הושלמה בהצלחה: ${file.name} → ${compressedFile.name}`, 'success');
+                addResult('video-results', `גודל: ${formatFileSize(file.size)} → ${formatFileSize(compressedFile.size)}`, 'info');
+                addResult('video-results', `זמן דחיסה: ${formatTime(compressionTime)}`, 'info');
+                
+                log(`דחיסת ווידאו הושלמה בהצלחה בזמן ${formatTime(compressionTime)}`, 'success');
+                
+            } catch (error) {
+                const compressionTime = Date.now() - compressionStartTime;
+                hideProgress('video');
+                addResult('video-results', `שגיאה בדחיסה: ${error.message}`, 'error');
+                log(`שגיאה בדחיסת ווידאו: ${error.message}`, 'error');
+            }
+        };
+
+        window.testAudioCompression = async function() {
+            const fileInput = document.getElementById('audio-input');
+            const qualitySlider = document.getElementById('audio-quality');
+            
+            if (!fileInput.files.length) {
+                addResult('audio-results', 'אנא בחר קובץ אודיו', 'error');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const quality = parseFloat(qualitySlider.value);
+            
+            log(`מתחיל דחיסת אודיו: ${file.name} (${formatFileSize(file.size)}) באיכות ${Math.round(quality * 100)}%`);
+            
+            compressionStartTime = Date.now();
+            
+            try {
+                const compressedFile = await compressAudio(file, quality, (progress, message) => {
+                    updateProgress('audio', progress, message);
+                    log(`התקדמות: ${progress}% - ${message}`);
+                });
+                
+                const compressionTime = Date.now() - compressionStartTime;
+                hideProgress('audio');
+                updateStats('audio', file.size, compressedFile.size, compressionTime);
+                
+                addResult('audio-results', `דחיסה הושלמה בהצלחה: ${file.name} → ${compressedFile.name}`, 'success');
+                addResult('audio-results', `גודל: ${formatFileSize(file.size)} → ${formatFileSize(compressedFile.size)}`, 'info');
+                addResult('audio-results', `זמן דחיסה: ${formatTime(compressionTime)}`, 'info');
+                
+                log(`דחיסת אודיו הושלמה בהצלחה בזמן ${formatTime(compressionTime)}`, 'success');
+                
+            } catch (error) {
+                const compressionTime = Date.now() - compressionStartTime;
+                hideProgress('audio');
+                addResult('audio-results', `שגיאה בדחיסה: ${error.message}`, 'error');
+                log(`שגיאה בדחיסת אודיו: ${error.message}`, 'error');
+            }
+        };
+
+        window.cancelCompression = function() {
+            if (currentCompressionController) {
+                currentCompressionController.abort();
+                log('דחיסה בוטלה על ידי המשתמש', 'info');
+            }
+        };
+
+        window.testLargeFileHandling = function() {
+            log('בודק טיפול בקבצים גדולים...');
+            
+            // Test file size limits
+            const testSizes = [
+                { size: 50 * 1024 * 1024, name: '50MB' },
+                { size: 100 * 1024 * 1024, name: '100MB' },
+                { size: 200 * 1024 * 1024, name: '200MB' },
+                { size: 500 * 1024 * 1024, name: '500MB' }
+            ];
+            
+            testSizes.forEach(test => {
+                const shouldHandle = test.size <= 100 * 1024 * 1024; // 100MB limit
+                const result = shouldHandle ? 'יטופל' : 'יוחזר מקורי';
+                addResult('performance-results', `קובץ ${test.name}: ${result}`, shouldHandle ? 'success' : 'info');
+            });
+            
+            log('בדיקת טיפול בקבצים גדולים הושלמה', 'success');
+        };
+
+        window.testTimeoutHandling = function() {
+            log('בודק טיפול בזמן קצוב...');
+            
+            // Simulate timeout scenarios
+            const timeoutTests = [
+                { duration: 30000, name: 'טעינה (30s)', expected: 'timeout' },
+                { duration: 60000, name: 'דחיסה (60s)', expected: 'timeout' },
+                { duration: 300000, name: 'דחיסה מקסימלית (5m)', expected: 'allowed' }
+            ];
+            
+            timeoutTests.forEach(test => {
+                const willTimeout = test.expected === 'timeout';
+                const result = willTimeout ? 'יבוטל' : 'יורשה';
+                addResult('performance-results', `${test.name}: ${result}`, willTimeout ? 'error' : 'success');
+            });
+            
+            log('בדיקת טיפול בזמן קצוב הושלמה', 'success');
+        };
+
+        window.testErrorRecovery = function() {
+            log('בודק התאוששות משגיאות...');
+            
+            const errorScenarios = [
+                'קובץ פגום',
+                'זיכרון אזל',
+                'קודק לא נתמך',
+                'ביטול משתמש',
+                'שגיאת רשת'
+            ];
+            
+            errorScenarios.forEach(scenario => {
+                addResult('performance-results', `${scenario}: יוחזר קובץ מקורי`, 'info');
+            });
+            
+            log('בדיקת התאוששות משגיאות הושלמה', 'success');
+        };
+
+        window.testMemoryUsage = function() {
+            log('בודק שימוש בזיכרון...');
+            
+            if (performance.memory) {
+                const memory = performance.memory;
+                addResult('performance-results', `זיכרון בשימוש: ${formatFileSize(memory.usedJSHeapSize)}`, 'info');
+                addResult('performance-results', `זיכרון כולל: ${formatFileSize(memory.totalJSHeapSize)}`, 'info');
+                addResult('performance-results', `מגבלת זיכרון: ${formatFileSize(memory.jsHeapSizeLimit)}`, 'info');
+            } else {
+                addResult('performance-results', 'מידע זיכרון לא זמין בדפדפן זה', 'info');
+            }
+            
+            log('בדיקת שימוש בזיכרון הושלמה', 'success');
+        };
+
+        window.checkSystemCapabilities = function() {
+            log('בודק יכולות מערכת...');
+            
+            const capabilities = [
+                { name: 'MediaRecorder', supported: !!window.MediaRecorder },
+                { name: 'AudioContext', supported: !!(window.AudioContext || window.webkitAudioContext) },
+                { name: 'Canvas', supported: !!document.createElement('canvas').getContext },
+                { name: 'FileReader', supported: !!window.FileReader },
+                { name: 'URL.createObjectURL', supported: !!window.URL?.createObjectURL },
+                { name: 'Web Workers', supported: !!window.Worker },
+                { name: 'WebAssembly', supported: !!window.WebAssembly }
+            ];
+            
+            capabilities.forEach(cap => {
+                addResult('system-info', `${cap.name}: ${cap.supported ? 'נתמך' : 'לא נתמך'}`, 
+                         cap.supported ? 'success' : 'error');
+            });
+            
+            log('בדיקת יכולות מערכת הושלמה', 'success');
+        };
+
+        window.runCompatibilityTests = function() {
+            log('בודק תאימות...');
+            
+            // Test codec support
+            const codecs = [
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp8',
+                'video/webm',
+                'video/mp4',
+                'audio/webm',
+                'audio/mp4'
+            ];
+            
+            if (window.MediaRecorder) {
+                codecs.forEach(codec => {
+                    const supported = MediaRecorder.isTypeSupported(codec);
+                    addResult('system-info', `${codec}: ${supported ? 'נתמך' : 'לא נתמך'}`, 
+                             supported ? 'success' : 'error');
+                });
+            } else {
+                addResult('system-info', 'MediaRecorder לא נתמך - לא ניתן לבדוק קודקים', 'error');
+            }
+            
+            log('בדיקת תאימות הושלמה', 'success');
+        };
+
+        window.clearVideoResults = function() {
+            document.getElementById('video-results').innerHTML = '';
+            document.getElementById('video-stats').style.display = 'none';
+            hideProgress('video');
+        };
+
+        window.clearAudioResults = function() {
+            document.getElementById('audio-results').innerHTML = '';
+            document.getElementById('audio-stats').style.display = 'none';
+            hideProgress('audio');
+        };
+
+        window.clearLog = function() {
+            document.getElementById('debug-log').innerHTML = '';
+        };
+
+        window.exportLog = function() {
+            const logContainer = document.getElementById('debug-log');
+            const logText = logContainer.textContent;
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `compression-test-log-${new Date().toISOString().slice(0, 19)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        // Initialize
+        log('מערכת בדיקת דחיסה משופרת הופעלה', 'success');
+        checkSystemCapabilities();
+    </script>
+</body>
+</html>

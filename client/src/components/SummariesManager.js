@@ -6,6 +6,8 @@ const SummariesManager = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showSummaryForm, setShowSummaryForm] = useState(false);
+  const [editingSummary, setEditingSummary] = useState(null);
+  const [previewingSummary, setPreviewingSummary] = useState(null);
   const [filterType, setFilterType] = useState('all'); // 'all', 'manual', 'lesson'
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({
@@ -104,17 +106,32 @@ const SummariesManager = () => {
     // Refresh the summaries list and stats
     loadSummaries();
     loadStats();
-    // Hide the form
+    // Hide the form and reset editing state
     setShowSummaryForm(false);
+    setEditingSummary(null);
   };
 
   const handleCancelSummaryCreation = () => {
     setShowSummaryForm(false);
+    setEditingSummary(null);
   };
 
   const handleEditSummary = (summaryId) => {
-    // TODO: Implement summary editing logic
-    console.log('Edit summary:', summaryId);
+    const summary = summaries.find(s => s.id === summaryId);
+    if (summary && summary.summary_type === 'manual') {
+      setEditingSummary(summary);
+      setShowSummaryForm(true);
+    } else {
+      alert('ניתן לערוך רק סיכומים ידניים.');
+    }
+  };
+
+  const handlePreviewSummary = (summary) => {
+    setPreviewingSummary(summary);
+  };
+
+  const handleClosePreview = () => {
+    setPreviewingSummary(null);
   };
 
   const handleDeleteSummary = async (summaryId) => {
@@ -187,6 +204,7 @@ const SummariesManager = () => {
         <div className="summaries-actions">
           <button 
             className="btn btn-primary"
+            data-action="create-summary"
             onClick={handleCreateSummary}
           >
             + צור סיכום חדש
@@ -264,7 +282,7 @@ const SummariesManager = () => {
                     <h3>{summary.title}</h3>
                     <div className="summary-type-badge">
                       {summary.summary_type === 'manual' ? '✍️ ידני' : 
-                       summary.summary_type === 'lesson_generated' ? '🎓 שיעור' : '🤖 AI'}
+                       summary.summary_type === 'lesson' ? '🎓 שיעור' : '🤖 AI'}
                     </div>
                   </div>
                   <div className="summary-meta">
@@ -298,6 +316,13 @@ const SummariesManager = () => {
                     </span>
                   </div>
                   <div className="summary-actions">
+                    <button 
+                      className="btn btn-sm btn-info"
+                      onClick={() => handlePreviewSummary(summary)}
+                      title="הצג סיכום מלא"
+                    >
+                      תצוגה מקדימה
+                    </button>
                     {summary.summary_type === 'manual' && (
                       <button 
                         className="btn btn-sm btn-outline"
@@ -327,9 +352,108 @@ const SummariesManager = () => {
         <div className="modal-overlay" onClick={handleCancelSummaryCreation}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <SummaryForm
+              editingSummary={editingSummary}
               onSummaryCreated={handleSummaryCreated}
               onCancel={handleCancelSummaryCreation}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Summary Preview Modal */}
+      {previewingSummary && (
+        <div className="modal-overlay" onClick={handleClosePreview}>
+          <div className="modal-content preview-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="preview-header">
+              <div className="preview-title-section">
+                <h2>{previewingSummary.title}</h2>
+                <div className="preview-badges">
+                  <span className={`preview-type-badge ${previewingSummary.summary_type}`}>
+                    {previewingSummary.summary_type === 'manual' ? '✍️ ידני' : 
+                     previewingSummary.summary_type === 'lesson' ? '🎓 שיעור' : '🤖 AI'}
+                  </span>
+                  {previewingSummary.is_public && <span className="preview-public-badge">ציבורי</span>}
+                </div>
+              </div>
+              <button 
+                className="preview-close-button"
+                onClick={handleClosePreview}
+                aria-label="סגור"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="preview-meta">
+              {previewingSummary.subject_area && (
+                <div className="preview-meta-item">
+                  <strong>תחום לימוד:</strong> {previewingSummary.subject_area}
+                </div>
+              )}
+              {previewingSummary.grade_level && (
+                <div className="preview-meta-item">
+                  <strong>רמת כיתה:</strong> כיתה {previewingSummary.grade_level}
+                </div>
+              )}
+              {previewingSummary.source_title && (
+                <div className="preview-meta-item">
+                  <strong>מקור:</strong> {previewingSummary.source_title}
+                </div>
+              )}
+              {previewingSummary.created_at && (
+                <div className="preview-meta-item">
+                  <strong>תאריך יצירה:</strong> {new Date(previewingSummary.created_at).toLocaleDateString('he-IL')}
+                </div>
+              )}
+              {previewingSummary.updated_at && previewingSummary.updated_at !== previewingSummary.created_at && (
+                <div className="preview-meta-item">
+                  <strong>עודכן לאחרונה:</strong> {new Date(previewingSummary.updated_at).toLocaleDateString('he-IL')}
+                </div>
+              )}
+            </div>
+
+            {previewingSummary.tags && Array.isArray(previewingSummary.tags) && previewingSummary.tags.length > 0 && (
+              <div className="preview-tags">
+                <strong>תגיות:</strong>
+                <div className="preview-tags-list">
+                  {previewingSummary.tags.map((tag, index) => (
+                    <span key={index} className="preview-tag">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="preview-content">
+              <h3>תוכן הסיכום</h3>
+              <div className="preview-content-text">
+                {previewingSummary.content ? 
+                  previewingSummary.content.split('\n').map((paragraph, index) => (
+                    <p key={index}>{paragraph}</p>
+                  )) : 
+                  <p className="no-content">אין תוכן זמין</p>
+                }
+              </div>
+            </div>
+
+            <div className="preview-actions">
+              {previewingSummary.summary_type === 'manual' && (
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => {
+                    handleClosePreview();
+                    handleEditSummary(previewingSummary.id);
+                  }}
+                >
+                  ערוך סיכום
+                </button>
+              )}
+              <button 
+                className="btn btn-secondary"
+                onClick={handleClosePreview}
+              >
+                סגור
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -703,6 +827,27 @@ const SummariesManager = () => {
           background: #c0392b;
         }
 
+        .btn-info {
+          background: #17a2b8;
+          color: white;
+        }
+
+        .btn-info:hover {
+          background: #138496;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+        }
+
+        .btn-secondary {
+          background: var(--color-textSecondary, #7f8c8d);
+          color: white;
+        }
+
+        .btn-secondary:hover {
+          background: #6c757d;
+          transform: translateY(-1px);
+        }
+
         .btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
@@ -788,6 +933,213 @@ const SummariesManager = () => {
 
           .modal-overlay {
             padding: 0;
+          }
+        }
+
+        /* Preview Modal Styles */
+        .preview-modal {
+          max-width: 1000px;
+          background: var(--color-surface, #ffffff);
+        }
+
+        .preview-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          padding: 2rem 2rem 1rem 2rem;
+          border-bottom: 2px solid var(--color-border, #e9ecef);
+          gap: 1rem;
+        }
+
+        .preview-title-section {
+          flex: 1;
+        }
+
+        .preview-header h2 {
+          margin: 0 0 1rem 0;
+          color: var(--color-text, #2c3e50);
+          font-size: 1.8rem;
+          line-height: 1.3;
+        }
+
+        .preview-badges {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .preview-type-badge {
+          padding: 0.5rem 1rem;
+          border-radius: var(--radius-md, 8px);
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: white;
+        }
+
+        .preview-type-badge.manual {
+          background: var(--color-primary, #3498db);
+        }
+
+        .preview-type-badge.lesson {
+          background: var(--color-success, #27ae60);
+        }
+
+        .preview-type-badge.ai {
+          background: var(--color-warning, #f39c12);
+        }
+
+        .preview-public-badge {
+          background: #28a745;
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: var(--radius-md, 8px);
+          font-size: 0.9rem;
+          font-weight: 600;
+        }
+
+        .preview-close-button {
+          background: none;
+          border: none;
+          font-size: 2.5rem;
+          color: var(--color-textSecondary, #7f8c8d);
+          cursor: pointer;
+          padding: 0.5rem;
+          line-height: 1;
+          border-radius: var(--radius-md, 8px);
+          transition: all 0.3s ease;
+          width: 3rem;
+          height: 3rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .preview-close-button:hover {
+          background: var(--color-surfaceHover, #f8f9fa);
+          color: var(--color-text, #2c3e50);
+          transform: scale(1.1);
+        }
+
+        .preview-meta {
+          padding: 1.5rem 2rem;
+          background: var(--color-surfaceHover, #f8f9fa);
+          border-bottom: 1px solid var(--color-border, #e9ecef);
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 1rem;
+        }
+
+        .preview-meta-item {
+          color: var(--color-text, #2c3e50);
+          font-size: 0.95rem;
+        }
+
+        .preview-meta-item strong {
+          color: var(--color-primary, #3498db);
+          margin-left: 0.5rem;
+        }
+
+        .preview-tags {
+          padding: 1.5rem 2rem;
+          border-bottom: 1px solid var(--color-border, #e9ecef);
+        }
+
+        .preview-tags strong {
+          color: var(--color-primary, #3498db);
+          margin-bottom: 0.5rem;
+          display: block;
+        }
+
+        .preview-tags-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .preview-tag {
+          background: var(--color-primary, #3498db);
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: var(--radius-md, 8px);
+          font-size: 0.9rem;
+          font-weight: 500;
+        }
+
+        .preview-content {
+          padding: 2rem;
+        }
+
+        .preview-content h3 {
+          margin: 0 0 1.5rem 0;
+          color: var(--color-primary, #3498db);
+          font-size: 1.4rem;
+          border-bottom: 2px solid var(--color-border, #e9ecef);
+          padding-bottom: 0.5rem;
+        }
+
+        .preview-content-text {
+          line-height: 1.8;
+          font-size: 1rem;
+          color: var(--color-text, #2c3e50);
+        }
+
+        .preview-content-text p {
+          margin-bottom: 1rem;
+        }
+
+        .preview-content-text p:last-child {
+          margin-bottom: 0;
+        }
+
+        .no-content {
+          color: var(--color-textSecondary, #7f8c8d);
+          font-style: italic;
+          text-align: center;
+          padding: 2rem;
+        }
+
+        .preview-actions {
+          padding: 1.5rem 2rem;
+          border-top: 2px solid var(--color-border, #e9ecef);
+          display: flex;
+          gap: 1rem;
+          justify-content: flex-end;
+          background: var(--color-surfaceHover, #f8f9fa);
+        }
+
+        @media (max-width: 768px) {
+          .preview-header {
+            padding: 1.5rem 1rem 1rem 1rem;
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .preview-close-button {
+            align-self: flex-end;
+            margin-top: -1rem;
+          }
+
+          .preview-meta {
+            padding: 1rem;
+            grid-template-columns: 1fr;
+          }
+
+          .preview-tags {
+            padding: 1rem;
+          }
+
+          .preview-content {
+            padding: 1.5rem 1rem;
+          }
+
+          .preview-actions {
+            padding: 1rem;
+            flex-direction: column;
+          }
+
+          .preview-actions .btn {
+            width: 100%;
           }
         }
       `}</style>

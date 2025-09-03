@@ -722,8 +722,9 @@ const TestsManager = ({ user, t }) => {
   };
 
   const handleEditTest = (test) => {
-    // TODO: Open test editor
-    console.log('Edit test:', test);
+    setSelectedTest(test);
+    setCreationMode('edit');
+    setShowCreationModal(true);
   };
 
   const handlePreviewTest = (test) => {
@@ -756,10 +757,33 @@ const TestsManager = ({ user, t }) => {
     console.log('View results:', test);
   };
 
-  const handleDeleteTest = (test) => {
-    // TODO: Confirm and delete test
+  const handleDeleteTest = async (test) => {
     if (window.confirm(`האם אתה בטוח שברצונך למחוק את המבחן "${test.title}"?`)) {
-      console.log('Delete test:', test);
+      try {
+        setError('');
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`/api/tests/${test.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'שגיאה במחיקת המבחן');
+        }
+
+        // Refresh tests data
+        await fetchTestsData();
+        
+        // Show success message
+        console.log('Test deleted successfully');
+      } catch (error) {
+        console.error('Error deleting test:', error);
+        setError(`שגיאה במחיקת המבחן: ${error.message}`);
+      }
     }
   };
 
@@ -1159,7 +1183,11 @@ const TestsManager = ({ user, t }) => {
             <span>🤖</span>
             צור מתוכן שיעור
           </ActionButton>
-          <ActionButton className="primary" onClick={handleCreateTest}>
+          <ActionButton 
+            className="primary" 
+            data-action="create-test"
+            onClick={handleCreateTest}
+          >
             <span>➕</span>
             צור מבחן חדש
           </ActionButton>
@@ -1200,13 +1228,10 @@ const TestsManager = ({ user, t }) => {
 
       {showCreationModal && (
         <TestCreationInterface
-          isOpen={showCreationModal}
           onClose={handleCloseCreationModal}
           onTestCreated={handleTestCreated}
-          onError={handleCreationError}
           initialMode={creationMode}
-          user={user}
-          t={t}
+          editingTest={creationMode === 'edit' ? selectedTest : null}
         />
       )}
 

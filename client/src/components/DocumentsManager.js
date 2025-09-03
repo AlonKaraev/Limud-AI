@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import CompressionControls from './CompressionControls';
+import { compressFile, supportsCompression, getCompressionRatio } from '../utils/mediaCompression';
 
 const Container = styled.div`
   background: var(--color-surface);
@@ -220,6 +222,9 @@ const DocumentsManager = ({ t }) => {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [compressionEnabled, setCompressionEnabled] = useState(false);
+  const [compressionQuality, setCompressionQuality] = useState(0.7);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   // Load saved documents from localStorage on component mount
   useEffect(() => {
@@ -245,27 +250,92 @@ const DocumentsManager = ({ t }) => {
   };
 
   // Save selected files to localStorage
-  const saveSelectedFiles = () => {
+  const saveSelectedFiles = async () => {
     if (selectedFiles.length === 0) {
       setError('אין קבצים לשמירה');
       return;
     }
 
-    const documentsToSave = selectedFiles.map(fileData => ({
-      id: fileData.id,
-      name: fileData.name,
-      size: fileData.size,
-      type: fileData.type,
-      savedAt: new Date().toISOString()
-    }));
+    try {
+      setIsCompressing(true);
+      setSuccess('מעבד קבצים...');
+      
+      const documentsToSave = await Promise.all(
+        selectedFiles.map(async (fileData, index) => {
+          let fileToProcess = fileData.file;
+          let processedName = fileData.name;
+          let processedSize = fileData.size;
+          let processedType = fileData.type;
+          let compressionInfo = null;
 
-    const updatedSavedDocuments = [...savedDocuments, ...documentsToSave];
-    setSavedDocuments(updatedSavedDocuments);
-    saveDocumentsToStorage(updatedSavedDocuments);
-    
-    setSelectedFiles([]);
-    setSuccess(`נשמרו ${documentsToSave.length} מסמכים בהצלחה`);
-    setError('');
+          // Apply compression if enabled and file supports it
+          if (compressionEnabled && supportsCompression(fileData.type)) {
+            try {
+              setSuccess(`דוחס קובץ ${index + 1} מתוך ${selectedFiles.length}: ${fileData.name}...`);
+              
+              const compressedFile = await compressFile(fileData.file, compressionQuality);
+              const originalSize = fileData.size;
+              const compressedSize = compressedFile.size;
+              const compressionRatio = getCompressionRatio(originalSize, compressedSize);
+              
+              fileToProcess = compressedFile;
+              processedName = compressedFile.name;
+              processedSize = compressedFile.size;
+              processedType = compressedFile.type;
+              
+              compressionInfo = {
+                originalSize,
+                compressedSize,
+                compressionRatio,
+                quality: compressionQuality
+              };
+              
+              console.log(`Compressed ${fileData.name}: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} (${compressionRatio}% reduction)`);
+            } catch (compressionError) {
+              console.error(`Failed to compress ${fileData.name}:`, compressionError);
+              setError(prev => prev + `\nשגיאה בדחיסת ${fileData.name}: ${compressionError.message}`);
+              // Continue with original file if compression fails
+            }
+          }
+
+          return {
+            id: fileData.id,
+            name: processedName,
+            size: processedSize,
+            type: processedType,
+            compressionInfo,
+            savedAt: new Date().toISOString()
+          };
+        })
+      );
+
+      const updatedSavedDocuments = [...savedDocuments, ...documentsToSave];
+      setSavedDocuments(updatedSavedDocuments);
+      saveDocumentsToStorage(updatedSavedDocuments);
+      
+      setSelectedFiles([]);
+      
+      // Calculate total compression savings
+      const totalOriginalSize = documentsToSave.reduce((sum, file) => 
+        sum + (file.compressionInfo?.originalSize || file.size), 0
+      );
+      const totalCompressedSize = documentsToSave.reduce((sum, file) => file.size, 0);
+      const totalSavings = totalOriginalSize - totalCompressedSize;
+      
+      let successMessage = `נשמרו ${documentsToSave.length} מסמכים בהצלחה`;
+      if (compressionEnabled && totalSavings > 0) {
+        const savingsRatio = getCompressionRatio(totalOriginalSize, totalCompressedSize);
+        successMessage += `\nחיסכון בדחיסה: ${formatFileSize(totalSavings)} (${savingsRatio}%)`;
+      }
+      
+      setSuccess(successMessage);
+      setError('');
+    } catch (error) {
+      console.error('Error saving documents:', error);
+      setError('שגיאה בשמירת המסמכים. אנא נסה שוב.');
+    } finally {
+      setIsCompressing(false);
+    }
   };
 
   // Remove saved document
@@ -435,6 +505,14 @@ const DocumentsManager = ({ t }) => {
 
       {selectedFiles.length > 0 && (
         <div>
+          <CompressionControls
+            files={selectedFiles}
+            compressionEnabled={compressionEnabled}
+            onCompressionToggle={setCompressionEnabled}
+            compressionQuality={compressionQuality}
+            onQualityChange={setCompressionQuality}
+          />
+          
           <h3 style={{ color: 'var(--color-text)', marginBottom: '1rem' }}>
             קבצים נבחרים ({selectedFiles.length})
           </h3>
@@ -452,8 +530,8 @@ const DocumentsManager = ({ t }) => {
               </RemoveButton>
             </FilePreview>
           ))}
-          <SaveButton onClick={saveSelectedFiles}>
-            💾 שמור מסמכים
+          <SaveButton onClick={saveSelectedFiles} disabled={isCompressing}>
+            {isCompressing ? '🗜️ דוחס קבצים...' : '💾 שמור מסמכים'}
           </SaveButton>
         </div>
       )}

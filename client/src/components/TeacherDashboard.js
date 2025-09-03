@@ -440,157 +440,275 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
     setCurrentPage('editor');
   };
 
-  // Overview Tab Content
-  const OverviewContent = () => (
-    <div className="overview-container">
-      {/* Compact Statistics Grid */}
-      <div className="overview-section">
-        <h3 className="section-title">📊 סטטיסטיקות כלליות</h3>
-        <div className="compact-stats-grid">
-          <div className="compact-stat-card">
-            <div className="compact-stat-icon">📝</div>
-            <div className="compact-stat-info">
-              <div className="compact-stat-number">{summaryStats.totalSummaries}</div>
-              <div className="compact-stat-label">סיכומים כולל</div>
-            </div>
-          </div>
-          <div className="compact-stat-card">
-            <div className="compact-stat-icon">✍️</div>
-            <div className="compact-stat-info">
-              <div className="compact-stat-number">{summaryStats.manualSummaries || 0}</div>
-              <div className="compact-stat-label">סיכומים ידניים</div>
-            </div>
-          </div>
-          <div className="compact-stat-card">
-            <div className="compact-stat-icon">🤖</div>
-            <div className="compact-stat-info">
-              <div className="compact-stat-number">{summaryStats.lessonSummaries || 0}</div>
-              <div className="compact-stat-label">סיכומי שיעורים</div>
-            </div>
-          </div>
-          <div className="compact-stat-card">
-            <div className="compact-stat-icon">📚</div>
-            <div className="compact-stat-info">
-              <div className="compact-stat-number">{lessonStats.totalLessons}</div>
-              <div className="compact-stat-label">שיעורים</div>
-            </div>
-          </div>
-          <div className="compact-stat-card">
-            <div className="compact-stat-icon">📋</div>
-            <div className="compact-stat-info">
-              <div className="compact-stat-number">{testStats.totalTests}</div>
-              <div className="compact-stat-label">מבחנים</div>
-            </div>
-          </div>
-          <div className="compact-stat-card">
-            <div className="compact-stat-icon">🎴</div>
-            <div className="compact-stat-info">
-              <div className="compact-stat-number">{memoryCardStats.totalSets}</div>
-              <div className="compact-stat-label">כרטיסי זיכרון</div>
-            </div>
-          </div>
-          <div className="compact-stat-card">
-            <div className="compact-stat-icon">🌐</div>
-            <div className="compact-stat-info">
-              <div className="compact-stat-number">{summaryStats.publicSummaries}</div>
-              <div className="compact-stat-label">תוכן ציבורי</div>
-            </div>
-          </div>
-        </div>
-      </div>
+  // Enhanced Overview Tab Content with Quick Actions and Recent Activity
+  const OverviewContent = () => {
+    // Get all recent activity items and sort by date
+    const getAllRecentActivity = () => {
+      const allItems = [];
+      
+      // Add recent summaries
+      summaryStats.recentSummaries.forEach(summary => {
+        allItems.push({
+          id: `summary-${summary.id}`,
+          type: 'summary',
+          title: summary.title,
+          subtitle: `סיכום • ${summary.subject_area || summary.subjectArea || 'כללי'}`,
+          date: new Date(summary.created_at || summary.updated_at),
+          icon: summary.summary_type === 'lesson' ? '🤖' : '📝',
+          badge: summary.summary_type === 'lesson' ? 'שיעור' : 'ידני',
+          badgeClass: summary.summary_type === 'lesson' ? 'lesson-badge' : 'manual-badge',
+          onClick: () => {
+            setActiveMainTab('content');
+            setActiveContentSubTab('summaries');
+          }
+        });
+      });
+      
+      // Add recent tests
+      testStats.recentTests.forEach(test => {
+        allItems.push({
+          id: `test-${test.id}`,
+          type: 'test',
+          title: test.title || `מבחן ${test.id}`,
+          subtitle: `מבחן • ${test.subject || 'כללי'}`,
+          date: new Date(test.created_at || test.createdAt),
+          icon: '📋',
+          onClick: () => {
+            setActiveMainTab('content');
+            setActiveContentSubTab('tests');
+          }
+        });
+      });
+      
+      // Add recent lessons
+      lessonStats.recentLessons.forEach(lesson => {
+        allItems.push({
+          id: `lesson-${lesson.id}`,
+          type: 'lesson',
+          title: lesson.title,
+          subtitle: `שיעור • ${lesson.subject || 'כללי'}`,
+          date: new Date(lesson.created_at),
+          icon: '📚',
+          onClick: () => {
+            setActiveMainTab('lessons');
+          }
+        });
+      });
+      
+      // Sort by date (newest first) and return top 5
+      return allItems
+        .sort((a, b) => b.date - a.date)
+        .slice(0, 5);
+    };
 
-      {/* Recent Activity */}
-      {(summaryStats.recentSummaries.length > 0 || testStats.recentTests.length > 0 || lessonStats.recentLessons.length > 0) && (
+    const recentActivity = getAllRecentActivity();
+
+    return (
+      <div className="overview-container">
+        {/* Quick Action Buttons - Enhanced */}
         <div className="overview-section">
-          <h3 className="section-title">🕒 פעילות אחרונה</h3>
-          <div className="recent-activity-grid">
-            {summaryStats.recentSummaries.slice(0, 2).map((summary, index) => (
-              <div key={`summary-${index}`} className="recent-activity-card">
-                <div className="activity-icon">
-                  {summary.summary_type === 'lesson' ? '🤖' : '📝'}
-                </div>
-                <div className="activity-content">
-                  <div className="activity-header">
-                    <h6>{summary.title}</h6>
-                    <span className={`summary-type-badge ${summary.summary_type === 'lesson' ? 'lesson-badge' : 'manual-badge'}`}>
-                      {summary.summary_type === 'lesson' ? 'שיעור' : 'ידני'}
-                    </span>
-                  </div>
-                  <p>סיכום • {summary.subject_area || summary.subjectArea || 'כללי'}</p>
-                </div>
+          <h3 className="section-title">⚡ פעולות מהירות</h3>
+          <div className="enhanced-quick-actions-grid">
+            <button 
+              className="enhanced-quick-action-card create-test"
+              onClick={() => {
+                setActiveMainTab('content');
+                setActiveContentSubTab('tests');
+                // Small delay to ensure tab switch, then trigger test creation
+                setTimeout(() => {
+                  // This will be handled by the TestsManager component
+                  const createButton = document.querySelector('[data-action="create-test"]');
+                  if (createButton) {
+                    createButton.click();
+                  }
+                }, 100);
+              }}
+            >
+              <div className="enhanced-action-icon">📋</div>
+              <div className="enhanced-action-content">
+                <div className="enhanced-action-title">צור מבחן</div>
+                <div className="enhanced-action-desc">צור מבחן חדש עם שאלות מותאמות</div>
               </div>
-            ))}
-            {testStats.recentTests.slice(0, 2).map((test, index) => (
-              <div key={`test-${index}`} className="recent-activity-card">
-                <div className="activity-icon">📋</div>
-                <div className="activity-content">
-                  <h6>{test.title || `מבחן ${index + 1}`}</h6>
-                  <p>מבחן • {test.subject || 'כללי'}</p>
-                </div>
+              <div className="enhanced-action-arrow">→</div>
+            </button>
+            
+            <button 
+              className="enhanced-quick-action-card create-summary"
+              onClick={() => {
+                setActiveMainTab('content');
+                setActiveContentSubTab('summaries');
+                // Small delay to ensure tab switch, then trigger summary creation
+                setTimeout(() => {
+                  // This will be handled by the SummariesManager component
+                  const createButton = document.querySelector('[data-action="create-summary"]');
+                  if (createButton) {
+                    createButton.click();
+                  }
+                }, 100);
+              }}
+            >
+              <div className="enhanced-action-icon">📝</div>
+              <div className="enhanced-action-content">
+                <div className="enhanced-action-title">צור סיכום</div>
+                <div className="enhanced-action-desc">כתב סיכום חדש או צור מתוכן קיים</div>
               </div>
-            ))}
-            {lessonStats.recentLessons.slice(0, 2).map((lesson, index) => (
-              <div key={`lesson-${index}`} className="recent-activity-card">
-                <div className="activity-icon">📚</div>
-                <div className="activity-content">
-                  <h6>{lesson.title || `שיעור ${index + 1}`}</h6>
-                  <p>שיעור • {lesson.subject || 'כללי'}</p>
-                </div>
+              <div className="enhanced-action-arrow">→</div>
+            </button>
+            
+            <button 
+              className="enhanced-quick-action-card upload-lesson"
+              onClick={() => {
+                setActiveMainTab('lessons');
+                // Small delay to ensure tab switch, then trigger upload
+                setTimeout(() => {
+                  // This will be handled by the LessonsManager component
+                  const uploadButton = document.querySelector('[data-action="upload-lesson"]');
+                  if (uploadButton) {
+                    uploadButton.click();
+                  }
+                }, 100);
+              }}
+            >
+              <div className="enhanced-action-icon">📚</div>
+              <div className="enhanced-action-content">
+                <div className="enhanced-action-title">העלה שיעור</div>
+                <div className="enhanced-action-desc">העלה הקלטת שיעור או קובץ מדיה</div>
               </div>
-            ))}
+              <div className="enhanced-action-arrow">→</div>
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Quick Actions */}
-      <div className="overview-section">
-        <h3 className="section-title">⚡ פעולות מהירות</h3>
-        <div className="quick-actions-grid">
-          <button 
-            className="quick-action-card"
-            onClick={() => {
-              setActiveMainTab('content');
-              setActiveContentSubTab('flashcards');
-            }}
-          >
-            <div className="quick-action-icon">🎴</div>
-            <div className="quick-action-title">כרטיסי זיכרון</div>
-            <div className="quick-action-desc">צור וערוך כרטיסי זיכרון</div>
-          </button>
-          <button 
-            className="quick-action-card"
-            onClick={() => setActiveMainTab('lessons')}
-          >
-            <div className="quick-action-icon">📚</div>
-            <div className="quick-action-title">שיעורים</div>
-            <div className="quick-action-desc">נהל שיעורים והקלטות</div>
-          </button>
-          <button 
-            className="quick-action-card"
-            onClick={() => {
-              setActiveMainTab('content');
-              setActiveContentSubTab('tests');
-            }}
-          >
-            <div className="quick-action-icon">📋</div>
-            <div className="quick-action-title">מבחנים</div>
-            <div className="quick-action-desc">צור וערוך מבחנים</div>
-          </button>
-          <button 
-            className="quick-action-card"
-            onClick={() => {
-              setActiveMainTab('content');
-              setActiveContentSubTab('summaries');
-            }}
-          >
-            <div className="quick-action-icon">📝</div>
-            <div className="quick-action-title">סיכומים</div>
-            <div className="quick-action-desc">צור וערוך סיכומים</div>
-          </button>
+        {/* Recent Activity List - Enhanced */}
+        {recentActivity.length > 0 && (
+          <div className="overview-section">
+            <h3 className="section-title">🕒 פעילות אחרונה</h3>
+            <div className="enhanced-recent-activity-list">
+              {recentActivity.map((item, index) => (
+                <div 
+                  key={item.id} 
+                  className="enhanced-activity-item"
+                  onClick={item.onClick}
+                >
+                  <div className="enhanced-activity-icon">
+                    {item.icon}
+                  </div>
+                  <div className="enhanced-activity-content">
+                    <div className="enhanced-activity-header">
+                      <h6 className="enhanced-activity-title">{item.title}</h6>
+                      {item.badge && (
+                        <span className={`enhanced-activity-badge ${item.badgeClass || ''}`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
+                    <p className="enhanced-activity-subtitle">{item.subtitle}</p>
+                    <div className="enhanced-activity-meta">
+                      <span className="enhanced-activity-date">
+                        {item.date.toLocaleDateString('he-IL', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                      <span className="enhanced-activity-type">
+                        {item.type === 'summary' ? 'סיכום' : 
+                         item.type === 'test' ? 'מבחן' : 'שיעור'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="enhanced-activity-arrow">→</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Compact Statistics Grid */}
+        <div className="overview-section">
+          <h3 className="section-title">📊 סטטיסטיקות כלליות</h3>
+          <div className="compact-stats-grid">
+            <div className="compact-stat-card">
+              <div className="compact-stat-icon">📝</div>
+              <div className="compact-stat-info">
+                <div className="compact-stat-number">{summaryStats.totalSummaries}</div>
+                <div className="compact-stat-label">סיכומים כולל</div>
+              </div>
+            </div>
+            <div className="compact-stat-card">
+              <div className="compact-stat-icon">✍️</div>
+              <div className="compact-stat-info">
+                <div className="compact-stat-number">{summaryStats.manualSummaries || 0}</div>
+                <div className="compact-stat-label">סיכומים ידניים</div>
+              </div>
+            </div>
+            <div className="compact-stat-card">
+              <div className="compact-stat-icon">🤖</div>
+              <div className="compact-stat-info">
+                <div className="compact-stat-number">{summaryStats.lessonSummaries || 0}</div>
+                <div className="compact-stat-label">סיכומי שיעורים</div>
+              </div>
+            </div>
+            <div className="compact-stat-card">
+              <div className="compact-stat-icon">📚</div>
+              <div className="compact-stat-info">
+                <div className="compact-stat-number">{lessonStats.totalLessons}</div>
+                <div className="compact-stat-label">שיעורים</div>
+              </div>
+            </div>
+            <div className="compact-stat-card">
+              <div className="compact-stat-icon">📋</div>
+              <div className="compact-stat-info">
+                <div className="compact-stat-number">{testStats.totalTests}</div>
+                <div className="compact-stat-label">מבחנים</div>
+              </div>
+            </div>
+            <div className="compact-stat-card">
+              <div className="compact-stat-icon">🎴</div>
+              <div className="compact-stat-info">
+                <div className="compact-stat-number">{memoryCardStats.totalSets}</div>
+                <div className="compact-stat-label">כרטיסי זיכרון</div>
+              </div>
+            </div>
+            <div className="compact-stat-card">
+              <div className="compact-stat-icon">🌐</div>
+              <div className="compact-stat-info">
+                <div className="compact-stat-number">{summaryStats.publicSummaries}</div>
+                <div className="compact-stat-label">תוכן ציבורי</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Additional Quick Actions */}
+        <div className="overview-section">
+          <h3 className="section-title">🔧 פעולות נוספות</h3>
+          <div className="secondary-quick-actions-grid">
+            <button 
+              className="secondary-quick-action-card"
+              onClick={() => {
+                setActiveMainTab('content');
+                setActiveContentSubTab('flashcards');
+              }}
+            >
+              <div className="secondary-action-icon">🎴</div>
+              <div className="secondary-action-title">כרטיסי זיכרון</div>
+              <div className="secondary-action-desc">צור וערוך כרטיסי זיכרון</div>
+            </button>
+            <button 
+              className="secondary-quick-action-card"
+              onClick={() => setActiveMainTab('media')}
+            >
+              <div className="secondary-action-icon">🎬</div>
+              <div className="secondary-action-title">מדיה</div>
+              <div className="secondary-action-desc">נהל קבצי אודיו ווידאו</div>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Media Tab Content with Sub-tabs
   const MediaContent = () => (
@@ -1311,6 +1429,286 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
           }
         }
 
+        /* Enhanced Quick Actions Styles */
+        .enhanced-quick-actions-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+        }
+
+        .enhanced-quick-action-card {
+          background: var(--color-surface, #ffffff);
+          border: 2px solid var(--color-border, #e9ecef);
+          border-radius: var(--radius-lg, 12px);
+          padding: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-family: 'Heebo', sans-serif;
+          text-align: right;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .enhanced-quick-action-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 8px 25px rgba(52, 152, 219, 0.2);
+        }
+
+        .enhanced-quick-action-card.create-test {
+          border-color: #e74c3c;
+        }
+
+        .enhanced-quick-action-card.create-test:hover {
+          border-color: #c0392b;
+          box-shadow: 0 8px 25px rgba(231, 76, 60, 0.2);
+        }
+
+        .enhanced-quick-action-card.create-summary {
+          border-color: #f39c12;
+        }
+
+        .enhanced-quick-action-card.create-summary:hover {
+          border-color: #e67e22;
+          box-shadow: 0 8px 25px rgba(243, 156, 18, 0.2);
+        }
+
+        .enhanced-quick-action-card.upload-lesson {
+          border-color: #27ae60;
+        }
+
+        .enhanced-quick-action-card.upload-lesson:hover {
+          border-color: #229954;
+          box-shadow: 0 8px 25px rgba(39, 174, 96, 0.2);
+        }
+
+        .enhanced-action-icon {
+          font-size: 2.5rem;
+          flex-shrink: 0;
+          width: 60px;
+          height: 60px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: var(--radius-md, 8px);
+          background: var(--color-surfaceElevated, #f8f9fa);
+          transition: all 0.3s ease;
+        }
+
+        .create-test .enhanced-action-icon {
+          background: linear-gradient(135deg, #e74c3c, #c0392b);
+          color: white;
+        }
+
+        .create-summary .enhanced-action-icon {
+          background: linear-gradient(135deg, #f39c12, #e67e22);
+          color: white;
+        }
+
+        .upload-lesson .enhanced-action-icon {
+          background: linear-gradient(135deg, #27ae60, #229954);
+          color: white;
+        }
+
+        .enhanced-action-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .enhanced-action-title {
+          font-size: 1.3rem;
+          font-weight: 700;
+          color: var(--color-text, #2c3e50);
+          margin: 0;
+        }
+
+        .enhanced-action-desc {
+          font-size: 0.95rem;
+          color: var(--color-textSecondary, #7f8c8d);
+          line-height: 1.4;
+          margin: 0;
+        }
+
+        .enhanced-action-arrow {
+          font-size: 1.5rem;
+          color: var(--color-textSecondary, #7f8c8d);
+          flex-shrink: 0;
+          transition: all 0.3s ease;
+        }
+
+        .enhanced-quick-action-card:hover .enhanced-action-arrow {
+          transform: translateX(-5px);
+          color: var(--color-primary, #3498db);
+        }
+
+        /* Enhanced Recent Activity Styles */
+        .enhanced-recent-activity-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          background: var(--color-surface, #ffffff);
+          border-radius: var(--radius-lg, 12px);
+          padding: 1.5rem;
+          border: 2px solid var(--color-border, #e9ecef);
+        }
+
+        .enhanced-activity-item {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          border-radius: var(--radius-md, 8px);
+          cursor: pointer;
+          transition: all 0.3s ease;
+          border: 1px solid transparent;
+        }
+
+        .enhanced-activity-item:hover {
+          background: var(--color-surfaceHover, #f8f9fa);
+          border-color: var(--color-primary, #3498db);
+          transform: translateX(-5px);
+        }
+
+        .enhanced-activity-icon {
+          font-size: 1.8rem;
+          flex-shrink: 0;
+          width: 50px;
+          height: 50px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: var(--radius-md, 8px);
+          background: var(--color-surfaceElevated, #f8f9fa);
+          border: 1px solid var(--color-border, #e9ecef);
+        }
+
+        .enhanced-activity-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .enhanced-activity-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .enhanced-activity-title {
+          font-size: 1rem;
+          font-weight: 600;
+          color: var(--color-text, #2c3e50);
+          margin: 0;
+          line-height: 1.3;
+        }
+
+        .enhanced-activity-badge {
+          padding: 0.2rem 0.6rem;
+          border-radius: var(--radius-sm, 4px);
+          font-size: 0.75rem;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+
+        .enhanced-activity-badge.lesson-badge {
+          background: var(--color-info, #17a2b8);
+          color: white;
+        }
+
+        .enhanced-activity-badge.manual-badge {
+          background: var(--color-warning, #ffc107);
+          color: var(--color-text, #2c3e50);
+        }
+
+        .enhanced-activity-subtitle {
+          font-size: 0.9rem;
+          color: var(--color-textSecondary, #7f8c8d);
+          margin: 0;
+          line-height: 1.3;
+        }
+
+        .enhanced-activity-meta {
+          display: flex;
+          gap: 1rem;
+          align-items: center;
+          margin-top: 0.25rem;
+        }
+
+        .enhanced-activity-date {
+          font-size: 0.8rem;
+          color: var(--color-textTertiary, #95a5a6);
+          font-weight: 500;
+        }
+
+        .enhanced-activity-type {
+          font-size: 0.8rem;
+          color: var(--color-primary, #3498db);
+          font-weight: 600;
+          background: var(--color-primaryLight, #ebf3fd);
+          padding: 0.2rem 0.5rem;
+          border-radius: var(--radius-sm, 4px);
+        }
+
+        .enhanced-activity-arrow {
+          font-size: 1.2rem;
+          color: var(--color-textSecondary, #7f8c8d);
+          flex-shrink: 0;
+          transition: all 0.3s ease;
+        }
+
+        .enhanced-activity-item:hover .enhanced-activity-arrow {
+          transform: translateX(-3px);
+          color: var(--color-primary, #3498db);
+        }
+
+        /* Secondary Quick Actions */
+        .secondary-quick-actions-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+        }
+
+        .secondary-quick-action-card {
+          background: var(--color-surface, #ffffff);
+          border: 2px solid var(--color-border, #e9ecef);
+          border-radius: var(--radius-md, 8px);
+          padding: 1.5rem;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-family: 'Heebo', sans-serif;
+        }
+
+        .secondary-quick-action-card:hover {
+          border-color: var(--color-primary, #3498db);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+        }
+
+        .secondary-action-icon {
+          font-size: 2rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .secondary-action-title {
+          font-size: 1rem;
+          font-weight: 600;
+          color: var(--color-text, #2c3e50);
+          margin-bottom: 0.5rem;
+        }
+
+        .secondary-action-desc {
+          font-size: 0.85rem;
+          color: var(--color-textSecondary, #7f8c8d);
+        }
+
         @media (max-width: 768px) {
           .main-nav-tabs-header {
             flex-wrap: wrap;
@@ -1348,6 +1746,39 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
           }
 
           .quick-actions-grid {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          }
+
+          .enhanced-quick-actions-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .enhanced-quick-action-card {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+          }
+
+          .enhanced-action-content {
+            text-align: center;
+          }
+
+          .enhanced-activity-item {
+            flex-direction: column;
+            text-align: center;
+            gap: 0.75rem;
+          }
+
+          .enhanced-activity-header {
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+
+          .enhanced-activity-meta {
+            justify-content: center;
+          }
+
+          .secondary-quick-actions-grid {
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
           }
         }

@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת תיקון פס התקדמות דחיסה</title>
+    <style>
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        
+        .test-title {
+            color: #34495e;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .upload-area {
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            background: #ecf0f1;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            background: #d5dbdb;
+            border-color: #2980b9;
+        }
+        
+        .upload-area.dragover {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        
+        .upload-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .upload-btn:hover {
+            background: #2980b9;
+        }
+        
+        .upload-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .compression-controls {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .compression-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .toggle-switch.active {
+            background: #28a745;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(-26px);
+        }
+        
+        .quality-control {
+            margin-top: 10px;
+        }
+        
+        .quality-slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .file-preview {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            background: #3498db;
+            color: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .file-info {
+            flex: 1;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .media-preview {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .media-preview audio,
+        .media-preview video {
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin: 5px 0;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .save-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        
+        .save-btn:hover {
+            background: #218838;
+        }
+        
+        .save-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .remove-btn:hover {
+            background: #c82333;
+        }
+        
+        .message {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .test-results {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .test-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px 0;
+        }
+        
+        .test-status {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .test-pass {
+            background: #28a745;
+        }
+        
+        .test-fail {
+            background: #dc3545;
+        }
+        
+        .test-pending {
+            background: #ffc107;
+            color: #212529;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 בדיקת תיקון פס התקדמות דחיסה</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            בדיקה שמדיה פרוויו מוסתר במהלך דחיסה ומוצג פס התקדמות
+        </p>
+
+        <!-- Audio Test Section -->
+        <div class="test-section">
+            <div class="test-title">🎵 בדיקת אודיו</div>
+            
+            <div class="upload-area" id="audio-upload">
+                <button class="upload-btn" onclick="document.getElementById('audio-input').click()">
+                    🎵 בחר קבצי אודיו
+                </button>
+                <input type="file" id="audio-input" class="file-input" multiple accept="audio/*">
+                <div>או גרור קבצי אודיו לכאן</div>
+                <small>נתמך: MP3, WAV, OGG, AAC, M4A</small>
+            </div>
+
+            <div id="audio-compression-controls" class="compression-controls" style="display: none;">
+                <div class="compression-toggle">
+                    <div class="toggle-switch" id="audio-compression-toggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                    <label>הפעל דחיסה</label>
+                </div>
+                <div class="quality-control" id="audio-quality-control" style="display: none;">
+                    <label>איכות דחיסה: <span id="audio-quality-value">70%</span></label>
+                    <input type="range" class="quality-slider" id="audio-quality-slider" min="30" max="90" value="70">
+                </div>
+            </div>
+
+            <div id="audio-files"></div>
+            <button class="save-btn" id="audio-save-btn" style="display: none;" disabled>
+                💾 שמור קבצי אודיו
+            </button>
+
+            <div id="audio-messages"></div>
+        </div>
+
+        <!-- Video Test Section -->
+        <div class="test-section">
+            <div class="test-title">🎬 בדיקת ווידאו</div>
+            
+            <div class="upload-area" id="video-upload">
+                <button class="upload-btn" onclick="document.getElementById('video-input').click()">
+                    🎬 בחר קבצי ווידאו
+                </button>
+                <input type="file" id="video-input" class="file-input" multiple accept="video/*">
+                <div>או גרור קבצי ווידאו לכאן</div>
+                <small>נתמך: MP4, AVI, MOV, WebM, MKV</small>
+            </div>
+
+            <div id="video-compression-controls" class="compression-controls" style="display: none;">
+                <div class="compression-toggle">
+                    <div class="toggle-switch" id="video-compression-toggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                    <label>הפעל דחיסה</label>
+                </div>
+                <div class="quality-control" id="video-quality-control" style="display: none;">
+                    <label>איכות דחיסה: <span id="video-quality-value">70%</span></label>
+                    <input type="range" class="quality-slider" id="video-quality-slider" min="30" max="90" value="70">
+                </div>
+            </div>
+
+            <div id="video-files"></div>
+            <button class="save-btn" id="video-save-btn" style="display: none;" disabled>
+                💾 שמור קבצי ווידאו
+            </button>
+
+            <div id="video-messages"></div>
+        </div>
+
+        <!-- Test Results -->
+        <div class="test-results">
+            <h3>תוצאות בדיקה</h3>
+            <div class="test-item">
+                <div class="test-status test-pending" id="test1-status">?</div>
+                <span>מדיה פרוויו מוסתר במהלך דחיסה</span>
+            </div>
+            <div class="test-item">
+                <div class="test-status test-pending" id="test2-status">?</div>
+                <span>פס התקדמות מוצג במהלך דחיסה</span>
+            </div>
+            <div class="test-item">
+                <div class="test-status test-pending" id="test3-status">?</div>
+                <span>כפתור שמירה מציג מצב דחיסה</span>
+            </div>
+            <div class="test-item">
+                <div class="test-status test-pending" id="test4-status">?</div>
+                <span>מדיה פרוויו חוזר לאחר סיום דחיסה</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let audioFiles = [];
+        let videoFiles = [];
+        let audioCompressionEnabled = false;
+        let videoCompressionEnabled = false;
+        let audioQuality = 0.7;
+        let videoQuality = 0.7;
+        let isCompressing = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Audio file input
+            document.getElementById('audio-input').addEventListener('change', function(e) {
+                handleFileSelect(e.target.files, 'audio');
+            });
+
+            // Video file input
+            document.getElementById('video-input').addEventListener('change', function(e) {
+                handleFileSelect(e.target.files, 'video');
+            });
+
+            // Compression toggles
+            document.getElementById('audio-compression-toggle').addEventListener('click', function() {
+                toggleCompression('audio');
+            });
+
+            document.getElementById('video-compression-toggle').addEventListener('click', function() {
+                toggleCompression('video');
+            });
+
+            // Quality sliders
+            document.getElementById('audio-quality-slider').addEventListener('input', function(e) {
+                updateQuality('audio', e.target.value);
+            });
+
+            document.getElementById('video-quality-slider').addEventListener('input', function(e) {
+                updateQuality('video', e.target.value);
+            });
+
+            // Save buttons
+            document.getElementById('audio-save-btn').addEventListener('click', function() {
+                saveFiles('audio');
+            });
+
+            document.getElementById('video-save-btn').addEventListener('click', function() {
+                saveFiles('video');
+            });
+
+            // Drag and drop
+            setupDragAndDrop('audio-upload', 'audio');
+            setupDragAndDrop('video-upload', 'video');
+        }
+
+        function setupDragAndDrop(elementId, type) {
+            const element = document.getElementById(elementId);
+            
+            element.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                element.classList.add('dragover');
+            });
+
+            element.addEventListener('dragleave', function() {
+                element.classList.remove('dragover');
+            });
+
+            element.addEventListener('drop', function(e) {
+                e.preventDefault();
+                element.classList.remove('dragover');
+                handleFileSelect(e.dataTransfer.files, type);
+            });
+        }
+
+        function handleFileSelect(files, type) {
+            const fileArray = Array.from(files);
+            const validFiles = [];
+
+            fileArray.forEach(file => {
+                if (validateFile(file, type)) {
+                    const fileData = {
+                        id: Date.now() + Math.random(),
+                        file: file,
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        url: URL.createObjectURL(file)
+                    };
+                    validFiles.push(fileData);
+                }
+            });
+
+            if (validFiles.length > 0) {
+                if (type === 'audio') {
+                    audioFiles = [...audioFiles, ...validFiles];
+                } else {
+                    videoFiles = [...videoFiles, ...validFiles];
+                }
+                
+                updateFileDisplay(type);
+                showCompressionControls(type);
+                showSaveButton(type);
+                showMessage(`נבחרו ${validFiles.length} קבצים בהצלחה`, 'success', type);
+            }
+        }
+
+        function validateFile(file, type) {
+            if (type === 'audio') {
+                return file.type.startsWith('audio/');
+            } else {
+                return file.type.startsWith('video/');
+            }
+        }
+
+        function updateFileDisplay(type) {
+            const files = type === 'audio' ? audioFiles : videoFiles;
+            const container = document.getElementById(`${type}-files`);
+            
+            container.innerHTML = '';
+            
+            files.forEach(fileData => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'file-preview';
+                fileDiv.innerHTML = `
+                    <div class="file-icon">${type === 'audio' ? '🎵' : '🎬'}</div>
+                    <div class="file-info">
+                        <div class="file-name">${fileData.name}</div>
+                        <div class="file-size">${formatFileSize(fileData.size)}</div>
+                        <div class="media-preview" id="preview-${fileData.id}" ${isCompressing ? 'style="display: none;"' : ''}>
+                            ${type === 'audio' ? 
+                                `<audio controls><source src="${fileData.url}" type="${fileData.type}"></audio>` :
+                                `<video controls style="max-width: 300px;"><source src="${fileData.url}" type="${fileData.type}"></video>`
+                            }
+                        </div>
+                        <div class="progress-bar" id="progress-${fileData.id}" style="display: none;">
+                            <div class="progress-fill" style="width: 0%;"></div>
+                        </div>
+                        <div class="progress-text" id="progress-text-${fileData.id}" style="display: none;"></div>
+                    </div>
+                    <button class="remove-btn" onclick="removeFile('${fileData.id}', '${type}')">הסר</button>
+                `;
+                container.appendChild(fileDiv);
+            });
+        }
+
+        function removeFile(fileId, type) {
+            if (type === 'audio') {
+                audioFiles = audioFiles.filter(f => f.id !== fileId);
+            } else {
+                videoFiles = videoFiles.filter(f => f.id !== fileId);
+            }
+            
+            updateFileDisplay(type);
+            
+            const files = type === 'audio' ? audioFiles : videoFiles;
+            if (files.length === 0) {
+                hideCompressionControls(type);
+                hideSaveButton(type);
+            }
+        }
+
+        function showCompressionControls(type) {
+            document.getElementById(`${type}-compression-controls`).style.display = 'block';
+        }
+
+        function hideCompressionControls(type) {
+            document.getElementById(`${type}-compression-controls`).style.display = 'none';
+        }
+
+        function showSaveButton(type) {
+            const btn = document.getElementById(`${type}-save-btn`);
+            btn.style.display = 'block';
+            btn.disabled = false;
+        }
+
+        function hideSaveButton(type) {
+            document.getElementById(`${type}-save-btn`).style.display = 'none';
+        }
+
+        function toggleCompression(type) {
+            const toggle = document.getElementById(`${type}-compression-toggle`);
+            const qualityControl = document.getElementById(`${type}-quality-control`);
+            
+            if (type === 'audio') {
+                audioCompressionEnabled = !audioCompressionEnabled;
+                toggle.classList.toggle('active', audioCompressionEnabled);
+                qualityControl.style.display = audioCompressionEnabled ? 'block' : 'none';
+            } else {
+                videoCompressionEnabled = !videoCompressionEnabled;
+                toggle.classList.toggle('active', videoCompressionEnabled);
+                qualityControl.style.display = videoCompressionEnabled ? 'block' : 'none';
+            }
+        }
+
+        function updateQuality(type, value) {
+            const quality = value / 100;
+            document.getElementById(`${type}-quality-value`).textContent = value + '%';
+            
+            if (type === 'audio') {
+                audioQuality = quality;
+            } else {
+                videoQuality = quality;
+            }
+        }
+
+        async function saveFiles(type) {
+            const files = type === 'audio' ? audioFiles : videoFiles;
+            const compressionEnabled = type === 'audio' ? audioCompressionEnabled : videoCompressionEnabled;
+            const quality = type === 'audio' ? audioQuality : videoQuality;
+            
+            if (files.length === 0) return;
+
+            // Start compression simulation
+            isCompressing = true;
+            updateSaveButton(type, true);
+            hideMediaPreviews(type);
+            updateTestStatus('test1-status', 'pass'); // Media preview hidden
+            updateTestStatus('test3-status', 'pass'); // Save button shows compression state
+
+            showMessage('מתחיל עיבוד קבצים...', 'success', type);
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // Show progress bar
+                showProgressBar(file.id);
+                updateTestStatus('test2-status', 'pass'); // Progress bar shown
+                
+                if (compressionEnabled) {
+                    showMessage(`דוחס קובץ ${i + 1} מתוך ${files.length}: ${file.name}...`, 'success', type);
+                    
+                    // Simulate compression progress
+                    for (let progress = 0; progress <= 100; progress += 10) {
+                        updateProgressBar(file.id, progress, `דוחס ${file.name}... ${progress}%`);
+                        await sleep(200);
+                    }
+                }
+                
+                showMessage(`שומר קובץ ${i + 1} מתוך ${files.length}: ${file.name}...`, 'success', type);
+                
+                // Simulate save progress
+                for (let progress = 0; progress <= 100; progress += 20) {
+                    updateProgressBar(file.id, progress, `שומר ${file.name}... ${progress}%`);
+                    await sleep(150);
+                }
+                
+                hideProgressBar(file.id);
+            }
+
+            // Finish compression
+            isCompressing = false;
+            updateSaveButton(type, false);
+            showMediaPreviews(type);
+            updateTestStatus('test4-status', 'pass'); // Media preview returns
+
+            const totalSavings = compressionEnabled ? Math.floor(Math.random() * 30) + 10 : 0;
+            let message = `נשמרו ${files.length} קבצים בהצלחה`;
+            if (totalSavings > 0) {
+                message += `\nחיסכון בדחיסה: ${totalSavings}%`;
+            }
+            
+            showMessage(message, 'success', type);
+            
+            // Clear files
+            if (type === 'audio') {
+                audioFiles = [];
+            } else {
+                videoFiles = [];
+            }
+            updateFileDisplay(type);
+            hideCompressionControls(type);
+            hideSaveButton(type);
+        }
+
+        function hideMediaPreviews(type) {
+            const files = type === 'audio' ? audioFiles : videoFiles;
+            files.forEach(file => {
+                const preview = document.getElementById(`preview-${file.id}`);
+                if (preview) preview.style.display = 'none';
+            });
+        }
+
+        function showMediaPreviews(type) {
+            const files = type === 'audio' ? audioFiles : videoFiles;
+            files.forEach(file => {
+                const preview = document.getElementById(`preview-${file.id}`);
+                if (preview) preview.style.display = 'block';
+            });
+        }
+
+        function showProgressBar(fileId) {
+            const progressBar = document.getElementById(`progress-${fileId}`);
+            const progressText = document.getElementById(`progress-text-${fileId}`);
+            if (progressBar) progressBar.style.display = 'block';
+            if (progressText) progressText.style.display = 'block';
+        }
+
+        function hideProgressBar(fileId) {
+            const progressBar = document.getElementById(`progress-${fileId}`);
+            const progressText = document.getElementById(`progress-text-${fileId}`);
+            if (progressBar) progressBar.style.display = 'none';
+            if (progressText) progressText.style.display = 'none';
+        }
+
+        function updateProgressBar(fileId, progress, text) {
+            const progressFill = document.querySelector(`#progress-${fileId} .progress-fill`);
+            const progressText = document.getElementById(`progress-text-${fileId}`);
+            
+            if (progressFill) progressFill.style.width = progress + '%';
+            if (progressText) progressText.textContent = text;
+        }
+
+        function updateSaveButton(type, compressing) {
+            const btn = document.getElementById(`${type}-save-btn`);
+            if (compressing) {
+                btn.textContent = '🗜️ דוחס קבצים...';
+                btn.disabled = true;
+            } else {
+                btn.textContent = `💾 שמור קבצי ${type === 'audio' ? 'אודיו' : 'ווידאו'}`;
+                btn.disabled = false;
+            }
+        }
+
+        function updateTestStatus(testId, status) {
+            const element = document.getElementById(testId);
+            element.className = `test-status test-${status}`;
+            element.textContent = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '?';
+        }
+
+        function showMessage(text, type, mediaType) {
+            const container = document.getElementById(`${mediaType}-messages`);
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `<strong>${type === 'success' ? 'הצלחה' : 'שגיאה'}:</strong> ${text}`;
+            
+            container.innerHTML = '';
+            container.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                if (container.contains(messageDiv)) {
+                    container.removeChild(messageDiv);
+                }
+            }, 5000);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>

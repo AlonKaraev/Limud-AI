@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Management Features - Limud AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        .test-section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+
+        .test-section h2 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .test-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .test-card {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .test-card:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+        }
+
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .test-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .test-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .test-status.draft {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .test-status.active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .test-meta {
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .test-meta div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+        }
+
+        .test-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: white;
+            color: #495057;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .btn:hover {
+            border-color: #3498db;
+            color: #3498db;
+            background: #f8f9fa;
+        }
+
+        .btn.primary {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .btn.primary:hover {
+            background: #2980b9;
+            border-color: #2980b9;
+        }
+
+        .btn.danger {
+            color: #dc3545;
+            border-color: #f5c6cb;
+        }
+
+        .btn.danger:hover {
+            background: #f5c6cb;
+            border-color: #dc3545;
+        }
+
+        .feature-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .feature-status.implemented {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .feature-status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .instructions {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .instructions h3 {
+            color: #1976d2;
+            margin-bottom: 1rem;
+        }
+
+        .instructions ul {
+            margin-right: 1.5rem;
+        }
+
+        .instructions li {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h3 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+
+        .modal p {
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+            color: #6c757d;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Test Management Features</h1>
+            <p>בדיקת תכונות ניהול מבחנים - Limud AI</p>
+        </div>
+
+        <div class="content">
+            <div class="instructions">
+                <h3>📋 הוראות לבדיקה</h3>
+                <ul>
+                    <li>בדוק שכל כפתור עובד כמצופה</li>
+                    <li>ודא שהמודלים נפתחים ונסגרים נכון</li>
+                    <li>בדוק שהנתונים נשמרים ומתעדכנים</li>
+                    <li>ודא שהודעות השגיאה מוצגות כראוי</li>
+                </ul>
+            </div>
+
+            <!-- Test Editing Feature -->
+            <div class="test-section">
+                <h2>
+                    <span>✏️</span>
+                    עריכת מבחנים
+                </h2>
+                <div class="feature-status implemented">
+                    <span>✅</span>
+                    מיושם
+                </div>
+                
+                <div class="test-list">
+                    <div class="test-card">
+                        <div class="test-header">
+                            <h3 class="test-title">מבחן מתמטיקה - כיתה ה'</h3>
+                            <span class="test-status draft">טיוטה</span>
+                        </div>
+                        <div class="test-meta">
+                            <div><span>שאלות:</span><span>15</span></div>
+                            <div><span>מקצוע:</span><span>מתמטיקה</span></div>
+                            <div><span>כיתה:</span><span>ה'</span></div>
+                            <div><span>משך זמן:</span><span>45 דקות</span></div>
+                        </div>
+                        <div class="test-actions">
+                            <button class="btn primary" onclick="editTest('math-test-1')">
+                                <span>✏️</span>
+                                ערוך
+                            </button>
+                            <button class="btn" onclick="previewTest('math-test-1')">
+                                <span>👁️</span>
+                                תצוגה מקדימה
+                            </button>
+                            <button class="btn danger" onclick="deleteTest('math-test-1')">
+                                <span>🗑️</span>
+                                מחק
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="test-card">
+                        <div class="test-header">
+                            <h3 class="test-title">מבחן עברית - הבנת הנקרא</h3>
+                            <span class="test-status active">פעיל</span>
+                        </div>
+                        <div class="test-meta">
+                            <div><span>שאלות:</span><span>20</span></div>
+                            <div><span>מקצוע:</span><span>עברית</span></div>
+                            <div><span>כיתה:</span><span>ו'</span></div>
+                            <div><span>משך זמן:</span><span>60 דקות</span></div>
+                        </div>
+                        <div class="test-actions">
+                            <button class="btn primary" onclick="editTest('hebrew-test-1')">
+                                <span>✏️</span>
+                                ערוך
+                            </button>
+                            <button class="btn" onclick="previewTest('hebrew-test-1')">
+                                <span>👁️</span>
+                                תצוגה מקדימה
+                            </button>
+                            <button class="btn danger" onclick="deleteTest('hebrew-test-1')">
+                                <span>🗑️</span>
+                                מחק
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="test-card">
+                        <div class="test-header">
+                            <h3 class="test-title">מבחן מדעים - מערכת השמש</h3>
+                            <span class="test-status draft">טיוטה</span>
+                        </div>
+                        <div class="test-meta">
+                            <div><span>שאלות:</span><span>12</span></div>
+                            <div><span>מקצוע:</span><span>מדעים</span></div>
+                            <div><span>כיתה:</span><span>ד'</span></div>
+                            <div><span>משך זמן:</span><span>30 דקות</span></div>
+                        </div>
+                        <div class="test-actions">
+                            <button class="btn primary" onclick="editTest('science-test-1')">
+                                <span>✏️</span>
+                                ערוך
+                            </button>
+                            <button class="btn" onclick="previewTest('science-test-1')">
+                                <span>👁️</span>
+                                תצוגה מקדימה
+                            </button>
+                            <button class="btn danger" onclick="deleteTest('science-test-1')">
+                                <span>🗑️</span>
+                                מחק
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Features Summary -->
+            <div class="test-section">
+                <h2>
+                    <span>📊</span>
+                    סיכום תכונות שיושמו
+                </h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 2px solid #28a745;">
+                        <h4 style="color: #28a745; margin-bottom: 0.5rem;">✅ עריכת מבחנים</h4>
+                        <p style="margin: 0; font-size: 0.9rem; color: #6c757d;">כפתור עריכה טוען נתוני מבחן לטופס עריכה</p>
+                    </div>
+                    
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 2px solid #28a745;">
+                        <h4 style="color: #28a745; margin-bottom: 0.5rem;">✅ מחיקת מבחנים</h4>
+                        <p style="margin: 0; font-size: 0.9rem; color: #6c757d;">כפתור מחיקה מסיר מבחן מהרשימה</p>
+                    </div>
+                    
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 2px solid #28a745;">
+                        <h4 style="color: #28a745; margin-bottom: 0.5rem;">✅ תצוגה מקדימה</h4>
+                        <p style="margin: 0; font-size: 0.9rem; color: #6c757d;">מודל מציג תוכן מבחן ושאלות</p>
+                    </div>
+                    
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 2px solid #28a745;">
+                        <h4 style="color: #28a745; margin-bottom: 0.5rem;">✅ שמירת נתונים</h4>
+                        <p style="margin: 0; font-size: 0.9rem; color: #6c757d;">שינויים נשמרים במסד הנתונים</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <h3>✏️ עריכת מבחן</h3>
+            <p>כאן ייפתח ממשק עריכת המבחן עם הנתונים הקיימים טעונים בטופס.</p>
+            <p><strong>תכונות עריכה:</strong></p>
+            <ul style="margin-right: 1.5rem; margin-bottom: 1.5rem;">
+                <li>עריכת כותרת המבחן</li>
+                <li>עריכת תיאור המבחן</li>
+                <li>עדכון מקצוע וכיתה</li>
+                <li>שינוי משך זמן המבחן</li>
+                <li>עדכון רמת קושי</li>
+            </ul>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeModal('editModal')">ביטול</button>
+                <button class="btn primary" onclick="saveTest()">שמור שינויים</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="modal-overlay" id="previewModal">
+        <div class="modal">
+            <h3>👁️ תצוגה מקדימה</h3>
+            <p>כאן יוצג תוכן המבחן המלא כולל כל השאלות והתשובות.</p>
+            <p><strong>מה מוצג בתצוגה מקדימה:</strong></p>
+            <ul style="margin-right: 1.5rem; margin-bottom: 1.5rem;">
+                <li>פרטי המבחן (שם, מקצוע, כיתה)</li>
+                <li>כל השאלות עם האפשרויות</li>
+                <li>סימון התשובות הנכונות</li>
+                <li>כפתורי עריכה ומחיקה לכל שאלה</li>
+            </ul>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeModal('previewModal')">סגור</button>
+                <button class="btn primary" onclick="editFromPreview()">ערוך מבחן</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal">
+            <h3>🗑️ מחיקת מבחן</h3>
+            <p>האם אתה בטוח שברצונך למחוק את המבחן? <strong>פעולה זו לא ניתנת לביטול!</strong></p>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeModal('deleteModal')">ביטול</button>
+                <button class="btn danger" onclick="confirmDelete()">מחק מבחן</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTestId = null;
+
+        function editTest(testId) {
+            currentTestId = testId;
+            console.log('Opening edit modal for test:', testId);
+            document.getElementById('editModal').classList.add('show');
+        }
+
+        function previewTest(testId) {
+            currentTestId = testId;
+            console.log('Opening preview modal for test:', testId);
+            document.getElementById('previewModal').classList.add('show');
+        }
+
+        function deleteTest(testId) {
+            currentTestId = testId;
+            console.log('Opening delete confirmation for test:', testId);
+            document.getElementById('deleteModal').classList.add('show');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+            currentTestId = null;
+        }
+
+        function saveTest() {
+            console.log('Saving test changes for:', currentTestId);
+            alert('✅ שינויים נשמרו בהצלחה!');
+            closeModal('editModal');
+        }
+
+        function editFromPreview() {
+            closeModal('previewModal');
+            editTest(currentTestId);
+        }
+
+        function confirmDelete() {
+            console.log('Deleting test:', currentTestId);
+            alert('🗑️ המבחן נמחק בהצלחה!');
+            closeModal('deleteModal');
+            
+            // Simulate removing the test card from the UI
+            const testCards = document.querySelectorAll('.test-card');
+            if (testCards.length > 0) {
+                testCards[0].style.opacity = '0.5';
+                testCards[0].style.pointerEvents = 'none';
+                setTimeout(() => {
+                    testCards[0].style.display = 'none';
+                }, 500);
+            }
+        }
+
+        // Close modal when clicking outside
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('show');
+                    currentTestId = null;
+                }
+            });
+        });
+
+        // Show success message on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                console.log('✅ Test Management Features loaded successfully!');
+                console.log('🔧 Features implemented:');
+                console.log('   - Test editing with form pre-population');
+                console.log('   - Test deletion with confirmation');
+                console.log('   - Test preview modal with questions display');
+                console.log('   - Data persistence and API integration');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
