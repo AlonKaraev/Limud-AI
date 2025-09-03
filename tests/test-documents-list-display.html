@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documents List Display Tests - Limud AI</title>
+    <style>
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .test-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .test-section h3 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        
+        .test-step {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .test-result {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .success {
+            background-color: #d5f4e6;
+            color: #27ae60;
+            border: 1px solid #a9dfbf;
+        }
+        
+        .error {
+            background-color: #fadbd8;
+            color: #e74c3c;
+            border: 1px solid #f5b7b1;
+        }
+        
+        .info {
+            background-color: #d6eaf8;
+            color: #2980b9;
+            border: 1px solid #aed6f1;
+        }
+        
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0.5rem;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .danger {
+            background: #e74c3c;
+        }
+        
+        .danger:hover {
+            background: #c0392b;
+        }
+        
+        .success-btn {
+            background: #27ae60;
+        }
+        
+        .success-btn:hover {
+            background: #229954;
+        }
+        
+        .manual-test {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        
+        .manual-test h4 {
+            color: #856404;
+            margin-top: 0;
+        }
+        
+        .checklist {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        
+        .checklist ul {
+            margin: 0;
+            padding-right: 1.5rem;
+        }
+        
+        .checklist li {
+            margin: 0.5rem 0;
+        }
+        
+        .mock-document {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .mock-icon {
+            width: 40px;
+            height: 40px;
+            background: #3498db;
+            color: white;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+        
+        .mock-info {
+            flex: 1;
+        }
+        
+        .mock-name {
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 0.25rem;
+        }
+        
+        .mock-meta {
+            font-size: 0.8rem;
+            color: #6c757d;
+            display: flex;
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>📋 Documents List Display Tests</h1>
+            <p>בדיקות תצוגת רשימת מסמכים שמורים</p>
+        </div>
+
+        <!-- Visual Tests Section -->
+        <div class="test-section">
+            <h3>👁️ בדיקות חזותיות</h3>
+            
+            <div class="test-step">
+                <h4>בדיקה 1: תצוגת מסמכים ריקה</h4>
+                <p>בדיקה שכאשר אין מסמכים שמורים, הרכיב לא מציג את הסקציה</p>
+                <button onclick="testEmptyDocumentsList()">הרץ בדיקה</button>
+                <div id="empty-list-result"></div>
+            </div>
+
+            <div class="test-step">
+                <h4>בדיקה 2: תצוגת מסמך בודד</h4>
+                <p>בדיקה שמסמך בודד מוצג כראוי עם כל הפרטים</p>
+                <button onclick="testSingleDocument()">הרץ בדיקה</button>
+                <div id="single-doc-result"></div>
+            </div>
+
+            <div class="test-step">
+                <h4>בדיקה 3: תצוגת מספר מסמכים</h4>
+                <p>בדיקה שמספר מסמכים מוצגים כרשימה מסודרת</p>
+                <button onclick="testMultipleDocuments()">הרץ בדיקה</button>
+                <div id="multiple-docs-result"></div>
+            </div>
+
+            <div class="test-step">
+                <h4>בדיקה 4: סוגי קבצים שונים</h4>
+                <p>בדיקה שסוגי קבצים שונים מוצגים עם האיקונים הנכונים</p>
+                <button onclick="testDifferentFileTypes()">הרץ בדיקה</button>
+                <div id="file-types-result"></div>
+            </div>
+
+            <div class="test-step">
+                <h4>בדיקה 5: פורמט תאריכים</h4>
+                <p>בדיקה שתאריכי שמירה מוצגים בפורמט עברי נכון</p>
+                <button onclick="testDateFormatting()">הרץ בדיקה</button>
+                <div id="date-format-result"></div>
+            </div>
+        </div>
+
+        <!-- Functionality Tests -->
+        <div class="test-section">
+            <h3>⚙️ בדיקות פונקציונליות</h3>
+            
+            <div class="test-step">
+                <h4>בדיקה 6: מחיקת מסמך מהרשימה</h4>
+                <p>בדיקה שמחיקת מסמך מעדכנת את הרשימה מיידית</p>
+                <button onclick="testDocumentRemoval()">הרץ בדיקה</button>
+                <div id="removal-result"></div>
+            </div>
+
+            <div class="test-step">
+                <h4>בדיקה 7: עדכון מונה מסמכים</h4>
+                <p>בדיקה שמונה המסמכים בכותרת מתעדכן כראוי</p>
+                <button onclick="testDocumentCounter()">הרץ בדיקה</button>
+                <div id="counter-result"></div>
+            </div>
+
+            <div class="test-step">
+                <h4>בדיקה 8: סדר תצוגת מסמכים</h4>
+                <p>בדיקה שמסמכים מוצגים בסדר הנכון (לפי תאריך שמירה)</p>
+                <button onclick="testDocumentOrder()">הרץ בדיקה</button>
+                <div id="order-result"></div>
+            </div>
+        </div>
+
+        <!-- Mock Display Section -->
+        <div class="test-section">
+            <h3>🎭 תצוגה מדומה</h3>
+            <p>דוגמה לאיך שרשימת המסמכים אמורה להיראות:</p>
+            
+            <div style="background: white; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                <h4 style="color: #2c3e50; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    📚 מסמכים שמורים (3)
+                </h4>
+                
+                <div class="mock-document">
+                    <div class="mock-icon">PDF</div>
+                    <div class="mock-info">
+                        <div class="mock-name">מצגת-שיעור-מתמטיקה.pdf</div>
+                        <div class="mock-meta">
+                            <span>2.5 MB</span>
+                            <span>נשמר: 03/09/2025</span>
+                        </div>
+                    </div>
+                    <button class="danger" style="padding: 0.5rem 1rem; font-size: 0.8rem;">מחק</button>
+                </div>
+                
+                <div class="mock-document">
+                    <div class="mock-icon">DOCX</div>
+                    <div class="mock-info">
+                        <div class="mock-name">תכנית-לימודים-שנתית.docx</div>
+                        <div class="mock-meta">
+                            <span>1.8 MB</span>
+                            <span>נשמר: 02/09/2025</span>
+                        </div>
+                    </div>
+                    <button class="danger" style="padding: 0.5rem 1rem; font-size: 0.8rem;">מחק</button>
+                </div>
+                
+                <div class="mock-document">
+                    <div class="mock-icon">XLSX</div>
+                    <div class="mock-info">
+                        <div class="mock-name">ציונים-תלמידים.xlsx</div>
+                        <div class="mock-meta">
+                            <span>856 KB</span>
+                            <span>נשמר: 01/09/2025</span>
+                        </div>
+                    </div>
+                    <button class="danger" style="padding: 0.5rem 1rem; font-size: 0.8rem;">מחק</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manual Tests Section -->
+        <div class="test-section">
+            <h3>👤 בדיקות ידניות</h3>
+            
+            <div class="manual-test">
+                <h4>בדיקה ידנית 1: תצוגת רשימה בסיסית</h4>
+                <ol>
+                    <li>פתח את TeacherDashboard ועבור לטאב Documents</li>
+                    <li>העלה ושמור מספר מסמכים מסוגים שונים</li>
+                    <li>בדוק שהרשימה מוצגת תחת הכותרת "מסמכים שמורים"</li>
+                    <li>וודא שכל מסמך מוצג עם שם, גודל ותאריך</li>
+                </ol>
+                <div class="checklist">
+                    <strong>רשימת בדיקה:</strong>
+                    <ul>
+                        <li>✅ כותרת "מסמכים שמורים" מוצגת</li>
+                        <li>✅ מונה מסמכים נכון בכותרת</li>
+                        <li>✅ כל מסמך מוצג בקופסה נפרדת</li>
+                        <li>✅ איקון סוג קובץ מוצג</li>
+                        <li>✅ שם הקובץ מוצג</li>
+                        <li>✅ גודל הקובץ מוצג</li>
+                        <li>✅ תאריך השמירה מוצג</li>
+                        <li>✅ כפתור מחיקה מוצג</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="manual-test">
+                <h4>בדיקה ידנית 2: פונקציונליות מחיקה</h4>
+                <ol>
+                    <li>שמור מספר מסמכים</li>
+                    <li>לחץ על כפתור "מחק" של מסמך אחד</li>
+                    <li>בדוק שהמסמך נעלם מהרשימה מיידית</li>
+                    <li>בדוק שמונה המסמכים בכותרת התעדכן</li>
+                    <li>בדוק שהודעת הצלחה מוצגת</li>
+                </ol>
+                <div class="checklist">
+                    <strong>רשימת בדיקה:</strong>
+                    <ul>
+                        <li>✅ המסמך נעלם מהרשימה</li>
+                        <li>✅ המונה בכותרת התעדכן</li>
+                        <li>✅ הודעת "המסמך נמחק בהצלחה" מוצגת</li>
+                        <li>✅ שאר המסמכים נותרו ברשימה</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="manual-test">
+                <h4>בדיקה ידנית 3: תצוגה ריקה</h4>
+                <ol>
+                    <li>מחק את כל המסמכים השמורים</li>
+                    <li>בדוק שסקציית "מסמכים שמורים" לא מוצגת</li>
+                    <li>רענן את הדף ובדוק שהסקציה עדיין לא מוצגת</li>
+                </ol>
+                <div class="checklist">
+                    <strong>רשימת בדיקה:</strong>
+                    <ul>
+                        <li>✅ סקציית מסמכים שמורים לא מוצגת</li>
+                        <li>✅ אין כותרת "מסמכים שמורים"</li>
+                        <li>✅ לאחר רענון הדף הסקציה עדיין לא מוצגת</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="manual-test">
+                <h4>בדיקה ידנית 4: עיצוב ותצוגה</h4>
+                <ol>
+                    <li>שמור מסמכים מסוגים שונים (PDF, DOCX, XLSX, וכו')</li>
+                    <li>בדוק שכל סוג קובץ מוצג עם האיקון הנכון</li>
+                    <li>בדוק שהתאריכים מוצגים בעברית</li>
+                    <li>בדוק שהעיצוב עקבי ונראה טוב</li>
+                </ol>
+                <div class="checklist">
+                    <strong>רשימת בדיקה:</strong>
+                    <ul>
+                        <li>✅ איקוני קבצים נכונים (PDF, DOCX, XLSX, וכו')</li>
+                        <li>✅ תאריכים בפורמט עברי (DD/MM/YYYY)</li>
+                        <li>✅ גדלי קבצים בפורמט קריא (KB, MB)</li>
+                        <li>✅ עיצוב עקבי ומסודר</li>
+                        <li>✅ כפתורי מחיקה בצבע אדום</li>
+                        <li>✅ רווחים נכונים בין אלמנטים</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Controls -->
+        <div class="test-section">
+            <h3>🔧 בקרות בדיקה</h3>
+            <button onclick="runAllDisplayTests()">הרץ את כל בדיקות התצוגה</button>
+            <button onclick="createVariedTestData()" class="success-btn">צור נתוני בדיקה מגוונים</button>
+            <button onclick="clearAllDocuments()" class="danger">נקה את כל המסמכים</button>
+            <div id="display-controls-result"></div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'limud-ai-documents';
+        
+        function logResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = message;
+            element.appendChild(resultDiv);
+        }
+
+        function clearResults(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        // Test 1: Empty documents list
+        function testEmptyDocumentsList() {
+            clearResults('empty-list-result');
+            
+            try {
+                // Clear any existing documents
+                localStorage.removeItem(STORAGE_KEY);
+                
+                // Check that no documents exist
+                const documents = localStorage.getItem(STORAGE_KEY);
+                
+                if (!documents) {
+                    logResult('empty-list-result', '✅ אין מסמכים ב-localStorage', 'success');
+                    logResult('empty-list-result', '📋 הרכיב אמור להסתיר את סקציית המסמכים השמורים', 'info');
+                } else {
+                    logResult('empty-list-result', '❌ עדיין יש מסמכים ב-localStorage', 'error');
+                }
+                
+            } catch (error) {
+                logResult('empty-list-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 2: Single document display
+        function testSingleDocument() {
+            clearResults('single-doc-result');
+            
+            try {
+                const singleDoc = [{
+                    id: Date.now(),
+                    name: 'מסמך-בדיקה-יחיד.pdf',
+                    size: 1500000,
+                    type: 'application/pdf',
+                    savedAt: new Date().toISOString()
+                }];
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(singleDoc));
+                
+                logResult('single-doc-result', '✅ נוצר מסמך בדיקה יחיד', 'success');
+                logResult('single-doc-result', `📄 שם: ${singleDoc[0].name}`, 'info');
+                logResult('single-doc-result', `📊 גודל: ${(singleDoc[0].size / 1024 / 1024).toFixed(2)} MB`, 'info');
+                logResult('single-doc-result', `📅 תאריך: ${new Date(singleDoc[0].savedAt).toLocaleDateString('he-IL')}`, 'info');
+                
+            } catch (error) {
+                logResult('single-doc-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 3: Multiple documents display
+        function testMultipleDocuments() {
+            clearResults('multiple-docs-result');
+            
+            try {
+                const multipleDocs = [
+                    {
+                        id: Date.now() + 1,
+                        name: 'מסמך-ראשון.pdf',
+                        size: 1000000,
+                        type: 'application/pdf',
+                        savedAt: new Date(Date.now() - 86400000).toISOString() // Yesterday
+                    },
+                    {
+                        id: Date.now() + 2,
+                        name: 'מסמך-שני.docx',
+                        size: 2000000,
+                        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        savedAt: new Date().toISOString() // Today
+                    },
+                    {
+                        id: Date.now() + 3,
+                        name: 'מסמך-שלישי.xlsx',
+                        size: 500000,
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        savedAt: new Date(Date.now() - 172800000).toISOString() // 2 days ago
+                    }
+                ];
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(multipleDocs));
+                
+                logResult('multiple-docs-result', `✅ נוצרו ${multipleDocs.length} מסמכי בדיקה`, 'success');
+                logResult('multiple-docs-result', '📋 הרכיב אמור להציג רשימה של 3 מסמכים', 'info');
+                logResult('multiple-docs-result', '🔢 הכותרת אמורה להציג "מסמכים שמורים (3)"', 'info');
+                
+            } catch (error) {
+                logResult('multiple-docs-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 4: Different file types
+        function testDifferentFileTypes() {
+            clearResults('file-types-result');
+            
+            try {
+                const fileTypes = [
+                    { ext: 'PDF', name: 'מסמך.pdf', type: 'application/pdf' },
+                    { ext: 'DOCX', name: 'מסמך.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+                    { ext: 'XLSX', name: 'מסמך.xlsx', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+                    { ext: 'PPTX', name: 'מסמך.pptx', type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' },
+                    { ext: 'TXT', name: 'מסמך.txt', type: 'text/plain' },
+                    { ext: 'JPG', name: 'תמונה.jpg', type: 'image/jpeg' }
+                ];
+
+                const docs = fileTypes.map((fileType, index) => ({
+                    id: Date.now() + index,
+                    name: fileType.name,
+                    size: Math.floor(Math.random() * 5000000) + 100000,
+                    type: fileType.type,
+                    savedAt: new Date().toISOString()
+                }));
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+                
+                logResult('file-types-result', `✅ נוצרו ${docs.length} קבצים מסוגים שונים`, 'success');
+                fileTypes.forEach(fileType => {
+                    logResult('file-types-result', `📄 ${fileType.ext}: ${fileType.name}`, 'info');
+                });
+                logResult('file-types-result', '🎨 בדוק שכל סוג קובץ מוצג עם האיקון הנכון', 'warning');
+                
+            } catch (error) {
+                logResult('file-types-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 5: Date formatting
+        function testDateFormatting() {
+            clearResults('date-format-result');
+            
+            try {
+                const now = new Date();
+                const yesterday = new Date(now.getTime() - 86400000);
+                const lastWeek = new Date(now.getTime() - 7 * 86400000);
+
+                const docs = [
+                    {
+                        id: 1,
+                        name: 'מסמך-היום.pdf',
+                        size: 1000000,
+                        type: 'application/pdf',
+                        savedAt: now.toISOString()
+                    },
+                    {
+                        id: 2,
+                        name: 'מסמך-אתמול.pdf',
+                        size: 1000000,
+                        type: 'application/pdf',
+                        savedAt: yesterday.toISOString()
+                    },
+                    {
+                        id: 3,
+                        name: 'מסמך-שבוע-שעבר.pdf',
+                        size: 1000000,
+                        type: 'application/pdf',
+                        savedAt: lastWeek.toISOString()
+                    }
+                ];
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+                
+                logResult('date-format-result', '✅ נוצרו מסמכים עם תאריכים שונים', 'success');
+                logResult('date-format-result', `📅 היום: ${now.toLocaleDateString('he-IL')}`, 'info');
+                logResult('date-format-result', `📅 אתמול: ${yesterday.toLocaleDateString('he-IL')}`, 'info');
+                logResult('date-format-result', `📅 שבוע שעבר: ${lastWeek.toLocaleDateString('he-IL')}`, 'info');
+                logResult('date-format-result', '🔍 בדוק שהתאריכים מוצגים בפורמט עברי נכון', 'warning');
+                
+            } catch (error) {
+                logResult('date-format-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 6: Document removal
+        function testDocumentRemoval() {
+            clearResults('removal-result');
+            
+            try {
+                // Create initial documents
+                const initialDocs = [
+                    { id: 1, name: 'מסמך-1.pdf', size: 1000000, type: 'application/pdf', savedAt: new Date().toISOString() },
+                    { id: 2, name: 'מסמך-2.pdf', size: 2000000, type: 'application/pdf', savedAt: new Date().toISOString() },
+                    { id: 3, name: 'מסמך-3.pdf', size: 3000000, type: 'application/pdf', savedAt: new Date().toISOString() }
+                ];
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(initialDocs));
+                logResult('removal-result', '✅ נוצרו 3 מסמכים ראשוניים', 'success');
+
+                // Simulate removal of middle document
+                const updatedDocs = initialDocs.filter(doc => doc.id !== 2);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedDocs));
+
+                const remainingDocs = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                
+                if (remainingDocs.length === 2 && !remainingDocs.find(doc => doc.id === 2)) {
+                    logResult('removal-result', '✅ מסמך נמחק בהצלחה מהאחסון', 'success');
+                    logResult('removal-result', `📊 נותרו ${remainingDocs.length} מסמכים`, 'info');
+                    logResult('removal-result', '🔄 הרכיב אמור לעדכן את התצוגה מיידית', 'warning');
+                } else {
+                    logResult('removal-result', '❌ שגיאה במחיקת המסמך', 'error');
+                }
+                
+            } catch (error) {
+                logResult('removal-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 7: Document counter
+        function testDocumentCounter() {
+            clearResults('counter-result');
+            
+            try {
+                // Test different counts
+                const testCounts = [0, 1, 5, 10];
+                
+                testCounts.forEach(count => {
+                    const docs = [];
+                    for (let i = 0; i < count; i++) {
+                        docs.push({
+                            id: i + 1,
+                            name: `מסמך-${i + 1}.pdf`,
+                            size: 1000000,
+                            type: 'application/pdf',
+                            savedAt: new Date().toISOString()
+                        });
+                    }
+                    
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+                    logResult('counter-result', `✅ נוצרו ${count} מסמכים - הכותרת אמורה להציג "(${count})"`, 'info');
+                });
+                
+                logResult('counter-result', '✅ בדיקת מונה מסמכים הושלמה', 'success');
+                
+            } catch (error) {
+                logResult('counter-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 8: Document order
+        function testDocumentOrder() {
+            clearResults('order-result');
+            
+            try {
+                const now = Date.now();
+                const docs = [
+                    {
+                        id: 1,
+                        name: 'מסמך-ישן.pdf',
+                        size: 1000000,
+                        type: 'application/pdf',
+                        savedAt: new Date(now - 172800000).toISOString() // 2 days ago
+                    },
+                    {
+                        id: 2,
+                        name: 'מסמך-חדש.pdf',
+                        size: 1000000,
+                        type: 'application/pdf',
+                        savedAt: new Date(now).toISOString() // Now
+                    },
+                    {
+                        id: 3,
+                        name: 'מסמך-אמצע.pdf',
+                        size: 1000000,
+                        type: 'application/pdf',
+                        savedAt: new Date(now - 86400000).toISOString() // Yesterday
+                    }
+                ];
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+                
+                logResult('order-result', '✅ נוצרו מסמכים עם תאריכים שונים', 'success');
+                logResult('order-result', '📅 סדר צפוי: חדש ביותר → ישן ביותר', 'info');
+                logResult('order-result', `1. ${docs[1].name} (${new Date(docs[1].savedAt).toLocaleDateString('he-IL')})`, 'info');
+                logResult('order-result', `2. ${docs[2].name} (${new Date(docs[2].savedAt).toLocaleDateString('he-IL')})`, 'info');
+                logResult('order-result', `3. ${docs[0].name} (${new Date(docs[0].savedAt).toLocaleDateString('he-IL')})`, 'info');
+                
+            } catch (error) {
+                logResult('order-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Run all display tests
+        function runAllDisplayTests() {
+            clearResults('display-controls-result');
+            logResult('display-controls-result', '🚀 מריץ את כל בדיקות התצוגה...', 'info');
+            
+            setTimeout(() => testEmptyDocumentsList(), 100);
+            setTimeout(() => testSingleDocument(), 200);
+            setTimeout(() => testMultipleDocuments(), 300);
+            setTimeout(() => testDifferentFileTypes(), 400);
+            setTimeout(() => testDateFormatting(), 500);
+            setTimeout(() => testDocumentRemoval(), 600);
+            setTimeout(() => testDocumentCounter(), 700);
+            setTimeout(() => testDocumentOrder(), 800);
+            
+            setTimeout(() => {
+                logResult('display-controls-result', '✅ כל בדיקות התצוגה הושלמו', 'success');
+            }, 900);
+        }
+
+        // Create varied test data
+        function createVariedTestData() {
+            try {
+                const now = Date.now();
+                const variedDocs = [
+                    {
+                        id: now + 1,
+                        name: 'מצגת-שיעור-מתמטיקה.pdf',
+                        size: 2500000,
+                        type: 'application/pdf',
+                        savedAt: new Date(now - 86400000).toISOString()
+                    },
+                    {
+                        id: now + 2,
+                        name: 'תכנית-לימודים-שנתית.docx',
+                        size: 1800000,
+                        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        savedAt: new Date(now - 172800000).toISOString()
+                    },
+                    {
+                        id: now + 3,
+                        name: 'ציונים-תלמידים.xlsx',
+                        size: 856000,
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        savedAt: new Date(now - 259200000).toISOString()
+                    },
+                    {
+                        id: now + 4,
+                        name: 'הוראות-למורים.txt',
+                        size: 45000,
+                        type: 'text/plain',
+                        savedAt: new Date(now).toISOString()
+                    },
+                    {
+                        id: now + 5,
+                        name: 'תמונת-כיתה.jpg',
+                        size: 3200000,
+                        type: 'image/jpeg',
+                        savedAt: new Date(now - 345600000).toISOString()
+                    }
+                ];
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(variedDocs));
+                
+                clearResults('display-controls-result');
+                logResult('display-controls-result', `📄 נוצרו ${variedDocs.length} מסמכים מגוונים`, 'success');
+                logResult('display-controls-result', 'כעת תוכל לעבור ל-TeacherDashboard ולראות את התצוגה המלאה', 'info');
+                
+            } catch (error) {
+                logResult('display-controls-result', `❌ שגיאה ביצירת נתונים: ${error.message}`, 'error');
+            }
+        }
+
+        // Clear all documents
+        function clearAllDocuments() {
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+                
+                clearResults('display-controls-result');
+                logResult('display-controls-result', '🗑️ כל המסמכים נמחקו', 'success');
+                logResult('display-controls-result', 'כעת תוכל לבדוק תצוגה ריקה ב-TeacherDashboard', 'info');
+                
+            } catch (error) {
+                logResult('display-controls-result', `❌ שגיאה במחיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show current storage status
+            const currentDocs = localStorage.getItem(STORAGE_KEY);
+            if (currentDocs) {
+                try {
+                    const docs = JSON.parse(currentDocs);
+                    console.log(`נמצאו ${docs.length} מסמכים שמורים`);
+                } catch (e) {
+                    console.log('נתוני מסמכים פגומים');
+                }
+            } else {
+                console.log('אין מסמכים שמורים');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioManager Component Test</title>
+    <style>
+        :root {
+            --color-surface: #ffffff;
+            --color-background: #f8f9fa;
+            --color-text: #2c3e50;
+            --color-textSecondary: #7f8c8d;
+            --color-textTertiary: #95a5a6;
+            --color-textOnPrimary: #ffffff;
+            --color-primary: #3498db;
+            --color-primaryHover: #2980b9;
+            --color-primaryLight: rgba(52, 152, 219, 0.1);
+            --color-success: #27ae60;
+            --color-successHover: #229954;
+            --color-successLight: #d5f4e6;
+            --color-successBorder: #a9dfbf;
+            --color-danger: #e74c3c;
+            --color-dangerHover: #c0392b;
+            --color-dangerLight: #fadbd8;
+            --color-dangerBorder: #f5b7b1;
+            --color-border: #e9ecef;
+            --color-surfaceElevated: #f8f9fa;
+            --color-surfaceHover: #f8f9fa;
+            --color-disabled: #bdc3c7;
+            --color-shadowLight: rgba(0, 0, 0, 0.1);
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition-fast: all 0.2s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.6;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: 0 4px 12px var(--color-shadowLight);
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .test-header h1 {
+            color: var(--color-primary);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .test-header p {
+            color: var(--color-textSecondary);
+            margin: 0;
+        }
+
+        .test-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-surfaceElevated);
+        }
+
+        .test-section h2 {
+            color: var(--color-primary);
+            margin: 0 0 1rem 0;
+            font-size: 1.3rem;
+        }
+
+        .test-result {
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+
+        .test-result.pass {
+            background: var(--color-successLight);
+            color: var(--color-success);
+            border: 1px solid var(--color-successBorder);
+        }
+
+        .test-result.fail {
+            background: var(--color-dangerLight);
+            color: var(--color-danger);
+            border: 1px solid var(--color-dangerBorder);
+        }
+
+        .test-result.pending {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .component-container {
+            margin: 2rem 0;
+            padding: 1rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-surface);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: var(--transition-fast);
+            margin: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: var(--color-textOnPrimary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--color-primaryHover);
+        }
+
+        .btn-success {
+            background-color: var(--color-success);
+            color: var(--color-textOnPrimary);
+        }
+
+        .btn-success:hover {
+            background-color: var(--color-successHover);
+        }
+
+        .test-actions {
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--color-textSecondary);
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--color-border);
+            border-top: 2px solid var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-details {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🎵 AudioManager Component Test</h1>
+            <p>Testing AudioManager component rendering and basic functionality</p>
+        </div>
+
+        <div class="test-section">
+            <h2>📋 Test Results</h2>
+            <div id="test-results">
+                <div class="loading">Running tests...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎵 AudioManager Component</h2>
+            <div class="component-container">
+                <div id="audio-manager-container">
+                    <!-- AudioManager component will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="test-actions">
+            <button class="btn btn-primary" onclick="runTests()">🔄 Run Tests Again</button>
+            <button class="btn btn-success" onclick="clearLocalStorage()">🗑️ Clear Audio Storage</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Mock React and styled-components for testing
+        window.React = {
+            useState: (initial) => {
+                let value = initial;
+                const setValue = (newValue) => {
+                    value = typeof newValue === 'function' ? newValue(value) : newValue;
+                    // Trigger re-render simulation
+                    setTimeout(() => renderAudioManager(), 0);
+                };
+                return [value, setValue];
+            },
+            useEffect: (effect, deps) => {
+                // Simple useEffect mock - run immediately
+                effect();
+            }
+        };
+
+        // Mock styled-components
+        const styled = {
+            div: (styles) => (props) => {
+                const element = document.createElement('div');
+                if (props.className) element.className = props.className;
+                return element;
+            }
+        };
+
+        // Test results
+        let testResults = [];
+
+        // AudioManager mock implementation for testing
+        class AudioManagerTest {
+            constructor() {
+                this.selectedFiles = [];
+                this.savedAudioFiles = [];
+                this.dragOver = false;
+                this.error = '';
+                this.success = '';
+                this.init();
+            }
+
+            init() {
+                this.loadSavedAudioFiles();
+                this.render();
+            }
+
+            loadSavedAudioFiles() {
+                try {
+                    const saved = localStorage.getItem('limud-ai-audio-files');
+                    if (saved) {
+                        this.savedAudioFiles = JSON.parse(saved);
+                    }
+                } catch (error) {
+                    console.error('Error loading saved audio files:', error);
+                }
+            }
+
+            saveAudioFilesToStorage(audioFiles) {
+                try {
+                    localStorage.setItem('limud-ai-audio-files', JSON.stringify(audioFiles));
+                    return true;
+                } catch (error) {
+                    console.error('Error saving audio files to localStorage:', error);
+                    this.error = 'שגיאה בשמירת קבצי האודיו. אנא נסה שוב.';
+                    return false;
+                }
+            }
+
+            validateFile(file) {
+                const supportedTypes = [
+                    'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave',
+                    'audio/x-wav', 'audio/ogg', 'audio/aac', 'audio/m4a',
+                    'audio/mp4', 'audio/x-m4a'
+                ];
+                const supportedExtensions = ['.mp3', '.wav', '.ogg', '.aac', '.m4a'];
+
+                // Check file type
+                if (!supportedTypes.includes(file.type)) {
+                    const fileName = file.name.toLowerCase();
+                    const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
+                    
+                    if (!hasValidExtension) {
+                        return `סוג קובץ אודיו לא נתמך: ${file.name}. אנא בחר קובץ מהסוגים הנתמכים.`;
+                    }
+                }
+
+                // Check file size (50MB limit)
+                if (file.size > 50 * 1024 * 1024) {
+                    return `קובץ האודיו ${file.name} גדול מדי. גודל מקסימלי: 50MB`;
+                }
+
+                return null;
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            render() {
+                const container = document.getElementById('audio-manager-container');
+                if (!container) return;
+
+                container.innerHTML = `
+                    <div style="
+                        background: var(--color-surface);
+                        border-radius: var(--radius-md);
+                        padding: 2rem;
+                        box-shadow: 0 2px 8px var(--color-shadowLight);
+                        margin-bottom: 2rem;
+                    ">
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-bottom: 2rem;
+                            padding-bottom: 1rem;
+                            border-bottom: 1px solid var(--color-border);
+                        ">
+                            <h2 style="color: var(--color-text); margin: 0;">🎵 אודיו</h2>
+                        </div>
+
+                        <div style="
+                            background: var(--color-surfaceElevated, #f8f9fa);
+                            border: 2px dashed var(--color-border);
+                            border-radius: var(--radius-md);
+                            padding: 2rem;
+                            text-align: center;
+                            margin-bottom: 2rem;
+                            transition: var(--transition-fast);
+                        ">
+                            <button style="
+                                padding: 0.75rem 1.5rem;
+                                background-color: var(--color-primary);
+                                color: var(--color-textOnPrimary);
+                                border: none;
+                                border-radius: var(--radius-sm);
+                                cursor: pointer;
+                                font-family: 'Heebo', sans-serif;
+                                font-size: 1rem;
+                                font-weight: 500;
+                                transition: var(--transition-fast);
+                                margin-bottom: 1rem;
+                            " onclick="document.getElementById('test-audio-input').click()">
+                                🎵 בחר קבצי אודיו
+                            </button>
+                            
+                            <input id="test-audio-input" type="file" multiple accept=".mp3,.wav,.ogg,.aac,.m4a,audio/*" style="display: none;" onchange="handleTestFileSelect(event)">
+
+                            <p style="color: var(--color-textSecondary); margin: 0.5rem 0; font-size: 0.9rem;">
+                                או גרור קבצי אודיו לכאן
+                            </p>
+
+                            <div style="color: var(--color-textTertiary, #95a5a6); font-size: 0.8rem; margin-top: 0.5rem;">
+                                קבצי אודיו נתמכים: MP3, WAV, OGG, AAC, M4A<br>
+                                גודל מקסימלי: 50MB לכל קובץ
+                            </div>
+                        </div>
+
+                        ${this.error ? `
+                            <div style="
+                                background-color: var(--color-dangerLight, #fadbd8);
+                                color: var(--color-danger);
+                                padding: 1rem;
+                                border-radius: var(--radius-sm);
+                                margin: 1rem 0;
+                                border: 1px solid var(--color-dangerBorder, #f5b7b1);
+                            ">
+                                <strong>שגיאה:</strong>
+                                <pre style="margin: 0.5rem 0 0 0; white-space: pre-wrap;">${this.error}</pre>
+                            </div>
+                        ` : ''}
+
+                        ${this.success ? `
+                            <div style="
+                                background-color: var(--color-successLight, #d5f4e6);
+                                color: var(--color-success);
+                                padding: 1rem;
+                                border-radius: var(--radius-sm);
+                                margin: 1rem 0;
+                                border: 1px solid var(--color-successBorder, #a9dfbf);
+                            ">
+                                <strong>הצלחה:</strong> ${this.success}
+                            </div>
+                        ` : ''}
+
+                        ${this.selectedFiles.length > 0 ? `
+                            <div>
+                                <h3 style="color: var(--color-text); margin-bottom: 1rem;">
+                                    קבצי אודיו נבחרים (${this.selectedFiles.length})
+                                </h3>
+                                ${this.selectedFiles.map(file => `
+                                    <div style="
+                                        background: var(--color-surface);
+                                        border: 1px solid var(--color-border);
+                                        border-radius: var(--radius-sm);
+                                        padding: 1rem;
+                                        margin: 1rem 0;
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 1rem;
+                                    ">
+                                        <div style="
+                                            width: 40px;
+                                            height: 40px;
+                                            background: var(--color-primary);
+                                            color: var(--color-textOnPrimary);
+                                            border-radius: var(--radius-sm);
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            font-weight: bold;
+                                            font-size: 1.2rem;
+                                        ">🎵</div>
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 500; color: var(--color-text); margin-bottom: 0.25rem;">
+                                                ${file.name}
+                                            </div>
+                                            <div style="font-size: 0.8rem; color: var(--color-textSecondary);">
+                                                ${this.formatFileSize(file.size)}
+                                            </div>
+                                        </div>
+                                        <button onclick="audioManagerTest.removeFile('${file.id}')" style="
+                                            background: var(--color-danger);
+                                            color: var(--color-textOnPrimary);
+                                            border: none;
+                                            border-radius: var(--radius-sm);
+                                            padding: 0.5rem 1rem;
+                                            cursor: pointer;
+                                            font-size: 0.8rem;
+                                            transition: var(--transition-fast);
+                                        ">הסר</button>
+                                    </div>
+                                `).join('')}
+                                <button onclick="audioManagerTest.saveSelectedFiles()" style="
+                                    padding: 0.75rem 1.5rem;
+                                    background-color: var(--color-success);
+                                    color: var(--color-textOnPrimary);
+                                    border: none;
+                                    border-radius: var(--radius-sm);
+                                    cursor: pointer;
+                                    font-family: 'Heebo', sans-serif;
+                                    font-size: 1rem;
+                                    font-weight: 500;
+                                    transition: var(--transition-fast);
+                                    margin-top: 1rem;
+                                ">💾 שמור קבצי אודיו</button>
+                            </div>
+                        ` : ''}
+
+                        ${this.savedAudioFiles.length > 0 ? `
+                            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--color-border);">
+                                <h3 style="color: var(--color-text); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    🎵 קבצי אודיו שמורים (${this.savedAudioFiles.length})
+                                </h3>
+                                ${this.savedAudioFiles.map(audioFile => `
+                                    <div style="
+                                        background: var(--color-surfaceElevated, #f8f9fa);
+                                        border: 1px solid var(--color-border);
+                                        border-radius: var(--radius-sm);
+                                        padding: 1rem;
+                                        margin: 0.5rem 0;
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 1rem;
+                                    ">
+                                        <div style="
+                                            width: 40px;
+                                            height: 40px;
+                                            background: var(--color-primary);
+                                            color: var(--color-textOnPrimary);
+                                            border-radius: var(--radius-sm);
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            font-weight: bold;
+                                            font-size: 1.2rem;
+                                        ">🎵</div>
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 500; color: var(--color-text); margin-bottom: 0.25rem;">
+                                                ${audioFile.name}
+                                            </div>
+                                            <div style="font-size: 0.8rem; color: var(--color-textSecondary); display: flex; gap: 1rem; flex-wrap: wrap;">
+                                                <span>${this.formatFileSize(audioFile.size)}</span>
+                                                <span>נשמר: ${new Date(audioFile.savedAt).toLocaleDateString('he-IL')}</span>
+                                            </div>
+                                        </div>
+                                        <button onclick="audioManagerTest.removeSavedAudioFile('${audioFile.id}')" style="
+                                            background: var(--color-danger);
+                                            color: var(--color-textOnPrimary);
+                                            border: none;
+                                            border-radius: var(--radius-sm);
+                                            padding: 0.5rem 1rem;
+                                            cursor: pointer;
+                                            font-size: 0.8rem;
+                                            transition: var(--transition-fast);
+                                        ">מחק</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            removeFile(fileId) {
+                this.selectedFiles = this.selectedFiles.filter(f => f.id !== fileId);
+                this.error = '';
+                this.success = '';
+                this.render();
+            }
+
+            async saveSelectedFiles() {
+                if (this.selectedFiles.length === 0) {
+                    this.error = 'אין קבצי אודיו לשמירה';
+                    this.render();
+                    return;
+                }
+
+                try {
+                    const audioFilesToSave = this.selectedFiles.map(fileData => ({
+                        id: fileData.id,
+                        name: fileData.name,
+                        size: fileData.size,
+                        type: fileData.type,
+                        duration: fileData.duration || null,
+                        base64Data: 'data:audio/mpeg;base64,mock-data', // Mock base64 data
+                        savedAt: new Date().toISOString()
+                    }));
+
+                    const updatedSavedAudioFiles = [...this.savedAudioFiles, ...audioFilesToSave];
+                    
+                    if (this.saveAudioFilesToStorage(updatedSavedAudioFiles)) {
+                        this.savedAudioFiles = updatedSavedAudioFiles;
+                        this.selectedFiles = [];
+                        this.success = `נשמרו ${audioFilesToSave.length} קבצי אודיו בהצלחה`;
+                        this.error = '';
+                    }
+                } catch (error) {
+                    console.error('Error saving audio files:', error);
+                    this.error = 'שגיאה בשמירת קבצי האודיו. אנא נסה שוב.';
+                }
+                
+                this.render();
+            }
+
+            removeSavedAudioFile(audioFileId) {
+                this.savedAudioFiles = this.savedAudioFiles.filter(audio => audio.id !== audioFileId);
+                this.saveAudioFilesToStorage(this.savedAudioFiles);
+                this.success = 'קובץ האודיו נמחק בהצלחה';
+                this.error = '';
+                this.render();
+            }
+
+            handleFileSelect(files) {
+                this.error = '';
+                this.success = '';
+                
+                const fileArray = Array.from(files);
+                const validFiles = [];
+                const errors = [];
+
+                fileArray.forEach(file => {
+                    const validationError = this.validateFile(file);
+                    if (validationError) {
+                        errors.push(validationError);
+                    } else {
+                        validFiles.push({
+                            id: Date.now() + Math.random(),
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            duration: null
+                        });
+                    }
+                });
+
+                if (errors.length > 0) {
+                    this.error = errors.join('\n');
+                }
+
+                if (validFiles.length > 0) {
+                    this.selectedFiles = [...this.selectedFiles, ...validFiles];
+                    this.success = `נבחרו ${validFiles.length} קבצי אודיו בהצלחה`;
+                }
+
+                this.render();
+            }
+        }
+
+        // Global instance for testing
+        let audioManagerTest;
+
+        // Global functions for testing
+        window.handleTestFileSelect = function(event) {
+            if (audioManagerTest) {
+                audioManagerTest.handleFileSelect(event.target.files);
+            }
+        };
+
+        window.clearLocalStorage = function() {
+            localStorage.removeItem('limud-ai-audio-files');
+            if (audioManagerTest) {
+                audioManagerTest.savedAudioFiles = [];
+                audioManagerTest.selectedFiles = [];
+                audioManagerTest.success = 'נתוני האודיו נמחקו מהאחסון המקומי';
+                audioManagerTest.error = '';
+                audioManagerTest.render();
+            }
+            runTests();
+        };
+
+        // Test functions
+        function testComponentRendering() {
+            try {
+                const container = document.getElementById('audio-manager-container');
+                if (!container) {
+                    return { pass: false, message: 'Container element not found' };
+                }
+
+                audioManagerTest = new AudioManagerTest();
+                
+                // Check if component rendered
+                const audioTitle = container.querySelector('h2');
+                if (!audioTitle || !audioTitle.textContent.includes('אודיו')) {
+                    return { pass: false, message: 'Audio title not found or incorrect' };
+                }
+
+                // Check if upload section exists
+                const uploadButton = container.querySelector('button');
+                if (!uploadButton || !uploadButton.textContent.includes('בחר קבצי אודיو')) {
+                    return { pass: false, message: 'Upload button not found or incorrect text' };
+                }
+
+                // Check if file input exists
+                const fileInput = document.getElementById('test-audio-input');
+                if (!fileInput || fileInput.type !== 'file') {
+                    return { pass: false, message: 'File input not found or incorrect type' };
+                }
+
+                return { pass: true, message: 'AudioManager component rendered successfully' };
+            } catch (error) {
+                return { pass: false, message: `Error rendering component: ${error.message}` };
+            }
+        }
+
+        function testAudioHeading() {
+            try {
+                const container = document.getElementById('audio-manager-container');
+                const heading = container.querySelector('h2');
+                
+                if (!heading) {
+                    return { pass: false, message: 'Audio heading not found' };
+                }
+
+                if (!heading.textContent.includes('אודיו')) {
+                    return { pass: false, message: `Expected "אודיו" in heading, got: ${heading.textContent}` };
+                }
+
+                return { pass: true, message: 'Audio heading displays correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error testing heading: ${error.message}` };
+            }
+        }
+
+        function testFileValidation() {
+            try {
+                if (!audioManagerTest) {
+                    return { pass: false, message: 'AudioManager test instance not available' };
+                }
+
+                // Test valid file
+                const validFile = { name: 'test.mp3', type: 'audio/mpeg', size: 1024 * 1024 }; // 1MB
+                const validResult = audioManagerTest.validateFile(validFile);
+                if (validResult !== null) {
+                    return { pass: false, message: `Valid file rejected: ${validResult}` };
+                }
+
+                // Test invalid file type
+                const invalidFile = { name: 'test.txt', type: 'text/plain', size: 1024 };
+                const invalidResult = audioManagerTest.validateFile(invalidFile);
+                if (invalidResult === null) {
+                    return { pass: false, message: 'Invalid file type was accepted' };
+                }
+
+                // Test oversized file
+                const oversizedFile = { name: 'large.mp3', type: 'audio/mpeg', size: 60 * 1024 * 1024 }; // 60MB
+                const oversizedResult = audioManagerTest.validateFile(oversizedFile);
+                if (oversizedResult === null) {
+                    return { pass: false, message: 'Oversized file was accepted' };
+                }
+
+                return { pass: true, message: 'File validation works correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error testing file validation: ${error.message}` };
+            }
+        }
+
+        function testLocalStoragePersistence() {
+            try {
+                if (!audioManagerTest) {
+                    return { pass: false, message: 'AudioManager test instance not available' };
+                }
+
+                // Clear existing data
+                localStorage.removeItem('limud-ai-audio-files');
+
+                // Test saving data
+                const testData = [{
+                    id: 'test-1',
+                    name: 'test-audio.mp3',
+                    size: 1024,
+                    type: 'audio/mpeg',
+                    savedAt: new Date().toISOString()
+                }];
+
+                const saveResult = audioManagerTest.saveAudioFilesToStorage(testData);
+                if (!saveResult) {
+                    return { pass: false, message: 'Failed to save data to localStorage' };
+                }
+
+                // Test loading data
+                const saved = localStorage.getItem('limud-ai-audio-files');
+                if (!saved) {
+                    return { pass: false, message: 'Data not found in localStorage' };
+                }
+
+                const parsed = JSON.parse(saved);
+                if (!Array.isArray(parsed) || parsed.length !== 1 || parsed[0].id !== 'test-1') {
+                    return { pass: false, message: 'Saved data is incorrect' };
+                }
+
+                return { pass: true, message: 'localStorage persistence works correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error testing localStorage: ${error.message}` };
+            }
+        }
+
+        function testAudioListDisplay() {
+            try {
+                if (!audioManagerTest) {
+                    return { pass: false, message: 'AudioManager test instance not available' };
+                }
+
+                // Add test audio file
+                const testAudioFile = {
+                    id: 'test-audio-1',
+                    name: 'test-song.mp3',
+                    size: 2048,
+                    type: 'audio/mpeg',
+                    savedAt: new Date().toISOString()
+                };
+
+                audioManagerTest.savedAudioFiles = [testAudioFile];
+                audioManagerTest.render();
+
+                // Check if saved audio section appears
+                const container = document.getElementById('audio-manager-container');
+                const savedSection = container.querySelector('h3');
+                if (!savedSection || !savedSection.textContent.includes('קבצי אודיו שמורים')) {
+                    return { pass: false, message: 'Saved audio section not found' };
+                }
+
+                // Check if audio file is displayed
+                const audioFileName = container.textContent;
+                if (!audioFileName.includes('test-song.mp3')) {
+                    return { pass: false, message: 'Audio file name not displayed' };
+                }
+
+                return { pass: true, message: 'Audio list displays saved files correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error testing audio list display: ${error.message}` };
+            }
+        }
+
+        // Run all tests
+        window.runTests = function() {
+            testResults = [];
+            
+            const tests = [
+                { name: 'Component Rendering', fn: testComponentRendering },
+                { name: 'Audio Heading Display', fn: testAudioHeading },
+                { name: 'File Validation', fn: testFileValidation },
+                { name: 'localStorage Persistence', fn: testLocalStoragePersistence },
+                { name: 'Audio List Display', fn: testAudioListDisplay }
+            ];
+
+            const resultsContainer = document.getElementById('test-results');
+            resultsContainer.innerHTML = '';
+
+            tests.forEach(test => {
+                try {
+                    const result = test.fn();
+                    testResults.push({ name: test.name, ...result });
+                    
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = `test-result ${result.pass ? 'pass' : 'fail'}`;
+                    resultDiv.innerHTML = `
+                        <strong>${result.pass ? '✅' : '❌'} ${test.name}</strong><br>
+                        ${result.message}
+                        ${!result.pass && result.details ? `<div class="error-details">${result.details}</div>` : ''}
+                    `;
+                    resultsContainer.appendChild(resultDiv);
+                } catch (error) {
+                    testResults.push({ name: test.name, pass: false, message: `Test error: ${error.message}` });
+                    
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'test-result fail';
+                    resultDiv.innerHTML = `
+                        <strong>❌ ${test.name}</strong><br>
+                        Test error: ${error.message}
+                        <div class="error-details">${error.stack}</div>
+                    `;
+                    resultsContainer.appendChild(resultDiv);
+                }
+            });
+
+            // Summary
+            const passed = testResults.filter(r => r.pass).length;
+            const total = testResults.length;
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = `test-result ${passed === total ? 'pass' : 'fail'}`;
+            summaryDiv.innerHTML = `
+                <strong>📊 Test Summary</strong><br>
+                ${passed}/${total} tests passed
+            `;
+            resultsContainer.appendChild(summaryDiv);
+        };
+
+        // Run tests on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(runTests, 100);
+        });
+    </script>
+</body>
+</html>

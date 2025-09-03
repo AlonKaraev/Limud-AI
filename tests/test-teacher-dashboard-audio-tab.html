@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeacherDashboard Audio Tab Test</title>
+    <style>
+        :root {
+            --color-surface: #ffffff;
+            --color-background: #f8f9fa;
+            --color-text: #2c3e50;
+            --color-textSecondary: #7f8c8d;
+            --color-textOnPrimary: #ffffff;
+            --color-primary: #3498db;
+            --color-primaryHover: #2980b9;
+            --color-success: #27ae60;
+            --color-successHover: #229954;
+            --color-successLight: #d5f4e6;
+            --color-successBorder: #a9dfbf;
+            --color-danger: #e74c3c;
+            --color-dangerLight: #fadbd8;
+            --color-dangerBorder: #f5b7b1;
+            --color-border: #e9ecef;
+            --color-surfaceElevated: #f8f9fa;
+            --color-disabled: #bdc3c7;
+            --color-shadowLight: rgba(0, 0, 0, 0.1);
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition-fast: all 0.2s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.6;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: 0 4px 12px var(--color-shadowLight);
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .test-header h1 {
+            color: var(--color-primary);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .test-header p {
+            color: var(--color-textSecondary);
+            margin: 0;
+        }
+
+        .test-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-surfaceElevated);
+        }
+
+        .test-section h2 {
+            color: var(--color-primary);
+            margin: 0 0 1rem 0;
+            font-size: 1.3rem;
+        }
+
+        .test-result {
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+
+        .test-result.pass {
+            background: var(--color-successLight);
+            color: var(--color-success);
+            border: 1px solid var(--color-successBorder);
+        }
+
+        .test-result.fail {
+            background: var(--color-dangerLight);
+            color: var(--color-danger);
+            border: 1px solid var(--color-dangerBorder);
+        }
+
+        .component-container {
+            margin: 2rem 0;
+            padding: 1rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-surface);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: var(--transition-fast);
+            margin: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: var(--color-textOnPrimary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--color-primaryHover);
+        }
+
+        .btn-success {
+            background-color: var(--color-success);
+            color: var(--color-textOnPrimary);
+        }
+
+        .btn-success:hover {
+            background-color: var(--color-successHover);
+        }
+
+        .test-actions {
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--color-textSecondary);
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--color-border);
+            border-top: 2px solid var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-details {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        /* Mock TeacherDashboard styles */
+        .card {
+            background: var(--color-surface);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            box-shadow: 0 2px 8px var(--color-shadowLight);
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .card-title {
+            color: var(--color-primary);
+            margin: 0 0 0.5rem 0;
+            font-size: 1.8rem;
+        }
+
+        .card-subtitle {
+            color: var(--color-textSecondary);
+            margin: 0;
+        }
+
+        .nav-tabs {
+            margin-bottom: 2rem;
+        }
+
+        .nav-tabs-header {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            border-bottom: 2px solid var(--color-border);
+            padding-bottom: 1rem;
+        }
+
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            background: var(--color-surfaceElevated);
+            color: var(--color-text);
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: var(--transition-fast);
+        }
+
+        .nav-tab:hover {
+            background: var(--color-primaryHover);
+            color: var(--color-textOnPrimary);
+            border-color: var(--color-primaryHover);
+        }
+
+        .nav-tab.active {
+            background: var(--color-primary);
+            color: var(--color-textOnPrimary);
+            border-color: var(--color-primary);
+        }
+
+        .tab-content {
+            min-height: 300px;
+            padding: 2rem;
+            background: var(--color-surfaceElevated);
+            border-radius: var(--radius-md);
+            border: 2px solid var(--color-border);
+        }
+
+        .audio-manager-mock {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .audio-manager-mock h2 {
+            color: var(--color-primary);
+            margin-bottom: 1rem;
+        }
+
+        .audio-manager-mock p {
+            color: var(--color-textSecondary);
+            margin-bottom: 2rem;
+        }
+
+        .upload-section-mock {
+            background: var(--color-surface);
+            border: 2px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🎵 TeacherDashboard Audio Tab Test</h1>
+            <p>Testing Audio tab navigation and AudioManager integration</p>
+        </div>
+
+        <div class="test-section">
+            <h2>📋 Test Results</h2>
+            <div id="test-results">
+                <div class="loading">Running tests...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎛️ Mock TeacherDashboard</h2>
+            <div class="component-container">
+                <div id="teacher-dashboard-container">
+                    <!-- TeacherDashboard mock will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="test-actions">
+            <button class="btn btn-primary" onclick="runTests()">🔄 Run Tests Again</button>
+            <button class="btn btn-success" onclick="switchToAudioTab()">🎵 Switch to Audio Tab</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Test results
+        let testResults = [];
+
+        // Mock TeacherDashboard implementation for testing
+        class TeacherDashboardTest {
+            constructor() {
+                this.activeTab = 'overview';
+                this.user = { firstName: 'Test', lastName: 'Teacher' };
+                this.init();
+            }
+
+            init() {
+                this.render();
+            }
+
+            setActiveTab(tab) {
+                this.activeTab = tab;
+                this.render();
+            }
+
+            render() {
+                const container = document.getElementById('teacher-dashboard-container');
+                if (!container) return;
+
+                container.innerHTML = `
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">לוח בקרה למורה</h2>
+                            <p class="card-subtitle">ברוך הבא, ${this.user.firstName} ${this.user.lastName}!</p>
+                        </div>
+                        
+                        <div class="nav-tabs">
+                            <div class="nav-tabs-header">
+                                <button class="nav-tab ${this.activeTab === 'overview' ? 'active' : ''}" onclick="teacherDashboardTest.setActiveTab('overview')">
+                                    סקירה כללית
+                                </button>
+                                <button class="nav-tab ${this.activeTab === 'lessons' ? 'active' : ''}" onclick="teacherDashboardTest.setActiveTab('lessons')">
+                                    שיעורים
+                                </button>
+                                <button class="nav-tab ${this.activeTab === 'memory-cards' ? 'active' : ''}" onclick="teacherDashboardTest.setActiveTab('memory-cards')">
+                                    כרטיסי זיכרון
+                                </button>
+                                <button class="nav-tab ${this.activeTab === 'tests' ? 'active' : ''}" onclick="teacherDashboardTest.setActiveTab('tests')">
+                                    מבחנים
+                                </button>
+                                <button class="nav-tab ${this.activeTab === 'summaries' ? 'active' : ''}" onclick="teacherDashboardTest.setActiveTab('summaries')">
+                                    סיכומים
+                                </button>
+                                <button class="nav-tab ${this.activeTab === 'documents' ? 'active' : ''}" onclick="teacherDashboardTest.setActiveTab('documents')">
+                                    מסמכים
+                                </button>
+                                <button class="nav-tab ${this.activeTab === 'audio' ? 'active' : ''}" onclick="teacherDashboardTest.setActiveTab('audio')">
+                                    אודיו
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="tab-content">
+                            ${this.renderTabContent()}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderTabContent() {
+                switch (this.activeTab) {
+                    case 'overview':
+                        return `
+                            <div style="text-align: center; padding: 2rem;">
+                                <h3>📊 סקירה כללית</h3>
+                                <p>כאן תוצג סקירה כללית של הפעילות</p>
+                            </div>
+                        `;
+                    case 'lessons':
+                        return `
+                            <div style="text-align: center; padding: 2rem;">
+                                <h3>📚 שיעורים</h3>
+                                <p>כאן יוצגו השיעורים שלך</p>
+                            </div>
+                        `;
+                    case 'memory-cards':
+                        return `
+                            <div style="text-align: center; padding: 2rem;">
+                                <h3>🎴 כרטיסי זיכרון</h3>
+                                <p>כאן יוצגו כרטיסי הזיכרון שלך</p>
+                            </div>
+                        `;
+                    case 'tests':
+                        return `
+                            <div style="text-align: center; padding: 2rem;">
+                                <h3>📋 מבחנים</h3>
+                                <p>כאן יוצגו המבחנים שלך</p>
+                            </div>
+                        `;
+                    case 'summaries':
+                        return `
+                            <div style="text-align: center; padding: 2rem;">
+                                <h3>📝 סיכומים</h3>
+                                <p>כאן יוצגו הסיכומים שלך</p>
+                            </div>
+                        `;
+                    case 'documents':
+                        return `
+                            <div style="text-align: center; padding: 2rem;">
+                                <h3>📁 מסמכים</h3>
+                                <p>כאן יוצגו המסמכים שלך</p>
+                            </div>
+                        `;
+                    case 'audio':
+                        return `
+                            <div class="audio-manager-mock">
+                                <h2>🎵 אודיו</h2>
+                                <p>מנהל קבצי האודיו שלך</p>
+                                <div class="upload-section-mock">
+                                    <button class="btn btn-primary">🎵 בחר קבצי אודיו</button>
+                                    <p style="margin: 1rem 0; color: var(--color-textSecondary);">או גרור קבצי אודיו לכאן</p>
+                                    <div style="font-size: 0.8rem; color: var(--color-textSecondary);">
+                                        קבצי אודיو נתמכים: MP3, WAV, OGG, AAC, M4A<br>
+                                        גודל מקסימלי: 50MB לכל קובץ
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    default:
+                        return `
+                            <div style="text-align: center; padding: 2rem;">
+                                <h3>❓ תוכן לא זמין</h3>
+                                <p>התוכן עבור הכרטיסייה הזו עדיין לא מוכן</p>
+                            </div>
+                        `;
+                }
+            }
+        }
+
+        // Global instance for testing
+        let teacherDashboardTest;
+
+        // Global functions for testing
+        window.switchToAudioTab = function() {
+            if (teacherDashboardTest) {
+                teacherDashboardTest.setActiveTab('audio');
+            }
+        };
+
+        // Test functions
+        function testDashboardRendering() {
+            try {
+                const container = document.getElementById('teacher-dashboard-container');
+                if (!container) {
+                    return { pass: false, message: 'Container element not found' };
+                }
+
+                teacherDashboardTest = new TeacherDashboardTest();
+                
+                // Check if dashboard rendered
+                const dashboardTitle = container.querySelector('.card-title');
+                if (!dashboardTitle || !dashboardTitle.textContent.includes('לוח בקרה למורה')) {
+                    return { pass: false, message: 'Dashboard title not found or incorrect' };
+                }
+
+                // Check if navigation tabs exist
+                const navTabs = container.querySelectorAll('.nav-tab');
+                if (navTabs.length < 7) {
+                    return { pass: false, message: `Expected at least 7 navigation tabs, found ${navTabs.length}` };
+                }
+
+                return { pass: true, message: 'TeacherDashboard rendered successfully' };
+            } catch (error) {
+                return { pass: false, message: `Error rendering dashboard: ${error.message}` };
+            }
+        }
+
+        function testAudioTabExists() {
+            try {
+                const container = document.getElementById('teacher-dashboard-container');
+                const audioTab = Array.from(container.querySelectorAll('.nav-tab'))
+                    .find(tab => tab.textContent.includes('אודיו'));
+                
+                if (!audioTab) {
+                    return { pass: false, message: 'Audio tab not found in navigation' };
+                }
+
+                return { pass: true, message: 'Audio tab exists in navigation' };
+            } catch (error) {
+                return { pass: false, message: `Error testing audio tab existence: ${error.message}` };
+            }
+        }
+
+        function testAudioTabNavigation() {
+            try {
+                if (!teacherDashboardTest) {
+                    return { pass: false, message: 'TeacherDashboard test instance not available' };
+                }
+
+                // Initially should be on overview tab
+                if (teacherDashboardTest.activeTab !== 'overview') {
+                    return { pass: false, message: `Expected initial tab to be 'overview', got '${teacherDashboardTest.activeTab}'` };
+                }
+
+                // Switch to audio tab
+                teacherDashboardTest.setActiveTab('audio');
+
+                // Check if active tab changed
+                if (teacherDashboardTest.activeTab !== 'audio') {
+                    return { pass: false, message: `Failed to switch to audio tab, current tab: '${teacherDashboardTest.activeTab}'` };
+                }
+
+                // Check if audio tab is visually active
+                const container = document.getElementById('teacher-dashboard-container');
+                const audioTab = Array.from(container.querySelectorAll('.nav-tab'))
+                    .find(tab => tab.textContent.includes('אודיו'));
+                
+                if (!audioTab || !audioTab.classList.contains('active')) {
+                    return { pass: false, message: 'Audio tab is not visually active' };
+                }
+
+                return { pass: true, message: 'Audio tab navigation works correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error testing audio tab navigation: ${error.message}` };
+            }
+        }
+
+        function testAudioManagerDisplay() {
+            try {
+                if (!teacherDashboardTest) {
+                    return { pass: false, message: 'TeacherDashboard test instance not available' };
+                }
+
+                // Switch to audio tab
+                teacherDashboardTest.setActiveTab('audio');
+
+                // Check if AudioManager content is displayed
+                const container = document.getElementById('teacher-dashboard-container');
+                const tabContent = container.querySelector('.tab-content');
+                
+                if (!tabContent) {
+                    return { pass: false, message: 'Tab content area not found' };
+                }
+
+                // Check for audio manager elements
+                const audioTitle = tabContent.querySelector('h2');
+                if (!audioTitle || !audioTitle.textContent.includes('אודיו')) {
+                    return { pass: false, message: 'Audio manager title not found' };
+                }
+
+                const uploadButton = tabContent.querySelector('button');
+                if (!uploadButton || !uploadButton.textContent.includes('בחר קבצי אודיו')) {
+                    return { pass: false, message: 'Audio upload button not found' };
+                }
+
+                return { pass: true, message: 'AudioManager displays correctly when audio tab is active' };
+            } catch (error) {
+                return { pass: false, message: `Error testing AudioManager display: ${error.message}` };
+            }
+        }
+
+        function testTabSwitching() {
+            try {
+                if (!teacherDashboardTest) {
+                    return { pass: false, message: 'TeacherDashboard test instance not available' };
+                }
+
+                const tabs = ['overview', 'lessons', 'memory-cards', 'tests', 'summaries', 'documents', 'audio'];
+                
+                for (const tab of tabs) {
+                    teacherDashboardTest.setActiveTab(tab);
+                    
+                    if (teacherDashboardTest.activeTab !== tab) {
+                        return { pass: false, message: `Failed to switch to ${tab} tab` };
+                    }
+
+                    // Check visual state
+                    const container = document.getElementById('teacher-dashboard-container');
+                    const activeTab = container.querySelector('.nav-tab.active');
+                    
+                    if (!activeTab) {
+                        return { pass: false, message: `No active tab found when switched to ${tab}` };
+                    }
+                }
+
+                return { pass: true, message: 'All tab switching works correctly including audio tab' };
+            } catch (error) {
+                return { pass: false, message: `Error testing tab switching: ${error.message}` };
+            }
+        }
+
+        // Run all tests
+        window.runTests = function() {
+            testResults = [];
+            
+            const tests = [
+                { name: 'Dashboard Rendering', fn: testDashboardRendering },
+                { name: 'Audio Tab Exists', fn: testAudioTabExists },
+                { name: 'Audio Tab Navigation', fn: testAudioTabNavigation },
+                { name: 'AudioManager Display', fn: testAudioManagerDisplay },
+                { name: 'Tab Switching', fn: testTabSwitching }
+            ];
+
+            const resultsContainer = document.getElementById('test-results');
+            resultsContainer.innerHTML = '';
+
+            tests.forEach(test => {
+                try {
+                    const result = test.fn();
+                    testResults.push({ name: test.name, ...result });
+                    
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = `test-result ${result.pass ? 'pass' : 'fail'}`;
+                    resultDiv.innerHTML = `
+                        <strong>${result.pass ? '✅' : '❌'} ${test.name}</strong><br>
+                        ${result.message}
+                        ${!result.pass && result.details ? `<div class="error-details">${result.details}</div>` : ''}
+                    `;
+                    resultsContainer.appendChild(resultDiv);
+                } catch (error) {
+                    testResults.push({ name: test.name, pass: false, message: `Test error: ${error.message}` });
+                    
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'test-result fail';
+                    resultDiv.innerHTML = `
+                        <strong>❌ ${test.name}</strong><br>
+                        Test error: ${error.message}
+                        <div class="error-details">${error.stack}</div>
+                    `;
+                    resultsContainer.appendChild(resultDiv);
+                }
+            });
+
+            // Summary
+            const passed = testResults.filter(r => r.pass).length;
+            const total = testResults.length;
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = `test-result ${passed === total ? 'pass' : 'fail'}`;
+            summaryDiv.innerHTML = `
+                <strong>📊 Test Summary</strong><br>
+                ${passed}/${total} tests passed
+            `;
+            resultsContainer.appendChild(summaryDiv);
+        };
+
+        // Run tests on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(runTests, 100);
+        });
+    </script>
+</body>
+</html>

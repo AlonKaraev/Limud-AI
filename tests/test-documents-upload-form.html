@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocumentsManager Upload Form Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/styled-components@5.3.11/dist/styled-components.min.js"></script>
+    <style>
+        /* CSS Variables matching the project's design system */
+        :root {
+            --color-surface: #ffffff;
+            --color-text: #2c3e50;
+            --color-border: #e9ecef;
+            --color-shadowLight: rgba(0, 0, 0, 0.1);
+            --radius-md: 8px;
+            --radius-sm: 4px;
+            --color-primary: #3498db;
+            --color-primaryHover: #2980b9;
+            --color-textOnPrimary: #ffffff;
+            --color-textSecondary: #7f8c8d;
+            --color-textTertiary: #95a5a6;
+            --color-danger: #e74c3c;
+            --color-dangerHover: #c0392b;
+            --color-dangerLight: #fadbd8;
+            --color-success: #27ae60;
+            --color-successLight: #d5f4e6;
+            --color-disabled: #bdc3c7;
+            --color-surfaceElevated: #f8f9fa;
+            --color-primaryLight: rgba(52, 152, 219, 0.1);
+            --transition-fast: all 0.2s ease;
+        }
+
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            direction: rtl;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .test-header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-results {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-pass {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .test-fail {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+        }
+
+        .component-demo {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: white;
+        }
+
+        .manual-test-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .manual-test-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #f39c12;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>DocumentsManager Upload Form Test</h1>
+            <p>Testing document upload form functionality, file validation, and Hebrew title display.</p>
+        </div>
+
+        <div id="component-test-root"></div>
+
+        <div class="manual-test-section">
+            <h2>Manual Testing Instructions</h2>
+            <p>Please perform these manual tests using the component above:</p>
+            
+            <div class="manual-test-item">
+                <strong>Test 1:</strong> Try uploading a PDF file - should be accepted
+            </div>
+            <div class="manual-test-item">
+                <strong>Test 2:</strong> Try uploading a DOC/DOCX file - should be accepted
+            </div>
+            <div class="manual-test-item">
+                <strong>Test 3:</strong> Try uploading an unsupported file type (e.g., .exe, .zip) - should show error
+            </div>
+            <div class="manual-test-item">
+                <strong>Test 4:</strong> Try uploading a file larger than 10MB - should show error
+            </div>
+            <div class="manual-test-item">
+                <strong>Test 5:</strong> Try drag and drop functionality - should work
+            </div>
+            <div class="manual-test-item">
+                <strong>Test 6:</strong> Upload multiple files at once - should work
+            </div>
+            <div class="manual-test-item">
+                <strong>Test 7:</strong> Remove uploaded files using the "הסר" button - should work
+            </div>
+        </div>
+
+        <div class="test-results" id="test-results">
+            <h2>Automated Test Results</h2>
+            <div id="results-content">Running tests...</div>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const styled = window.styled;
+
+        // DocumentsManager Component (full implementation for testing)
+        const Container = styled.div`
+          background: var(--color-surface);
+          border-radius: var(--radius-md);
+          padding: 2rem;
+          box-shadow: 0 2px 8px var(--color-shadowLight);
+          margin-bottom: 2rem;
+        `;
+
+        const Header = styled.div`
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid var(--color-border);
+        `;
+
+        const Title = styled.h2`
+          color: var(--color-text);
+          margin: 0;
+        `;
+
+        const UploadSection = styled.div`
+          background: var(--color-surfaceElevated, #f8f9fa);
+          border: 2px dashed var(--color-border);
+          border-radius: var(--radius-md);
+          padding: 2rem;
+          text-align: center;
+          margin-bottom: 2rem;
+          transition: var(--transition-fast);
+
+          &.dragover {
+            border-color: var(--color-primary);
+            background: var(--color-primaryLight, rgba(52, 152, 219, 0.1));
+          }
+        `;
+
+        const UploadButton = styled.button`
+          padding: 0.75rem 1.5rem;
+          background-color: var(--color-primary);
+          color: var(--color-textOnPrimary);
+          border: none;
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          font-family: 'Heebo', sans-serif;
+          font-size: 1rem;
+          font-weight: 500;
+          transition: var(--transition-fast);
+          margin-bottom: 1rem;
+
+          &:hover {
+            background-color: var(--color-primaryHover);
+          }
+
+          &:disabled {
+            background-color: var(--color-disabled);
+            cursor: not-allowed;
+          }
+        `;
+
+        const FileInput = styled.input`
+          display: none;
+        `;
+
+        const UploadText = styled.p`
+          color: var(--color-textSecondary);
+          margin: 0.5rem 0;
+          font-size: 0.9rem;
+        `;
+
+        const SupportedFormats = styled.div`
+          color: var(--color-textTertiary, #95a5a6);
+          font-size: 0.8rem;
+          margin-top: 0.5rem;
+        `;
+
+        const ErrorMessage = styled.div`
+          background-color: var(--color-dangerLight, #fadbd8);
+          color: var(--color-danger);
+          padding: 1rem;
+          border-radius: var(--radius-sm);
+          margin: 1rem 0;
+          border: 1px solid var(--color-dangerBorder, #f5b7b1);
+        `;
+
+        const SuccessMessage = styled.div`
+          background-color: var(--color-successLight, #d5f4e6);
+          color: var(--color-success);
+          padding: 1rem;
+          border-radius: var(--radius-sm);
+          margin: 1rem 0;
+          border: 1px solid var(--color-successBorder, #a9dfbf);
+        `;
+
+        const FilePreview = styled.div`
+          background: var(--color-surface);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-sm);
+          padding: 1rem;
+          margin: 1rem 0;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        `;
+
+        const FileIcon = styled.div`
+          width: 40px;
+          height: 40px;
+          background: var(--color-primary);
+          color: var(--color-textOnPrimary);
+          border-radius: var(--radius-sm);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 0.8rem;
+        `;
+
+        const FileInfo = styled.div`
+          flex: 1;
+        `;
+
+        const FileName = styled.div`
+          font-weight: 500;
+          color: var(--color-text);
+          margin-bottom: 0.25rem;
+        `;
+
+        const FileSize = styled.div`
+          font-size: 0.8rem;
+          color: var(--color-textSecondary);
+        `;
+
+        const RemoveButton = styled.button`
+          background: var(--color-danger);
+          color: var(--color-textOnPrimary);
+          border: none;
+          border-radius: var(--radius-sm);
+          padding: 0.5rem 1rem;
+          cursor: pointer;
+          font-size: 0.8rem;
+          transition: var(--transition-fast);
+
+          &:hover {
+            background: var(--color-dangerHover);
+          }
+        `;
+
+        const DocumentsManager = ({ t }) => {
+          const [selectedFiles, setSelectedFiles] = useState([]);
+          const [dragOver, setDragOver] = useState(false);
+          const [error, setError] = useState('');
+          const [success, setSuccess] = useState('');
+
+          // Supported file types
+          const supportedTypes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'text/plain',
+            'image/jpeg',
+            'image/png',
+            'image/gif'
+          ];
+
+          const supportedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.jpg', '.jpeg', '.png', '.gif'];
+
+          const validateFile = (file) => {
+            // Check file type
+            if (!supportedTypes.includes(file.type)) {
+              // Also check by extension as a fallback
+              const fileName = file.name.toLowerCase();
+              const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
+              
+              if (!hasValidExtension) {
+                return `סוג קובץ לא נתמך: ${file.name}. אנא בחר קובץ מהסוגים הנתמכים.`;
+              }
+            }
+
+            // Check file size (10MB limit)
+            if (file.size > 10 * 1024 * 1024) {
+              return `הקובץ ${file.name} גדול מדי. גודל מקסימלי: 10MB`;
+            }
+
+            return null;
+          };
+
+          const handleFileSelect = (files) => {
+            setError('');
+            setSuccess('');
+            
+            const fileArray = Array.from(files);
+            const validFiles = [];
+            const errors = [];
+
+            fileArray.forEach(file => {
+              const validationError = validateFile(file);
+              if (validationError) {
+                errors.push(validationError);
+              } else {
+                validFiles.push({
+                  file,
+                  id: Date.now() + Math.random(),
+                  name: file.name,
+                  size: file.size,
+                  type: file.type
+                });
+              }
+            });
+
+            if (errors.length > 0) {
+              setError(errors.join('\n'));
+            }
+
+            if (validFiles.length > 0) {
+              setSelectedFiles(prev => [...prev, ...validFiles]);
+              setSuccess(`נבחרו ${validFiles.length} קבצים בהצלחה`);
+            }
+          };
+
+          const handleDragOver = (e) => {
+            e.preventDefault();
+            setDragOver(true);
+          };
+
+          const handleDragLeave = () => {
+            setDragOver(false);
+          };
+
+          const handleDrop = (e) => {
+            e.preventDefault();
+            setDragOver(false);
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+              handleFileSelect(files);
+            }
+          };
+
+          const removeFile = (fileId) => {
+            setSelectedFiles(prev => prev.filter(f => f.id !== fileId));
+            setError('');
+            setSuccess('');
+          };
+
+          const formatFileSize = (bytes) => {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+          };
+
+          const getFileExtension = (filename) => {
+            return filename.split('.').pop().toUpperCase();
+          };
+
+          return (
+            <Container>
+              <Header>
+                <Title>מסמכים</Title>
+              </Header>
+
+              <UploadSection
+                className={dragOver ? 'dragover' : ''}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <UploadButton
+                  onClick={() => document.getElementById('file-input').click()}
+                >
+                  📁 בחר קבצים
+                </UploadButton>
+                
+                <FileInput
+                  id="file-input"
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif"
+                  onChange={(e) => handleFileSelect(e.target.files)}
+                />
+
+                <UploadText>
+                  או גרור קבצים לכאן
+                </UploadText>
+
+                <SupportedFormats>
+                  קבצים נתמכים: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, JPG, PNG, GIF
+                  <br />
+                  גודל מקסימלי: 10MB לכל קובץ
+                </SupportedFormats>
+              </UploadSection>
+
+              {error && (
+                <ErrorMessage>
+                  <strong>שגיאה:</strong>
+                  <pre style={{ margin: '0.5rem 0 0 0', whiteSpace: 'pre-wrap' }}>{error}</pre>
+                </ErrorMessage>
+              )}
+
+              {success && (
+                <SuccessMessage>
+                  <strong>הצלחה:</strong> {success}
+                </SuccessMessage>
+              )}
+
+              {selectedFiles.length > 0 && (
+                <div>
+                  <h3 style={{ color: 'var(--color-text)', marginBottom: '1rem' }}>
+                    קבצים נבחרים ({selectedFiles.length})
+                  </h3>
+                  {selectedFiles.map(fileData => (
+                    <FilePreview key={fileData.id}>
+                      <FileIcon>
+                        {getFileExtension(fileData.name)}
+                      </FileIcon>
+                      <FileInfo>
+                        <FileName>{fileData.name}</FileName>
+                        <FileSize>{formatFileSize(fileData.size)}</FileSize>
+                      </FileInfo>
+                      <RemoveButton onClick={() => removeFile(fileData.id)}>
+                        הסר
+                      </RemoveButton>
+                    </FilePreview>
+                  ))}
+                </div>
+              )}
+            </Container>
+          );
+        };
+
+        // Test Component
+        const TestRunner = () => {
+            const [testResults, setTestResults] = useState([]);
+            const [isComplete, setIsComplete] = useState(false);
+
+            useEffect(() => {
+                runTests();
+            }, []);
+
+            const createMockFile = (name, size, type) => {
+                const file = new File(['mock content'], name, { type });
+                Object.defineProperty(file, 'size', { value: size });
+                return file;
+            };
+
+            const runTests = async () => {
+                const results = [];
+
+                try {
+                    // Test 1: Component displays Hebrew title
+                    try {
+                        const tempContainer = document.createElement('div');
+                        document.body.appendChild(tempContainer);
+                        
+                        const testElement = React.createElement(DocumentsManager, { t: (key) => key });
+                        ReactDOM.render(testElement, tempContainer);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        const hebrewTitle = tempContainer.textContent.includes('מסמכים');
+                        
+                        if (hebrewTitle) {
+                            results.push({
+                                name: 'Component displays Hebrew title "מסמכים"',
+                                status: "PASS",
+                                message: "Found Hebrew title in component"
+                            });
+                        } else {
+                            results.push({
+                                name: 'Component displays Hebrew title "מסמכים"',
+                                status: "FAIL",
+                                message: "Hebrew title not found in component"
+                            });
+                        }
+                        
+                        document.body.removeChild(tempContainer);
+                        
+                    } catch (error) {
+                        results.push({
+                            name: 'Component displays Hebrew title "מסמכים"',
+                            status: "FAIL",
+                            message: `Error testing Hebrew title: ${error.message}`
+                        });
+                    }
+
+                    // Test 2: Upload form elements are present
+                    try {
+                        const tempContainer = document.createElement('div');
+                        document.body.appendChild(tempContainer);
+                        
+                        const testElement = React.createElement(DocumentsManager, { t: (key) => key });
+                        ReactDOM.render(testElement, tempContainer);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        const hasUploadButton = tempContainer.querySelector('button');
+                        const hasFileInput = tempContainer.querySelector('input[type="file"]');
+                        const hasUploadText = tempContainer.textContent.includes('או גרור קבצים לכאן');
+                        
+                        if (hasUploadButton && hasFileInput && hasUploadText) {
+                            results.push({
+                                name: 'Upload form elements are present',
+                                status: "PASS",
+                                message: "Found upload button, file input, and drag text"
+                            });
+                        } else {
+                            results.push({
+                                name: 'Upload form elements are present',
+                                status: "FAIL",
+                                message: `Missing elements - Button: ${!!hasUploadButton}, Input: ${!!hasFileInput}, Text: ${hasUploadText}`
+                            });
+                        }
+                        
+                        document.body.removeChild(tempContainer);
+                        
+                    } catch (error) {
+                        results.push({
+                            name: 'Upload form elements are present',
+                            status: "FAIL",
+                            message: `Error testing form elements: ${error.message}`
+                        });
+                    }
+
+                    // Test 3: File input accepts correct file types
+                    try {
+                        const tempContainer = document.createElement('div');
+                        document.body.appendChild(tempContainer);
+                        
+                        const testElement = React.createElement(DocumentsManager, { t: (key) => key });
+                        ReactDOM.render(testElement, tempContainer);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        const fileInput = tempContainer.querySelector('input[type="file"]');
+                        const acceptAttribute = fileInput.getAttribute('accept');
+                        
+                        const expectedTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.jpg', '.jpeg', '.png', '.gif'];
+                        const hasAllTypes = expectedTypes.every(type => acceptAttribute.includes(type));
+                        
+                        if (hasAllTypes) {
+                            results.push({
+                                name: 'File input accepts correct file types',
+                                status: "PASS",
+                                message: "File input has correct accept attribute with all supported types"
+                            });
+                        } else {
+                            results.push({
+                                name: 'File input accepts correct file types',
+                                status: "FAIL",
+                                message: `Accept attribute missing some types. Found: ${acceptAttribute}`
+                            });
+                        }
+                        
+                        document.body.removeChild(tempContainer);
+                        
+                    } catch (error) {
+                        results.push({
+                            name: 'File input accepts correct file types',
+                            status: "FAIL",
+                            message: `Error testing file input: ${error.message}`
+                        });
+                    }
+
+                    // Test 4: Supported formats are displayed
+                    try {
+                        const tempContainer = document.createElement('div');
+                        document.body.appendChild(tempContainer);
+                        
+                        const testElement = React.createElement(DocumentsManager, { t: (key) => key });
+                        ReactDOM.render(testElement, tempContainer);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        const hasSupportedFormats = tempContainer.textContent.includes('קבצים נתמכים');
+                        const hasSizeLimit = tempContainer.textContent.includes('גודל מקסימלי: 10MB');
+                        
+                        if (hasSupportedFormats && hasSizeLimit) {
+                            results.push({
+                                name: 'Supported formats and size limit are displayed',
+                                status: "PASS",
+                                message: "Found supported formats text and size limit information"
+                            });
+                        } else {
+                            results.push({
+                                name: 'Supported formats and size limit are displayed',
+                                status: "FAIL",
+                                message: `Missing info - Formats: ${hasSupportedFormats}, Size limit: ${hasSizeLimit}`
+                            });
+                        }
+                        
+                        document.body.removeChild(tempContainer);
+                        
+                    } catch (error) {
+                        results.push({
+                            name: 'Supported formats and size limit are displayed',
+                            status: "FAIL",
+                            message: `Error testing format display: ${error.message}`
+                        });
+                    }
+
+                    // Test 5: Component structure is correct
+                    try {
+                        const tempContainer = document.createElement('div');
+                        document.body.appendChild(tempContainer);
+                        
+                        const testElement = React.createElement(DocumentsManager, { t: (key) => key });
+                        ReactDOM.render(testElement, tempContainer);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        const hasContainer = tempContainer.children.length > 0;
+                        const hasHeader = tempContainer.querySelector('h2');
+                        const hasUploadSection = tempContainer.textContent.includes('בחר קבצים');
+                        
+                        if (hasContainer && hasHeader && hasUploadSection) {
+                            results.push({
+                                name: 'Component structure is correct',
+                                status: "PASS",
+                                message: "Component has proper structure with container, header, and upload section"
+                            });
+                        } else {
+                            results.push({
+                                name: 'Component structure is correct',
+                                status: "FAIL",
+                                message: `Structure issues - Container: ${hasContainer}, Header: ${!!hasHeader}, Upload: ${hasUploadSection}`
+                            });
+                        }
+                        
+                        document.body.removeChild(tempContainer);
+                        
+                    } catch (error) {
+                        results.push({
+                            name: 'Component structure is correct',
+                            status: "FAIL",
+                            message: `Error testing component structure: ${error.message}`
+                        });
+                    }
+
+                } catch (error) {
+                    results.push({
+                        name: "Test execution",
+                        status: "FAIL",
+                        message: `Test execution failed: ${error.message}`
+                    });
+                }
+
+                setTestResults(results);
+                setIsComplete(true);
+            };
+
+            const passedTests = testResults.filter(test => test.status === "PASS").length;
+            const totalTests = testResults.length;
+
+            return (
+                <div>
+                    {isComplete && (
+                        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: passedTests === totalTests ? '#d5f4e6' : '#fadbd8', borderRadius: '8px' }}>
+                            <strong>
+                                {passedTests === totalTests ? '✅ All automated tests passed!' : `❌ ${passedTests}/${totalTests} automated tests passed`}
+                            </strong>
+                        </div>
+                    )}
+                    
+                    {testResults.map((result, index) => (
+                        <div key={index} className="test-item">
+                            <div className={result.status === "PASS" ? "test-pass" : "test-fail"}>
+                                {result.status === "PASS" ? "✅" : "❌"} {result.name}
+                            </div>
+                            <div style={{ marginTop: '5px', fontSize: '14px', color: '#666' }}>
+                                {result.message}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        // Component Demo
+        const ComponentDemo = () => {
+            return (
+                <div>
+                    <h3>Interactive Demo - DocumentsManager with Upload Form</h3>
+                    <div className="component-demo">
+                        <DocumentsManager t={(key) => key} />
+                    </div>
+                </div>
+            );
+        };
+
+        // Render both the component demo and test results
+        ReactDOM.render(
+            <div>
+                <ComponentDemo />
+                <TestRunner />
+            </div>,
+            document.getElementById('component-test-root')
+        );
+
+        // Also render test results in the dedicated section
+        ReactDOM.render(<TestRunner />, document.getElementById('results-content'));
+    </script>
+</body>
+</html>

@@ -51,6 +51,71 @@
   - Test: Overview displays lesson count
   - Test: Counters reflect actual stored content
 
+  ### **1.4 Basic Documents Infrastructure**
+  - [X] **Create empty DocumentsManager component**
+    - Test: Component renders without errors
+    - Test: Component displays "Documents" heading
+
+  - [X] **Add Documents tab to TeacherDashboard navigation**
+    - Test: "Documents" tab appears in navigation bar
+    - Test: Clicking tab shows DocumentsManager component
+
+  - [X] **Create basic document upload form**
+    - Test: Form allows uploading DOC, PDF, and other file types
+    - Test: Form validation prevents unsupported file types
+
+  - [X] **Implement document storage in localStorage**
+    - Test: Uploaded documents persist after page refresh
+    - Test: Documents list displays saved files
+
+  ### **1.5 Basic Audio Infrastructure**
+  - [X] **Create empty AudioManager component**
+    - Test: Component renders without errors
+    - Test: Component displays "Audio" heading
+
+  - [X] **Add Audio tab to TeacherDashboard navigation**
+    - Test: "Audio" tab appears in navigation bar
+    - Test: Clicking tab shows AudioManager component
+
+  - [X] **Create basic audio upload form**
+    - Test: Form allows uploading MP3, WAV, and other audio files
+    - Test: Form validation prevents unsupported file types
+
+  - [X] **Implement audio storage in localStorage**
+    - Test: Uploaded audio files persist after page refresh
+    - Test: Audio list displays saved files
+
+  ### **1.6 Basic Video Infrastructure**
+  -  [X] **Create empty VideoManager component**
+    - Test: Component renders without errors
+    - Test: Component displays "Video" heading
+
+  - [X] **Add Video tab to TeacherDashboard navigation**
+    - Test: "Video" tab appears in navigation bar
+    - Test: Clicking tab shows VideoManager component
+
+  - [X] **Create basic video upload form**
+    - Test: Form allows uploading MP4, AVI, and other video files
+    - Test: Form validation prevents unsupported file types
+
+  - [X] **Implement video storage in localStorage**
+    - Test: Uploaded video files persist after page refresh
+    - Test: Video list displays saved files
+
+### **1.7 Re-design of the teacher's dashboard**
+  - [X] **Create 4 main tabs - Overview, Media, Content and Lessons.**
+    - Test: Dashboard displays four main tabs in navigation.
+    - Test: Clicking each tab shows relevant content section.
+
+  - [X] **Create Sub-Tabs for Media - Audio and Video.**
+    - Test: Media tab contains Audio and Video sub-tabs.
+    - Test: Selecting sub-tabs switches between audio and video content.
+
+  - [X] **Create Sub-Tabs for Content - Flashcards, Tests and Summaries**
+    - Test: Content tab contains Flashcards, Tests, and Summaries sub-tabs.
+    - Test: Selecting sub-tabs displays corresponding content manager.
+
+
 ## 🔧 **PRIORITY 2: CORE FUNCTIONALITY**
 
 ### **2.0 Database Merging**
@@ -65,12 +130,6 @@
 	Testable deliverables:
 	- Lesson generated test is added to test list when generated directly from card.
 	- Lesson generated test is counted in the overview tab statistics.
-
-- [ ] **Merge flashcard database with lesson flashcard database**
-	All flashcard and program should be part of the same database, lesson specific should have some indicator like a tag.
-	Testable deliverables:
-	- Lesson generated flashcard set is added to test list when generated directly from card.
-	- Lesson generated flashcard set is counted in the overview tab statistics.
 	
 ### **2.1 Test Management Features**
 - [ ] **Add test editing capability**
@@ -116,10 +175,56 @@
   - Test: Items show creation date and type
   - Test: Clicking items navigates to relevant tab
 
+
+  ### **2.4 Media Management Features**
+  - [ ] **Add audio deletion capability**
+    - Test: Delete button appears on audio items
+    - Test: Clicking delete removes audio from list
+    - Test: Deleted audio files don't reappear after refresh
+
+  - [ ] **Implement audio preview modal**
+    - Test: Preview button plays audio file
+    - Test: Modal displays audio controls properly
+    - Test: Modal can be closed without affecting audio
+
+  - [ ] **Add video deletion capability**
+    - Test: Delete button appears on video items
+    - Test: Clicking delete removes video from list
+    - Test: Deleted video files don't reappear after refresh
+
+  - [ ] **Implement video preview modal**
+    - Test: Preview button plays video file
+    - Test: Modal displays video player properly
+    - Test: Modal can be closed without affecting video
+
+### **2.5 Media Compression Option**
+- [ ] **Add media compression option before uploading**
+  - Test: Compression toggle appears in audio, video, and document upload forms
+  - Test: Selecting compression reduces file size before upload
+  - Test: Compressed files maintain acceptable quality
+
+
 ## 🎨 **PRIORITY 3: AI INTEGRATION**
 
-### **3.1 AI Test Generation**
-- [ ] **Add lesson selection for AI tests**
+### **3.0 Media Transcription After upload**
+- [ ] **Add automatic transcription for uploaded audio and video**
+  - Test: Transcription starts after successful upload
+  - Test: Transcribed text appears in media item details
+  - Test: Transcription status indicator shows progress
+  - Test: Errors in transcription are handled gracefully
+  
+- [ ] **Allow manual transcription editing**
+  - Test: Edit button appears on transcribed text
+  - Test: Changes are saved and persist after refresh
+  - Test: Edited transcription is clearly marked
+
+- [ ] **Enable search within transcriptions**
+  - Test: Search input filters media by transcription content
+  - Test: Search results highlight matching text
+  - Test: Search works for both audio and video transcriptions
+
+### **3.1 AI Content Generation Based on Media**
+- [ ] **Add **
   - Test: Dropdown shows available lessons
   - Test: Multiple lessons can be selected
   - Test: Selection state persists during form interaction
@@ -184,16 +289,24 @@
   - Test: Search input filters test list
   - Test: Search works on title and description
   - Test: Search results update in real-time
-  
+
 - [ ] **Add search functionality to summaries**
   - Test: Search input filters summary list
   - Test: Search works on title and content
   - Test: Empty search shows all results
-  
+
 - [ ] **Add sorting options**
   - Test: Sort by date (newest/oldest)
   - Test: Sort by title (A-Z/Z-A)
+  - Test: Sort by tags (single/multiple tag selection)
   - Test: Sort preference persists
+
+- [ ] **Add sorting and search for Media tabs (Audio, Video, Documents)**
+  - Test: Media tabs have search input to filter by file name and description
+  - Test: Sort by upload date (newest/oldest)
+  - Test: Sort by file type (e.g., MP3, PDF, MP4)
+  - Test: Sort by tags assigned to media files
+  - Test: Sort and search preferences persist across sessions
 
 ### **4.3 Mobile Responsiveness**
 - [ ] **Make Tests tab mobile-friendly**

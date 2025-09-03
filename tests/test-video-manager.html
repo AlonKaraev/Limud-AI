@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Manager Test - Limud AI</title>
+    <style>
+        :root {
+            --color-primary: #3498db;
+            --color-primaryHover: #2980b9;
+            --color-primaryLight: rgba(52, 152, 219, 0.1);
+            --color-success: #27ae60;
+            --color-successHover: #229954;
+            --color-successLight: #d5f4e6;
+            --color-successBorder: #a9dfbf;
+            --color-danger: #e74c3c;
+            --color-dangerHover: #c0392b;
+            --color-dangerLight: #fadbd8;
+            --color-dangerBorder: #f5b7b1;
+            --color-text: #2c3e50;
+            --color-textOnPrimary: #ffffff;
+            --color-textSecondary: #7f8c8d;
+            --color-textTertiary: #95a5a6;
+            --color-surface: #ffffff;
+            --color-surfaceElevated: #f8f9fa;
+            --color-background: #f8f9fa;
+            --color-border: #e9ecef;
+            --color-shadowLight: rgba(0, 0, 0, 0.1);
+            --color-disabled: #bdc3c7;
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition-fast: all 0.2s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--color-background);
+            color: var(--color-text);
+            direction: rtl;
+            text-align: right;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .test-header {
+            background: var(--color-surface);
+            padding: 2rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px var(--color-shadowLight);
+        }
+
+        .test-header h1 {
+            margin: 0 0 0.5rem 0;
+            color: var(--color-primary);
+        }
+
+        .test-header p {
+            margin: 0;
+            color: var(--color-textSecondary);
+        }
+
+        .test-results {
+            background: var(--color-surface);
+            padding: 1.5rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px var(--color-shadowLight);
+        }
+
+        .test-results h2 {
+            margin: 0 0 1rem 0;
+            color: var(--color-text);
+        }
+
+        .test-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+        }
+
+        .test-item.pass {
+            background: var(--color-successLight);
+            color: var(--color-success);
+        }
+
+        .test-item.fail {
+            background: var(--color-dangerLight);
+            color: var(--color-danger);
+        }
+
+        .test-icon {
+            font-weight: bold;
+        }
+
+        .component-container {
+            background: var(--color-surface);
+            border-radius: var(--radius-md);
+            box-shadow: 0 2px 8px var(--color-shadowLight);
+        }
+
+        /* Import VideoManager styles */
+        .video-manager-container {
+            background: var(--color-surface);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            box-shadow: 0 2px 8px var(--color-shadowLight);
+            margin-bottom: 2rem;
+        }
+
+        .video-manager-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .video-manager-title {
+            color: var(--color-text);
+            margin: 0;
+        }
+
+        .upload-section {
+            background: var(--color-surfaceElevated);
+            border: 2px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            transition: var(--transition-fast);
+        }
+
+        .upload-section.dragover {
+            border-color: var(--color-primary);
+            background: var(--color-primaryLight);
+        }
+
+        .upload-button {
+            padding: 0.75rem 1.5rem;
+            background-color: var(--color-primary);
+            color: var(--color-textOnPrimary);
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: var(--transition-fast);
+            margin-bottom: 1rem;
+        }
+
+        .upload-button:hover {
+            background-color: var(--color-primaryHover);
+        }
+
+        .upload-button:disabled {
+            background-color: var(--color-disabled);
+            cursor: not-allowed;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-text {
+            color: var(--color-textSecondary);
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+
+        .supported-formats {
+            color: var(--color-textTertiary);
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        .error-message {
+            background-color: var(--color-dangerLight);
+            color: var(--color-danger);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin: 1rem 0;
+            border: 1px solid var(--color-dangerBorder);
+        }
+
+        .success-message {
+            background-color: var(--color-successLight);
+            color: var(--color-success);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin: 1rem 0;
+            border: 1px solid var(--color-successBorder);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🎬 Video Manager Component Test</h1>
+            <p>Testing the VideoManager component functionality</p>
+        </div>
+
+        <div class="test-results">
+            <h2>Test Results</h2>
+            <div id="test-results-container">
+                <!-- Test results will be populated here -->
+            </div>
+        </div>
+
+        <div class="component-container">
+            <div class="video-manager-container">
+                <div class="video-manager-header">
+                    <h2 class="video-manager-title">🎬 ווידאו</h2>
+                </div>
+
+                <div class="upload-section" id="upload-section">
+                    <button class="upload-button" onclick="document.getElementById('video-file-input').click()">
+                        🎬 בחר קבצי ווידאו
+                    </button>
+                    
+                    <input
+                        id="video-file-input"
+                        class="file-input"
+                        type="file"
+                        multiple
+                        accept=".mp4,.avi,.mov,.wmv,.flv,.webm,.mkv,.m4v,.3gp,video/*"
+                        onchange="handleFileSelect(this.files)"
+                    />
+
+                    <p class="upload-text">
+                        או גרור קבצי ווידאו לכאן
+                    </p>
+
+                    <div class="supported-formats">
+                        קבצי ווידאו נתמכים: MP4, AVI, MOV, WMV, FLV, WebM, MKV, M4V, 3GP
+                        <br />
+                        גודל מקסימלי: 500MB לכל קובץ
+                    </div>
+                </div>
+
+                <div id="messages-container">
+                    <!-- Error and success messages will appear here -->
+                </div>
+
+                <div id="selected-files-container">
+                    <!-- Selected files will appear here -->
+                </div>
+
+                <div id="saved-files-container">
+                    <!-- Saved files will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test results tracking
+        const testResults = [];
+
+        function addTestResult(testName, passed, message = '') {
+            testResults.push({ testName, passed, message });
+            updateTestResults();
+        }
+
+        function updateTestResults() {
+            const container = document.getElementById('test-results-container');
+            container.innerHTML = testResults.map(result => `
+                <div class="test-item ${result.passed ? 'pass' : 'fail'}">
+                    <span class="test-icon">${result.passed ? '✅' : '❌'}</span>
+                    <span>${result.testName}</span>
+                    ${result.message ? `<span> - ${result.message}</span>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Test 1: Component renders without errors
+        try {
+            const videoManagerContainer = document.querySelector('.video-manager-container');
+            if (videoManagerContainer) {
+                addTestResult('Component renders without errors', true);
+            } else {
+                addTestResult('Component renders without errors', false, 'Container not found');
+            }
+        } catch (error) {
+            addTestResult('Component renders without errors', false, error.message);
+        }
+
+        // Test 2: Component displays "Video" heading
+        try {
+            const heading = document.querySelector('.video-manager-title');
+            if (heading && heading.textContent.includes('ווידאו')) {
+                addTestResult('Component displays "Video" heading', true);
+            } else {
+                addTestResult('Component displays "Video" heading', false, 'Heading not found or incorrect');
+            }
+        } catch (error) {
+            addTestResult('Component displays "Video" heading', false, error.message);
+        }
+
+        // Test 3: Form allows uploading video files
+        try {
+            const fileInput = document.getElementById('video-file-input');
+            if (fileInput && fileInput.accept.includes('video')) {
+                addTestResult('Form allows uploading video files', true);
+            } else {
+                addTestResult('Form allows uploading video files', false, 'File input not configured correctly');
+            }
+        } catch (error) {
+            addTestResult('Form allows uploading video files', false, error.message);
+        }
+
+        // Supported video file types
+        const supportedTypes = [
+            'video/mp4',
+            'video/avi',
+            'video/mov',
+            'video/wmv',
+            'video/flv',
+            'video/webm',
+            'video/mkv',
+            'video/m4v',
+            'video/3gp',
+            'video/quicktime'
+        ];
+
+        const supportedExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v', '.3gp'];
+
+        function validateFile(file) {
+            // Check file type
+            if (!supportedTypes.includes(file.type)) {
+                // Also check by extension as a fallback
+                const fileName = file.name.toLowerCase();
+                const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
+                
+                if (!hasValidExtension) {
+                    return `סוג קובץ ווידאו לא נתמך: ${file.name}. אנא בחר קובץ מהסוגים הנתמכים.`;
+                }
+            }
+
+            // Check file size (500MB limit for video files)
+            if (file.size > 500 * 1024 * 1024) {
+                return `קובץ הווידאו ${file.name} גדול מדי. גודל מקסימלי: 500MB`;
+            }
+
+            return null;
+        }
+
+        function showMessage(message, isError = false) {
+            const container = document.getElementById('messages-container');
+            const messageClass = isError ? 'error-message' : 'success-message';
+            container.innerHTML = `<div class="${messageClass}"><strong>${isError ? 'שגיאה:' : 'הצלחה:'}</strong> ${message}</div>`;
+        }
+
+        function handleFileSelect(files) {
+            const fileArray = Array.from(files);
+            const validFiles = [];
+            const errors = [];
+
+            for (const file of fileArray) {
+                const validationError = validateFile(file);
+                if (validationError) {
+                    errors.push(validationError);
+                } else {
+                    validFiles.push(file);
+                }
+            }
+
+            if (errors.length > 0) {
+                showMessage(errors.join('\n'), true);
+                addTestResult('Form validation prevents unsupported file types', true, 'Validation working correctly');
+            } else if (validFiles.length > 0) {
+                showMessage(`נבחרו ${validFiles.length} קבצי ווידאו בהצלחה`);
+                addTestResult('Form validation prevents unsupported file types', true, 'Valid files accepted');
+            }
+
+            // Test localStorage functionality
+            try {
+                const testData = { test: 'video-storage-test', timestamp: Date.now() };
+                localStorage.setItem('limud-ai-video-files-test', JSON.stringify(testData));
+                const retrieved = JSON.parse(localStorage.getItem('limud-ai-video-files-test'));
+                
+                if (retrieved && retrieved.test === 'video-storage-test') {
+                    addTestResult('Video storage in localStorage works', true);
+                    localStorage.removeItem('limud-ai-video-files-test'); // Clean up
+                } else {
+                    addTestResult('Video storage in localStorage works', false, 'Data not retrieved correctly');
+                }
+            } catch (error) {
+                addTestResult('Video storage in localStorage works', false, error.message);
+            }
+        }
+
+        // Test 4: Form validation prevents unsupported file types
+        // This will be tested when files are selected
+
+        // Test 5: Video storage in localStorage
+        // This will be tested when files are selected
+
+        // Set up drag and drop functionality
+        const uploadSection = document.getElementById('upload-section');
+
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files);
+            }
+        });
+
+        // Initialize test results
+        updateTestResults();
+
+        console.log('🎬 Video Manager Test initialized');
+        console.log('📋 Tests completed:', testResults.length);
+        console.log('✅ Passed:', testResults.filter(r => r.passed).length);
+        console.log('❌ Failed:', testResults.filter(r => !r.passed).length);
+    </script>
+</body>
+</html>

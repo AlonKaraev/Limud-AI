@@ -7,15 +7,27 @@ import SessionManager from './SessionManager';
 import LessonsManager from './LessonsManager';
 import TestsManager from './TestsManager';
 import SummariesManager from './SummariesManager';
+import DocumentsManager from './DocumentsManager';
+import AudioManager from './AudioManager';
+import VideoManager from './VideoManager';
 
 const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingRecording, setIsProcessingRecording }) => {
-  const [activeTab, setActiveTab] = useState('overview');
+  // Main tab state - 4 main tabs as requested
+  const [activeMainTab, setActiveMainTab] = useState('overview');
+  
+  // Sub-tab states
+  const [activeMediaSubTab, setActiveMediaSubTab] = useState('audio');
+  const [activeContentSubTab, setActiveContentSubTab] = useState('flashcards');
+  
+  // Memory card related states
   const [showMemoryCardForm, setShowMemoryCardForm] = useState(false);
   const [viewingSet, setViewingSet] = useState(null);
   const [editingSet, setEditingSet] = useState(null);
-  const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard', 'viewer', 'editor'
+  const [currentPage, setCurrentPage] = useState('dashboard');
   const [memoryCardSets, setMemoryCardSets] = useState([]);
   const [loadingMemoryCards, setLoadingMemoryCards] = useState(false);
+  
+  // Statistics states
   const [memoryCardStats, setMemoryCardStats] = useState({
     totalSets: 0,
     totalCards: 0,
@@ -38,12 +50,12 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
 
   // Load data when component mounts or when tabs are active
   useEffect(() => {
-    if (activeTab === 'memory-cards') {
+    if (activeMainTab === 'content' && activeContentSubTab === 'flashcards') {
       loadMemoryCardData();
-    } else if (activeTab === 'overview') {
+    } else if (activeMainTab === 'overview') {
       loadAllStats();
     }
-  }, [activeTab]);
+  }, [activeMainTab, activeContentSubTab]);
 
   // Load all statistics on component mount
   useEffect(() => {
@@ -163,7 +175,7 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
           
           setSummaryStats({
             totalSummaries,
-            manualSummaries: totalSummaries, // Assume all localStorage summaries are manual
+            manualSummaries: totalSummaries,
             lessonSummaries: 0,
             publicSummaries,
             recentSummaries
@@ -197,7 +209,7 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
       if (storedTests) {
         const tests = JSON.parse(storedTests);
         const totalTests = tests.length;
-        const recentTests = tests.slice(0, 2); // Get 2 most recent
+        const recentTests = tests.slice(0, 2);
         
         setTestStats({
           totalTests,
@@ -220,7 +232,7 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
 
   const loadLessonStats = async () => {
     try {
-      // Load lessons from API (same source as LessonsManager)
+      // Load lessons from API
       const token = localStorage.getItem('token');
       if (!token) {
         setLessonStats({
@@ -329,7 +341,7 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
       }
       
       // Switch to lessons tab to show the new recording with AI content
-      setActiveTab('lessons');
+      setActiveMainTab('lessons');
     } catch (error) {
       console.error('Error saving recording:', error);
     } finally {
@@ -428,11 +440,230 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
     setCurrentPage('editor');
   };
 
-  // Memory Cards Overview Component
-  const MemoryCardsOverview = () => (
-    <div className="memory-cards-overview">
-      <div className="memory-cards-header">
-        <div className="memory-cards-title">
+  // Overview Tab Content
+  const OverviewContent = () => (
+    <div className="overview-container">
+      {/* Compact Statistics Grid */}
+      <div className="overview-section">
+        <h3 className="section-title">📊 סטטיסטיקות כלליות</h3>
+        <div className="compact-stats-grid">
+          <div className="compact-stat-card">
+            <div className="compact-stat-icon">📝</div>
+            <div className="compact-stat-info">
+              <div className="compact-stat-number">{summaryStats.totalSummaries}</div>
+              <div className="compact-stat-label">סיכומים כולל</div>
+            </div>
+          </div>
+          <div className="compact-stat-card">
+            <div className="compact-stat-icon">✍️</div>
+            <div className="compact-stat-info">
+              <div className="compact-stat-number">{summaryStats.manualSummaries || 0}</div>
+              <div className="compact-stat-label">סיכומים ידניים</div>
+            </div>
+          </div>
+          <div className="compact-stat-card">
+            <div className="compact-stat-icon">🤖</div>
+            <div className="compact-stat-info">
+              <div className="compact-stat-number">{summaryStats.lessonSummaries || 0}</div>
+              <div className="compact-stat-label">סיכומי שיעורים</div>
+            </div>
+          </div>
+          <div className="compact-stat-card">
+            <div className="compact-stat-icon">📚</div>
+            <div className="compact-stat-info">
+              <div className="compact-stat-number">{lessonStats.totalLessons}</div>
+              <div className="compact-stat-label">שיעורים</div>
+            </div>
+          </div>
+          <div className="compact-stat-card">
+            <div className="compact-stat-icon">📋</div>
+            <div className="compact-stat-info">
+              <div className="compact-stat-number">{testStats.totalTests}</div>
+              <div className="compact-stat-label">מבחנים</div>
+            </div>
+          </div>
+          <div className="compact-stat-card">
+            <div className="compact-stat-icon">🎴</div>
+            <div className="compact-stat-info">
+              <div className="compact-stat-number">{memoryCardStats.totalSets}</div>
+              <div className="compact-stat-label">כרטיסי זיכרון</div>
+            </div>
+          </div>
+          <div className="compact-stat-card">
+            <div className="compact-stat-icon">🌐</div>
+            <div className="compact-stat-info">
+              <div className="compact-stat-number">{summaryStats.publicSummaries}</div>
+              <div className="compact-stat-label">תוכן ציבורי</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      {(summaryStats.recentSummaries.length > 0 || testStats.recentTests.length > 0 || lessonStats.recentLessons.length > 0) && (
+        <div className="overview-section">
+          <h3 className="section-title">🕒 פעילות אחרונה</h3>
+          <div className="recent-activity-grid">
+            {summaryStats.recentSummaries.slice(0, 2).map((summary, index) => (
+              <div key={`summary-${index}`} className="recent-activity-card">
+                <div className="activity-icon">
+                  {summary.summary_type === 'lesson' ? '🤖' : '📝'}
+                </div>
+                <div className="activity-content">
+                  <div className="activity-header">
+                    <h6>{summary.title}</h6>
+                    <span className={`summary-type-badge ${summary.summary_type === 'lesson' ? 'lesson-badge' : 'manual-badge'}`}>
+                      {summary.summary_type === 'lesson' ? 'שיעור' : 'ידני'}
+                    </span>
+                  </div>
+                  <p>סיכום • {summary.subject_area || summary.subjectArea || 'כללי'}</p>
+                </div>
+              </div>
+            ))}
+            {testStats.recentTests.slice(0, 2).map((test, index) => (
+              <div key={`test-${index}`} className="recent-activity-card">
+                <div className="activity-icon">📋</div>
+                <div className="activity-content">
+                  <h6>{test.title || `מבחן ${index + 1}`}</h6>
+                  <p>מבחן • {test.subject || 'כללי'}</p>
+                </div>
+              </div>
+            ))}
+            {lessonStats.recentLessons.slice(0, 2).map((lesson, index) => (
+              <div key={`lesson-${index}`} className="recent-activity-card">
+                <div className="activity-icon">📚</div>
+                <div className="activity-content">
+                  <h6>{lesson.title || `שיעור ${index + 1}`}</h6>
+                  <p>שיעור • {lesson.subject || 'כללי'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <div className="overview-section">
+        <h3 className="section-title">⚡ פעולות מהירות</h3>
+        <div className="quick-actions-grid">
+          <button 
+            className="quick-action-card"
+            onClick={() => {
+              setActiveMainTab('content');
+              setActiveContentSubTab('flashcards');
+            }}
+          >
+            <div className="quick-action-icon">🎴</div>
+            <div className="quick-action-title">כרטיסי זיכרון</div>
+            <div className="quick-action-desc">צור וערוך כרטיסי זיכרון</div>
+          </button>
+          <button 
+            className="quick-action-card"
+            onClick={() => setActiveMainTab('lessons')}
+          >
+            <div className="quick-action-icon">📚</div>
+            <div className="quick-action-title">שיעורים</div>
+            <div className="quick-action-desc">נהל שיעורים והקלטות</div>
+          </button>
+          <button 
+            className="quick-action-card"
+            onClick={() => {
+              setActiveMainTab('content');
+              setActiveContentSubTab('tests');
+            }}
+          >
+            <div className="quick-action-icon">📋</div>
+            <div className="quick-action-title">מבחנים</div>
+            <div className="quick-action-desc">צור וערוך מבחנים</div>
+          </button>
+          <button 
+            className="quick-action-card"
+            onClick={() => {
+              setActiveMainTab('content');
+              setActiveContentSubTab('summaries');
+            }}
+          >
+            <div className="quick-action-icon">📝</div>
+            <div className="quick-action-title">סיכומים</div>
+            <div className="quick-action-desc">צור וערוך סיכומים</div>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Media Tab Content with Sub-tabs
+  const MediaContent = () => (
+    <div className="media-container">
+      <div className="sub-tabs">
+        <button
+          className={`sub-tab ${activeMediaSubTab === 'audio' ? 'active' : ''}`}
+          onClick={() => setActiveMediaSubTab('audio')}
+        >
+          🎵 אודיו
+        </button>
+        <button
+          className={`sub-tab ${activeMediaSubTab === 'video' ? 'active' : ''}`}
+          onClick={() => setActiveMediaSubTab('video')}
+        >
+          🎬 ווידאו
+        </button>
+      </div>
+      
+      <div className="sub-tab-content">
+        {activeMediaSubTab === 'audio' && <AudioManager t={t} />}
+        {activeMediaSubTab === 'video' && <VideoManager t={t} />}
+      </div>
+    </div>
+  );
+
+  // Content Tab Content with Sub-tabs
+  const ContentContent = () => (
+    <div className="content-container">
+      <div className="sub-tabs">
+        <button
+          className={`sub-tab ${activeContentSubTab === 'flashcards' ? 'active' : ''}`}
+          onClick={() => setActiveContentSubTab('flashcards')}
+        >
+          🎴 כרטיסי זיכרון
+        </button>
+        <button
+          className={`sub-tab ${activeContentSubTab === 'tests' ? 'active' : ''}`}
+          onClick={() => setActiveContentSubTab('tests')}
+        >
+          📋 מבחנים
+        </button>
+        <button
+          className={`sub-tab ${activeContentSubTab === 'summaries' ? 'active' : ''}`}
+          onClick={() => setActiveContentSubTab('summaries')}
+        >
+          📝 סיכומים
+        </button>
+      </div>
+      
+      <div className="sub-tab-content">
+        {activeContentSubTab === 'flashcards' && (
+          showMemoryCardForm ? (
+            <MemoryCardManager 
+              userId={user.id}
+              onCardCreated={handleMemoryCardCreated}
+              onCancel={handleCancelCardCreation}
+            />
+          ) : (
+            <FlashcardsOverview />
+          )
+        )}
+        {activeContentSubTab === 'tests' && <TestsManager user={user} t={t} />}
+        {activeContentSubTab === 'summaries' && <SummariesManager />}
+      </div>
+    </div>
+  );
+
+  // Flashcards Overview Component
+  const FlashcardsOverview = () => (
+    <div className="flashcards-overview">
+      <div className="flashcards-header">
+        <div className="flashcards-title">
           <h3>🎴 כרטיסי זיכרון</h3>
           <p>נהל וצור כרטיסי זיכרון לתלמידים שלך</p>
         </div>
@@ -548,219 +779,44 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
           </p>
         </div>
         
-        <div className="nav-tabs">
-          <div className="nav-tabs-header">
+        {/* Main Navigation Tabs - 4 main tabs as requested */}
+        <div className="main-nav-tabs">
+          <div className="main-nav-tabs-header">
             <button
-              className={`nav-tab ${activeTab === 'overview' ? 'active' : ''}`}
-              onClick={() => setActiveTab('overview')}
+              className={`main-nav-tab ${activeMainTab === 'overview' ? 'active' : ''}`}
+              onClick={() => setActiveMainTab('overview')}
             >
-              סקירה כללית
+              📊 סקירה כללית
             </button>
             <button
-              className={`nav-tab ${activeTab === 'lessons' ? 'active' : ''}`}
-              onClick={() => setActiveTab('lessons')}
+              className={`main-nav-tab ${activeMainTab === 'media' ? 'active' : ''}`}
+              onClick={() => setActiveMainTab('media')}
             >
-              שיעורים
+              🎬 מדיה
             </button>
             <button
-              className={`nav-tab ${activeTab === 'memory-cards' ? 'active' : ''}`}
-              onClick={() => setActiveTab('memory-cards')}
+              className={`main-nav-tab ${activeMainTab === 'content' ? 'active' : ''}`}
+              onClick={() => setActiveMainTab('content')}
             >
-              כרטיסי זיכרון
+              📚 תוכן
             </button>
             <button
-              className={`nav-tab ${activeTab === 'tests' ? 'active' : ''}`}
-              onClick={() => setActiveTab('tests')}
+              className={`main-nav-tab ${activeMainTab === 'lessons' ? 'active' : ''}`}
+              onClick={() => setActiveMainTab('lessons')}
             >
-              מבחנים
-            </button>
-            <button
-              className={`nav-tab ${activeTab === 'summaries' ? 'active' : ''}`}
-              onClick={() => setActiveTab('summaries')}
-            >
-              סיכומים
+              🎓 שיעורים
             </button>
           </div>
         </div>
 
-        {activeTab === 'overview' && (
-          <div className="overview-container">
-            {/* Compact Statistics Grid */}
-            <div className="overview-section">
-              <h3 className="section-title">📊 סטטיסטיקות כלליות</h3>
-              <div className="compact-stats-grid">
-                <div className="compact-stat-card">
-                  <div className="compact-stat-icon">📝</div>
-                  <div className="compact-stat-info">
-                    <div className="compact-stat-number">{summaryStats.totalSummaries}</div>
-                    <div className="compact-stat-label">סיכומים כולל</div>
-                  </div>
-                </div>
-                <div className="compact-stat-card">
-                  <div className="compact-stat-icon">✍️</div>
-                  <div className="compact-stat-info">
-                    <div className="compact-stat-number">{summaryStats.manualSummaries || 0}</div>
-                    <div className="compact-stat-label">סיכומים ידניים</div>
-                  </div>
-                </div>
-                <div className="compact-stat-card">
-                  <div className="compact-stat-icon">🤖</div>
-                  <div className="compact-stat-info">
-                    <div className="compact-stat-number">{summaryStats.lessonSummaries || 0}</div>
-                    <div className="compact-stat-label">סיכומי שיעורים</div>
-                  </div>
-                </div>
-                <div className="compact-stat-card">
-                  <div className="compact-stat-icon">📚</div>
-                  <div className="compact-stat-info">
-                    <div className="compact-stat-number">{lessonStats.totalLessons}</div>
-                    <div className="compact-stat-label">שיעורים</div>
-                  </div>
-                </div>
-                <div className="compact-stat-card">
-                  <div className="compact-stat-icon">📋</div>
-                  <div className="compact-stat-info">
-                    <div className="compact-stat-number">{testStats.totalTests}</div>
-                    <div className="compact-stat-label">מבחנים</div>
-                  </div>
-                </div>
-                <div className="compact-stat-card">
-                  <div className="compact-stat-icon">🎴</div>
-                  <div className="compact-stat-info">
-                    <div className="compact-stat-number">{memoryCardStats.totalSets}</div>
-                    <div className="compact-stat-label">כרטיסי זיכרון</div>
-                  </div>
-                </div>
-                <div className="compact-stat-card">
-                  <div className="compact-stat-icon">🌐</div>
-                  <div className="compact-stat-info">
-                    <div className="compact-stat-number">{summaryStats.publicSummaries}</div>
-                    <div className="compact-stat-label">תוכן ציבורי</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            {(summaryStats.recentSummaries.length > 0 || testStats.recentTests.length > 0 || lessonStats.recentLessons.length > 0) && (
-              <div className="overview-section">
-                <h3 className="section-title">🕒 פעילות אחרונה</h3>
-                <div className="recent-activity-grid">
-                  {summaryStats.recentSummaries.slice(0, 2).map((summary, index) => (
-                    <div key={`summary-${index}`} className="recent-activity-card">
-                      <div className="activity-icon">
-                        {summary.summary_type === 'lesson' ? '🤖' : '📝'}
-                      </div>
-                      <div className="activity-content">
-                        <div className="activity-header">
-                          <h6>{summary.title}</h6>
-                          <span className={`summary-type-badge ${summary.summary_type === 'lesson' ? 'lesson-badge' : 'manual-badge'}`}>
-                            {summary.summary_type === 'lesson' ? 'שיעור' : 'ידני'}
-                          </span>
-                        </div>
-                        <p>סיכום • {summary.subject_area || summary.subjectArea || 'כללי'}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {testStats.recentTests.slice(0, 2).map((test, index) => (
-                    <div key={`test-${index}`} className="recent-activity-card">
-                      <div className="activity-icon">📋</div>
-                      <div className="activity-content">
-                        <h6>{test.title || `מבחן ${index + 1}`}</h6>
-                        <p>מבחן • {test.subject || 'כללי'}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {lessonStats.recentLessons.slice(0, 2).map((lesson, index) => (
-                    <div key={`lesson-${index}`} className="recent-activity-card">
-                      <div className="activity-icon">📚</div>
-                      <div className="activity-content">
-                        <h6>{lesson.title || `שיעור ${index + 1}`}</h6>
-                        <p>שיעור • {lesson.subject || 'כללי'}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Main Dashboard Cards */}
-            <div className="d-flex gap-2" style={{ flexWrap: 'wrap' }}>
-              <div className="card" style={{ flex: '1', minWidth: '200px', marginBottom: '1rem' }}>
-                <h3 className="card-title">
-                  {t('dashboard.recentActivity')}
-                </h3>
-                <p className="card-subtitle">
-                  {t('forms.noData')}
-                </p>
-              </div>
-              <div className="card" style={{ flex: '1', minWidth: '200px', marginBottom: '1rem' }}>
-                <h3 className="card-title">
-                  {t('dashboard.quickActions')}
-                </h3>
-                <div className="quick-actions">
-                  <button 
-                    className="btn btn-outline btn-sm"
-                    onClick={() => setActiveTab('memory-cards')}
-                  >
-                    🎴 כרטיסי זיכרון
-                  </button>
-                  <button 
-                    className="btn btn-outline btn-sm"
-                    onClick={() => setActiveTab('lessons')}
-                  >
-                    📚 שיעורים
-                  </button>
-                  <button 
-                    className="btn btn-outline btn-sm"
-                    onClick={() => setActiveTab('tests')}
-                  >
-                    📋 מבחנים
-                  </button>
-                  <button 
-                    className="btn btn-outline btn-sm"
-                    onClick={() => setActiveTab('summaries')}
-                  >
-                    📝 סיכומים
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'memory-cards' && (
-          showMemoryCardForm ? (
-            <MemoryCardManager 
-              userId={user.id}
-              onCardCreated={handleMemoryCardCreated}
-              onCancel={handleCancelCardCreation}
-            />
-          ) : (
-            <MemoryCardsOverview />
-          )
-        )}
+        {/* Tab Content */}
+        <div className="tab-content">
+          {activeMainTab === 'overview' && <OverviewContent />}
+          {activeMainTab === 'media' && <MediaContent />}
+          {activeMainTab === 'content' && <ContentContent />}
+          {activeMainTab === 'lessons' && <LessonsManager t={t} />}
+        </div>
       </div>
-
-      {activeTab === 'record' && (
-        <RecordingInterface t={t} onRecordingComplete={handleRecordingComplete} />
-      )}
-
-      {activeTab === 'sessions' && (
-        <SessionManager t={t} />
-      )}
-
-      {activeTab === 'lessons' && (
-        <LessonsManager t={t} />
-      )}
-
-      {activeTab === 'tests' && (
-        <TestsManager user={user} t={t} />
-      )}
-
-      {activeTab === 'summaries' && (
-        <SummariesManager />
-      )}
 
       {/* Memory Card Set Viewer Popup */}
       {viewingSet && currentPage === 'viewer' && (
@@ -788,11 +844,266 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
           padding: 1rem;
         }
 
-        .memory-cards-overview {
+        .main-nav-tabs {
+          margin-bottom: 2rem;
+        }
+
+        .main-nav-tabs-header {
+          display: flex;
+          gap: 0.5rem;
+          background: var(--color-surfaceElevated, #f8f9fa);
+          border-radius: var(--radius-md, 8px);
+          padding: 0.5rem;
+          border: 1px solid var(--color-border, #e9ecef);
+          overflow-x: auto;
+        }
+
+        .main-nav-tab {
+          padding: 1rem 1.5rem;
+          border: none;
+          border-radius: var(--radius-sm, 4px);
+          font-family: 'Heebo', sans-serif;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          background: transparent;
+          color: var(--color-text, #2c3e50);
+          white-space: nowrap;
+          min-width: fit-content;
+        }
+
+        .main-nav-tab:hover {
+          background: var(--color-surface, #ffffff);
+          color: var(--color-primary, #3498db);
+        }
+
+        .main-nav-tab.active {
+          background: var(--color-primary, #3498db);
+          color: var(--color-textOnPrimary, #ffffff);
+          box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .tab-content {
+          min-height: 400px;
+        }
+
+        .sub-tabs {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 2rem;
+          background: var(--color-surfaceElevated, #f8f9fa);
+          border-radius: var(--radius-md, 8px);
+          padding: 0.25rem;
+          border: 1px solid var(--color-border, #e9ecef);
+        }
+
+        .sub-tab {
+          padding: 0.75rem 1.5rem;
+          border: none;
+          border-radius: var(--radius-sm, 4px);
+          font-family: 'Heebo', sans-serif;
+          font-size: 0.9rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          background: transparent;
+          color: var(--color-text, #2c3e50);
+          flex: 1;
+        }
+
+        .sub-tab:hover {
+          background: var(--color-surface, #ffffff);
+          color: var(--color-primary, #3498db);
+        }
+
+        .sub-tab.active {
+          background: var(--color-primary, #3498db);
+          color: var(--color-textOnPrimary, #ffffff);
+          box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .sub-tab-content {
+          margin-top: 1rem;
+        }
+
+        .overview-container {
+          padding: 1rem;
+        }
+
+        .overview-section {
+          margin-bottom: 2rem;
+        }
+
+        .section-title {
+          margin: 0 0 1rem 0;
+          color: var(--color-primary, #3498db);
+          font-size: 1.3rem;
+          font-weight: 600;
+        }
+
+        .compact-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .compact-stat-card {
+          background: var(--color-surface, #ffffff);
+          border: 2px solid var(--color-border, #e9ecef);
+          border-radius: var(--radius-md, 8px);
+          padding: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          transition: all 0.3s ease;
+        }
+
+        .compact-stat-card:hover {
+          border-color: var(--color-primary, #3498db);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+        }
+
+        .compact-stat-icon {
+          font-size: 2rem;
+          flex-shrink: 0;
+        }
+
+        .compact-stat-info {
+          flex: 1;
+        }
+
+        .compact-stat-number {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: var(--color-primary, #3498db);
+          margin-bottom: 0.2rem;
+        }
+
+        .compact-stat-label {
+          color: var(--color-textSecondary, #7f8c8d);
+          font-weight: 500;
+          font-size: 0.9rem;
+        }
+
+        .recent-activity-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          gap: 1rem;
+        }
+
+        .recent-activity-card {
+          background: var(--color-surface, #ffffff);
+          border: 2px solid var(--color-border, #e9ecef);
+          border-radius: var(--radius-md, 8px);
+          padding: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          transition: all 0.3s ease;
+        }
+
+        .recent-activity-card:hover {
+          border-color: var(--color-primary, #3498db);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+        }
+
+        .activity-icon {
+          font-size: 1.5rem;
+          flex-shrink: 0;
+        }
+
+        .activity-content {
+          flex: 1;
+        }
+
+        .activity-content h6 {
+          margin: 0 0 0.2rem 0;
+          color: var(--color-text, #2c3e50);
+          font-size: 0.9rem;
+          font-weight: 600;
+        }
+
+        .activity-content p {
+          margin: 0;
+          color: var(--color-textSecondary, #7f8c8d);
+          font-size: 0.8rem;
+        }
+
+        .activity-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.2rem;
+        }
+
+        .summary-type-badge {
+          padding: 0.2rem 0.5rem;
+          border-radius: var(--radius-sm, 4px);
+          font-size: 0.7rem;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+
+        .lesson-badge {
+          background: var(--color-info, #17a2b8);
+          color: white;
+        }
+
+        .manual-badge {
+          background: var(--color-warning, #ffc107);
+          color: var(--color-text, #2c3e50);
+        }
+
+        .quick-actions-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+        }
+
+        .quick-action-card {
+          background: var(--color-surface, #ffffff);
+          border: 2px solid var(--color-border, #e9ecef);
+          border-radius: var(--radius-md, 8px);
+          padding: 1.5rem;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-family: 'Heebo', sans-serif;
+        }
+
+        .quick-action-card:hover {
+          border-color: var(--color-primary, #3498db);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+        }
+
+        .quick-action-icon {
+          font-size: 2.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .quick-action-title {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: var(--color-text, #2c3e50);
+          margin-bottom: 0.5rem;
+        }
+
+        .quick-action-desc {
+          font-size: 0.9rem;
+          color: var(--color-textSecondary, #7f8c8d);
+        }
+
+        .flashcards-overview {
           padding: 1.5rem;
         }
 
-        .memory-cards-header {
+        .flashcards-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
@@ -801,13 +1112,13 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
           gap: 1rem;
         }
 
-        .memory-cards-title h3 {
+        .flashcards-title h3 {
           margin: 0 0 0.5rem 0;
           color: var(--color-primary, #3498db);
           font-size: 1.5rem;
         }
 
-        .memory-cards-title p {
+        .flashcards-title p {
           margin: 0;
           color: var(--color-textSecondary, #7f8c8d);
         }
@@ -963,213 +1274,6 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
           100% { transform: rotate(360deg); }
         }
 
-        .overview-container {
-          padding: 1rem;
-        }
-
-        .overview-section {
-          margin-bottom: 2rem;
-        }
-
-        .section-title {
-          margin: 0 0 1rem 0;
-          color: var(--color-primary, #3498db);
-          font-size: 1.3rem;
-          font-weight: 600;
-        }
-
-        .recent-items-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 1rem;
-        }
-
-        .recent-item-card {
-          background: var(--color-surface, #ffffff);
-          border: 2px solid var(--color-border, #e9ecef);
-          border-radius: var(--radius-md, 8px);
-          padding: 1rem;
-          transition: all 0.3s ease;
-        }
-
-        .recent-item-card:hover {
-          border-color: var(--color-primary, #3498db);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
-        }
-
-        .recent-item-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 0.5rem;
-          gap: 0.5rem;
-        }
-
-        .recent-item-header h5 {
-          margin: 0;
-          color: var(--color-text, #2c3e50);
-          font-size: 1rem;
-          font-weight: 600;
-        }
-
-        .public-badge {
-          background: var(--color-success, #27ae60);
-          color: white;
-          padding: 0.2rem 0.5rem;
-          border-radius: var(--radius-sm, 4px);
-          font-size: 0.7rem;
-          font-weight: 500;
-          white-space: nowrap;
-        }
-
-        .recent-item-meta {
-          display: flex;
-          gap: 0.5rem;
-          margin-bottom: 0.5rem;
-          flex-wrap: wrap;
-        }
-
-        .subject-tag,
-        .grade-tag {
-          background: var(--color-surfaceHover, #f8f9fa);
-          color: var(--color-text, #2c3e50);
-          padding: 0.2rem 0.4rem;
-          border-radius: var(--radius-sm, 4px);
-          font-size: 0.75rem;
-          border: 1px solid var(--color-border, #e9ecef);
-        }
-
-        .recent-item-content {
-          color: var(--color-textSecondary, #7f8c8d);
-          font-size: 0.9rem;
-          line-height: 1.4;
-          margin: 0;
-        }
-
-        .compact-stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-          gap: 1rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .compact-stat-card {
-          background: var(--color-surface, #ffffff);
-          border: 2px solid var(--color-border, #e9ecef);
-          border-radius: var(--radius-md, 8px);
-          padding: 1rem;
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          transition: all 0.3s ease;
-        }
-
-        .compact-stat-card:hover {
-          border-color: var(--color-primary, #3498db);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
-        }
-
-        .compact-stat-icon {
-          font-size: 2rem;
-          flex-shrink: 0;
-        }
-
-        .compact-stat-info {
-          flex: 1;
-        }
-
-        .compact-stat-number {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: var(--color-primary, #3498db);
-          margin-bottom: 0.2rem;
-        }
-
-        .compact-stat-label {
-          color: var(--color-textSecondary, #7f8c8d);
-          font-weight: 500;
-          font-size: 0.9rem;
-        }
-
-        .recent-activity-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-          gap: 1rem;
-        }
-
-        .recent-activity-card {
-          background: var(--color-surface, #ffffff);
-          border: 2px solid var(--color-border, #e9ecef);
-          border-radius: var(--radius-md, 8px);
-          padding: 1rem;
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          transition: all 0.3s ease;
-        }
-
-        .recent-activity-card:hover {
-          border-color: var(--color-primary, #3498db);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
-        }
-
-        .activity-icon {
-          font-size: 1.5rem;
-          flex-shrink: 0;
-        }
-
-        .activity-content {
-          flex: 1;
-        }
-
-        .activity-content h6 {
-          margin: 0 0 0.2rem 0;
-          color: var(--color-text, #2c3e50);
-          font-size: 0.9rem;
-          font-weight: 600;
-        }
-
-        .activity-content p {
-          margin: 0;
-          color: var(--color-textSecondary, #7f8c8d);
-          font-size: 0.8rem;
-        }
-
-        .activity-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 0.2rem;
-        }
-
-        .summary-type-badge {
-          padding: 0.2rem 0.5rem;
-          border-radius: var(--radius-sm, 4px);
-          font-size: 0.7rem;
-          font-weight: 500;
-          white-space: nowrap;
-        }
-
-        .lesson-badge {
-          background: var(--color-info, #17a2b8);
-          color: white;
-        }
-
-        .manual-badge {
-          background: var(--color-warning, #ffc107);
-          color: var(--color-text, #2c3e50);
-        }
-
-        .quick-actions {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-
         .modal-overlay {
           position: fixed;
           top: 0;
@@ -1208,7 +1312,16 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
         }
 
         @media (max-width: 768px) {
-          .memory-cards-header {
+          .main-nav-tabs-header {
+            flex-wrap: wrap;
+          }
+
+          .main-nav-tab {
+            flex: 1;
+            min-width: 120px;
+          }
+
+          .flashcards-header {
             flex-direction: column;
             align-items: stretch;
           }
@@ -1228,6 +1341,14 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
 
           .set-actions {
             flex-direction: column;
+          }
+
+          .compact-stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          }
+
+          .quick-actions-grid {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
           }
         }
       `}</style>

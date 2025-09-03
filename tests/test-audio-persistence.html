@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio localStorage Persistence Test</title>
+    <style>
+        :root {
+            --color-surface: #ffffff;
+            --color-background: #f8f9fa;
+            --color-text: #2c3e50;
+            --color-textSecondary: #7f8c8d;
+            --color-textOnPrimary: #ffffff;
+            --color-primary: #3498db;
+            --color-primaryHover: #2980b9;
+            --color-success: #27ae60;
+            --color-successHover: #229954;
+            --color-successLight: #d5f4e6;
+            --color-successBorder: #a9dfbf;
+            --color-danger: #e74c3c;
+            --color-dangerLight: #fadbd8;
+            --color-dangerBorder: #f5b7b1;
+            --color-border: #e9ecef;
+            --color-surfaceElevated: #f8f9fa;
+            --color-disabled: #bdc3c7;
+            --color-shadowLight: rgba(0, 0, 0, 0.1);
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition-fast: all 0.2s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.6;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: 0 4px 12px var(--color-shadowLight);
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .test-header h1 {
+            color: var(--color-primary);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .test-header p {
+            color: var(--color-textSecondary);
+            margin: 0;
+        }
+
+        .test-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-surfaceElevated);
+        }
+
+        .test-section h2 {
+            color: var(--color-primary);
+            margin: 0 0 1rem 0;
+            font-size: 1.3rem;
+        }
+
+        .test-result {
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+
+        .test-result.pass {
+            background: var(--color-successLight);
+            color: var(--color-success);
+            border: 1px solid var(--color-successBorder);
+        }
+
+        .test-result.fail {
+            background: var(--color-dangerLight);
+            color: var(--color-danger);
+            border: 1px solid var(--color-dangerBorder);
+        }
+
+        .component-container {
+            margin: 2rem 0;
+            padding: 1rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-surface);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: var(--transition-fast);
+            margin: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: var(--color-textOnPrimary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--color-primaryHover);
+        }
+
+        .btn-success {
+            background-color: var(--color-success);
+            color: var(--color-textOnPrimary);
+        }
+
+        .btn-success:hover {
+            background-color: var(--color-successHover);
+        }
+
+        .btn-danger {
+            background-color: var(--color-danger);
+            color: var(--color-textOnPrimary);
+        }
+
+        .test-actions {
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--color-textSecondary);
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--color-border);
+            border-top: 2px solid var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-details {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        .storage-info {
+            background: var(--color-surfaceElevated);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .storage-info h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--color-text);
+        }
+
+        .storage-info pre {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: var(--radius-sm);
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            font-size: 0.8rem;
+            overflow-x: auto;
+        }
+
+        .audio-item {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin: 0.5rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .audio-info {
+            flex: 1;
+        }
+
+        .audio-name {
+            font-weight: 500;
+            color: var(--color-text);
+        }
+
+        .audio-details {
+            font-size: 0.8rem;
+            color: var(--color-textSecondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>💾 Audio localStorage Persistence Test</h1>
+            <p>Testing audio file storage, retrieval, and persistence in localStorage</p>
+        </div>
+
+        <div class="test-section">
+            <h2>📋 Test Results</h2>
+            <div id="test-results">
+                <div class="loading">Running tests...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>💾 localStorage Status</h2>
+            <div id="storage-status">
+                <!-- Storage status will be displayed here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎵 Stored Audio Files</h2>
+            <div id="stored-files-container">
+                <!-- Stored files will be displayed here -->
+            </div>
+        </div>
+
+        <div class="test-actions">
+            <button class="btn btn-primary" onclick="runTests()">🔄 Run Tests Again</button>
+            <button class="btn btn-success" onclick="addTestData()">➕ Add Test Data</button>
+            <button class="btn btn-danger" onclick="clearStorage()">🗑️ Clear Storage</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Test results
+        let testResults = [];
+
+        // Storage key constant
+        const STORAGE_KEY = 'limud-ai-audio-files';
+
+        // Mock audio storage manager
+        class AudioStorageManager {
+            constructor() {
+                this.storageKey = STORAGE_KEY;
+            }
+
+            // Save audio files to localStorage
+            saveAudioFiles(audioFiles) {
+                try {
+                    const serialized = JSON.stringify(audioFiles);
+                    localStorage.setItem(this.storageKey, serialized);
+                    return { success: true, error: null };
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
+            }
+
+            // Load audio files from localStorage
+            loadAudioFiles() {
+                try {
+                    const stored = localStorage.getItem(this.storageKey);
+                    if (!stored) {
+                        return { success: true, data: [], error: null };
+                    }
+                    
+                    const parsed = JSON.parse(stored);
+                    if (!Array.isArray(parsed)) {
+                        return { success: false, data: [], error: 'Invalid data format' };
+                    }
+                    
+                    return { success: true, data: parsed, error: null };
+                } catch (error) {
+                    return { success: false, data: [], error: error.message };
+                }
+            }
+
+            // Add a single audio file
+            addAudioFile(audioFile) {
+                const loadResult = this.loadAudioFiles();
+                if (!loadResult.success) {
+                    return loadResult;
+                }
+
+                const audioFiles = loadResult.data;
+                audioFiles.push({
+                    ...audioFile,
+                    id: audioFile.id || Date.now() + Math.random(),
+                    savedAt: audioFile.savedAt || new Date().toISOString()
+                });
+
+                return this.saveAudioFiles(audioFiles);
+            }
+
+            // Remove an audio file by ID
+            removeAudioFile(audioFileId) {
+                const loadResult = this.loadAudioFiles();
+                if (!loadResult.success) {
+                    return loadResult;
+                }
+
+                const audioFiles = loadResult.data.filter(file => file.id !== audioFileId);
+                return this.saveAudioFiles(audioFiles);
+            }
+
+            // Clear all audio files
+            clearAudioFiles() {
+                try {
+                    localStorage.removeItem(this.storageKey);
+                    return { success: true, error: null };
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
+            }
+
+            // Get storage info
+            getStorageInfo() {
+                try {
+                    const stored = localStorage.getItem(this.storageKey);
+                    const size = stored ? new Blob([stored]).size : 0;
+                    const count = stored ? JSON.parse(stored).length : 0;
+                    
+                    return {
+                        exists: !!stored,
+                        size: size,
+                        count: count,
+                        sizeFormatted: this.formatBytes(size)
+                    };
+                } catch (error) {
+                    return {
+                        exists: false,
+                        size: 0,
+                        count: 0,
+                        sizeFormatted: '0 B',
+                        error: error.message
+                    };
+                }
+            }
+
+            // Format bytes to human readable
+            formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        }
+
+        // Global storage manager instance
+        let storageManager;
+
+        // Sample test data
+        const sampleAudioFiles = [
+            {
+                id: 'test-1',
+                name: 'sample-song.mp3',
+                size: 5 * 1024 * 1024,
+                type: 'audio/mpeg',
+                duration: 180,
+                base64Data: 'data:audio/mpeg;base64,mock-data-1'
+            },
+            {
+                id: 'test-2',
+                name: 'voice-recording.wav',
+                size: 10 * 1024 * 1024,
+                type: 'audio/wav',
+                duration: 300,
+                base64Data: 'data:audio/wav;base64,mock-data-2'
+            },
+            {
+                id: 'test-3',
+                name: 'music-track.ogg',
+                size: 3 * 1024 * 1024,
+                type: 'audio/ogg',
+                duration: 120,
+                base64Data: 'data:audio/ogg;base64,mock-data-3'
+            }
+        ];
+
+        // Initialize storage manager and update displays
+        function initializeTest() {
+            storageManager = new AudioStorageManager();
+            updateStorageStatus();
+            updateStoredFilesDisplay();
+        }
+
+        // Update storage status display
+        function updateStorageStatus() {
+            const container = document.getElementById('storage-status');
+            if (!container) return;
+
+            const info = storageManager.getStorageInfo();
+            const rawData = localStorage.getItem(STORAGE_KEY);
+
+            container.innerHTML = `
+                <div class="storage-info">
+                    <h4>📊 מידע כללי</h4>
+                    <p><strong>קיים באחסון:</strong> ${info.exists ? 'כן' : 'לא'}</p>
+                    <p><strong>מספר קבצים:</strong> ${info.count}</p>
+                    <p><strong>גודל נתונים:</strong> ${info.sizeFormatted}</p>
+                    ${info.error ? `<p style="color: var(--color-danger);"><strong>שגיאה:</strong> ${info.error}</p>` : ''}
+                </div>
+
+                <div class="storage-info">
+                    <h4>🔍 נתונים גולמיים</h4>
+                    <pre>${rawData ? JSON.stringify(JSON.parse(rawData), null, 2) : 'אין נתונים'}</pre>
+                </div>
+            `;
+        }
+
+        // Update stored files display
+        function updateStoredFilesDisplay() {
+            const container = document.getElementById('stored-files-container');
+            if (!container) return;
+
+            const loadResult = storageManager.loadAudioFiles();
+            
+            if (!loadResult.success) {
+                container.innerHTML = `
+                    <div style="color: var(--color-danger); text-align: center; padding: 2rem;">
+                        <strong>שגיאה בטעינת קבצים:</strong> ${loadResult.error}
+                    </div>
+                `;
+                return;
+            }
+
+            const audioFiles = loadResult.data;
+
+            if (audioFiles.length === 0) {
+                container.innerHTML = `
+                    <div style="color: var(--color-textSecondary); text-align: center; padding: 2rem;">
+                        אין קבצי אודיו שמורים
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <p style="margin-bottom: 1rem; color: var(--color-textSecondary);">
+                    נמצאו ${audioFiles.length} קבצי אודיו שמורים:
+                </p>
+                ${audioFiles.map(file => `
+                    <div class="audio-item">
+                        <div class="audio-info">
+                            <div class="audio-name">🎵 ${file.name}</div>
+                            <div class="audio-details">
+                                גודל: ${storageManager.formatBytes(file.size)} | 
+                                סוג: ${file.type} | 
+                                נשמר: ${new Date(file.savedAt).toLocaleDateString('he-IL')}
+                                ${file.duration ? ` | משך: ${Math.floor(file.duration / 60)}:${(file.duration % 60).toString().padStart(2, '0')}` : ''}
+                            </div>
+                        </div>
+                        <button class="btn btn-danger" onclick="removeFile('${file.id}')" style="margin: 0; padding: 0.5rem 1rem;">
+                            מחק
+                        </button>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        // Global functions for UI interactions
+        window.addTestData = function() {
+            const result = storageManager.saveAudioFiles(sampleAudioFiles);
+            if (result.success) {
+                updateStorageStatus();
+                updateStoredFilesDisplay();
+                runTests();
+            } else {
+                alert(`שגיאה בהוספת נתוני בדיקה: ${result.error}`);
+            }
+        };
+
+        window.clearStorage = function() {
+            const result = storageManager.clearAudioFiles();
+            if (result.success) {
+                updateStorageStatus();
+                updateStoredFilesDisplay();
+                runTests();
+            } else {
+                alert(`שגיאה בניקוי האחסון: ${result.error}`);
+            }
+        };
+
+        window.removeFile = function(fileId) {
+            const result = storageManager.removeAudioFile(fileId);
+            if (result.success) {
+                updateStorageStatus();
+                updateStoredFilesDisplay();
+            } else {
+                alert(`שגיאה במחיקת הקובץ: ${result.error}`);
+            }
+        };
+
+        // Test functions
+        function testStorageManagerInitialization() {
+            try {
+                storageManager = new AudioStorageManager();
+                
+                if (!storageManager.storageKey) {
+                    return { pass: false, message: 'Storage key not set' };
+                }
+
+                if (typeof storageManager.saveAudioFiles !== 'function') {
+                    return { pass: false, message: 'saveAudioFiles method not available' };
+                }
+
+                if (typeof storageManager.loadAudioFiles !== 'function') {
+                    return { pass: false, message: 'loadAudioFiles method not available' };
+                }
+
+                return { pass: true, message: 'AudioStorageManager initialized correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error initializing storage manager: ${error.message}` };
+            }
+        }
+
+        function testSaveAndLoadAudioFiles() {
+            try {
+                if (!storageManager) {
+                    return { pass: false, message: 'Storage manager not available' };
+                }
+
+                // Clear existing data
+                storageManager.clearAudioFiles();
+
+                // Test data
+                const testData = [
+                    {
+                        id: 'test-save-1',
+                        name: 'test-audio.mp3',
+                        size: 1024 * 1024,
+                        type: 'audio/mpeg',
+                        savedAt: new Date().toISOString()
+                    }
+                ];
+
+                // Save data
+                const saveResult = storageManager.saveAudioFiles(testData);
+                if (!saveResult.success) {
+                    return { pass: false, message: `Failed to save: ${saveResult.error}` };
+                }
+
+                // Load data
+                const loadResult = storageManager.loadAudioFiles();
+                if (!loadResult.success) {
+                    return { pass: false, message: `Failed to load: ${loadResult.error}` };
+                }
+
+                // Verify data
+                if (loadResult.data.length !== 1) {
+                    return { pass: false, message: `Expected 1 file, got ${loadResult.data.length}` };
+                }
+
+                if (loadResult.data[0].id !== 'test-save-1') {
+                    return { pass: false, message: 'Loaded data does not match saved data' };
+                }
+
+                return { pass: true, message: 'Save and load operations work correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error in save/load test: ${error.message}` };
+            }
+        }
+
+        function testAddSingleAudioFile() {
+            try {
+                if (!storageManager) {
+                    return { pass: false, message: 'Storage manager not available' };
+                }
+
+                // Clear existing data
+                storageManager.clearAudioFiles();
+
+                // Add first file
+                const file1 = {
+                    name: 'first-audio.mp3',
+                    size: 2 * 1024 * 1024,
+                    type: 'audio/mpeg'
+                };
+
+                const addResult1 = storageManager.addAudioFile(file1);
+                if (!addResult1.success) {
+                    return { pass: false, message: `Failed to add first file: ${addResult1.error}` };
+                }
+
+                // Add second file
+                const file2 = {
+                    name: 'second-audio.wav',
+                    size: 3 * 1024 * 1024,
+                    type: 'audio/wav'
+                };
+
+                const addResult2 = storageManager.addAudioFile(file2);
+                if (!addResult2.success) {
+                    return { pass: false, message: `Failed to add second file: ${addResult2.error}` };
+                }
+
+                // Verify both files exist
+                const loadResult = storageManager.loadAudioFiles();
+                if (!loadResult.success) {
+                    return { pass: false, message: `Failed to load files: ${loadResult.error}` };
+                }
+
+                if (loadResult.data.length !== 2) {
+                    return { pass: false, message: `Expected 2 files, got ${loadResult.data.length}` };
+                }
+
+                return { pass: true, message: 'Add single audio file works correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error in add file test: ${error.message}` };
+            }
+        }
+
+        function testRemoveAudioFile() {
+            try {
+                if (!storageManager) {
+                    return { pass: false, message: 'Storage manager not available' };
+                }
+
+                // Set up test data
+                const testData = [
+                    { id: 'remove-test-1', name: 'keep.mp3', size: 1024, type: 'audio/mpeg' },
+                    { id: 'remove-test-2', name: 'delete.mp3', size: 2048, type: 'audio/mpeg' },
+                    { id: 'remove-test-3', name: 'keep-too.wav', size: 3072, type: 'audio/wav' }
+                ];
+
+                const saveResult = storageManager.saveAudioFiles(testData);
+                if (!saveResult.success) {
+                    return { pass: false, message: `Failed to save test data: ${saveResult.error}` };
+                }
+
+                // Remove middle file
+                const removeResult = storageManager.removeAudioFile('remove-test-2');
+                if (!removeResult.success) {
+                    return { pass: false, message: `Failed to remove file: ${removeResult.error}` };
+                }
+
+                // Verify file was removed
+                const loadResult = storageManager.loadAudioFiles();
+                if (!loadResult.success) {
+                    return { pass: false, message: `Failed to load after removal: ${loadResult.error}` };
+                }
+
+                if (loadResult.data.length !== 2) {
+                    return { pass: false, message: `Expected 2 files after removal, got ${loadResult.data.length}` };
+                }
+
+                const removedFile = loadResult.data.find(f => f.id === 'remove-test-2');
+                if (removedFile) {
+                    return { pass: false, message: 'File was not actually removed' };
+                }
+
+                return { pass: true, message: 'Remove audio file works correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error in remove file test: ${error.message}` };
+            }
+        }
+
+        function testPersistenceAfterPageRefresh() {
+            try {
+                if (!storageManager) {
+                    return { pass: false, message: 'Storage manager not available' };
+                }
+
+                // This test simulates what happens after page refresh
+                // by creating a new storage manager instance
+
+                // Save test data with current instance
+                const testData = [
+                    {
+                        id: 'persistence-test',
+                        name: 'persistent-audio.mp3',
+                        size: 5 * 1024 * 1024,
+                        type: 'audio/mpeg',
+                        savedAt: new Date().toISOString()
+                    }
+                ];
+
+                const saveResult = storageManager.saveAudioFiles(testData);
+                if (!saveResult.success) {
+                    return { pass: false, message: `Failed to save: ${saveResult.error}` };
+                }
+
+                // Create new instance (simulates page refresh)
+                const newStorageManager = new AudioStorageManager();
+                
+                // Try to load data with new instance
+                const loadResult = newStorageManager.loadAudioFiles();
+                if (!loadResult.success) {
+                    return { pass: false, message: `Failed to load with new instance: ${loadResult.error}` };
+                }
+
+                if (loadResult.data.length !== 1) {
+                    return { pass: false, message: `Expected 1 file, got ${loadResult.data.length}` };
+                }
+
+                if (loadResult.data[0].id !== 'persistence-test') {
+                    return { pass: false, message: 'Data not persisted correctly' };
+                }
+
+                return { pass: true, message: 'Data persists correctly after page refresh simulation' };
+            } catch (error) {
+                return { pass: false, message: `Error in persistence test: ${error.message}` };
+            }
+        }
+
+        function testStorageErrorHandling() {
+            try {
+                if (!storageManager) {
+                    return { pass: false, message: 'Storage manager not available' };
+                }
+
+                // Test loading when no data exists
+                storageManager.clearAudioFiles();
+                const loadEmptyResult = storageManager.loadAudioFiles();
+                
+                if (!loadEmptyResult.success) {
+                    return { pass: false, message: 'Loading empty storage should succeed' };
+                }
+
+                if (loadEmptyResult.data.length !== 0) {
+                    return { pass: false, message: 'Empty storage should return empty array' };
+                }
+
+                // Test saving invalid data (this should be handled gracefully)
+                const invalidData = { not: 'an array' };
+                
+                // We expect this to work since JSON.stringify can handle objects
+                const saveInvalidResult = storageManager.saveAudioFiles(invalidData);
+                if (!saveInvalidResult.success) {
+                    return { pass: false, message: 'Saving object should work (JSON.stringify handles it)' };
+                }
+
+                // But loading it back should detect it's not an array
+                const loadInvalidResult = storageManager.loadAudioFiles();
+                if (loadInvalidResult.success) {
+                    return { pass: false, message: 'Loading invalid data format should fail' };
+                }
+
+                return { pass: true, message: 'Error handling works correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error in error handling test: ${error.message}` };
+            }
+        }
+
+        function testStorageInfo() {
+            try {
+                if (!storageManager) {
+                    return { pass: false, message: 'Storage manager not available' };
+                }
+
+                // Clear storage and check info
+                storageManager.clearAudioFiles();
+                const emptyInfo = storageManager.getStorageInfo();
+                
+                if (emptyInfo.exists) {
+                    return { pass: false, message: 'Empty storage should not exist' };
+                }
+
+                if (emptyInfo.count !== 0) {
+                    return { pass: false, message: 'Empty storage should have 0 count' };
+                }
+
+                // Add data and check info
+                const testData = [
+                    { id: 'info-test-1', name: 'test1.mp3', size: 1024, type: 'audio/mpeg' },
+                    { id: 'info-test-2', name: 'test2.wav', size: 2048, type: 'audio/wav' }
+                ];
+
+                storageManager.saveAudioFiles(testData);
+                const filledInfo = storageManager.getStorageInfo();
+
+                if (!filledInfo.exists) {
+                    return { pass: false, message: 'Storage with data should exist' };
+                }
+
+                if (filledInfo.count !== 2) {
+                    return { pass: false, message: `Expected count 2, got ${filledInfo.count}` };
+                }
+
+                if (filledInfo.size <= 0) {
+                    return { pass: false, message: 'Storage size should be greater than 0' };
+                }
+
+                return { pass: true, message: 'Storage info works correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error in storage info test: ${error.message}` };
+            }
+        }
+
+        // Run all tests
+        window.runTests = function() {
+            testResults = [];
+            
+            const tests = [
+                { name: 'Storage Manager Initialization', fn: testStorageManagerInitialization },
+                { name: 'Save and Load Audio Files', fn: testSaveAndLoadAudioFiles },
+                { name: 'Add Single Audio File', fn: testAddSingleAudioFile },
+                { name: 'Remove Audio File', fn: testRemoveAudioFile },
+                { name: 'Persistence After Page Refresh', fn: testPersistenceAfterPageRefresh },
+                { name: 'Storage Error Handling', fn: testStorageErrorHandling },
+                { name: 'Storage Info', fn: testStorageInfo }
+            ];
+
+            const resultsContainer = document.getElementById('test-results');
+            resultsContainer.innerHTML = '';
+
+            tests.forEach(test => {
+                try {
+                    const result = test.fn();
+                    testResults.push({ name: test.name, ...result });
+                    
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = `test-result ${result.pass ? 'pass' : 'fail'}`;
+                    resultDiv.innerHTML = `
+                        <strong>${result.pass ? '✅' : '❌'} ${test.name}</strong><br>
+                        ${result.message}
+                        ${!result.pass && result.details ? `<div class="error-details">${result.details}</div>` : ''}
+                    `;
+                    resultsContainer.appendChild(resultDiv);
+                } catch (error) {
+                    testResults.push({ name: test.name, pass: false, message: `Test error: ${error.message}` });
+                    
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'test-result fail';
+                    resultDiv.innerHTML = `
+                        <strong>❌ ${test.name}</strong><br>
+                        Test error: ${error.message}
+                        <div class="error-details">${error.stack}</div>
+                    `;
+                    resultsContainer.appendChild(resultDiv);
+                }
+            });
+
+            // Summary
+            const passed = testResults.filter(r => r.pass).length;
+            const total = testResults.length;
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = `test-result ${passed === total ? 'pass' : 'fail'}`;
+            summaryDiv.innerHTML = `
+                <strong>📊 Test Summary</strong><br>
+                ${passed}/${total} tests passed
+            `;
+            resultsContainer.appendChild(summaryDiv);
+
+            // Update displays after tests
+            updateStorageStatus();
+            updateStoredFilesDisplay();
+        };
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeTest();
+            setTimeout(runTests, 100);
+        });
+    </script>
+</body>
+</html>

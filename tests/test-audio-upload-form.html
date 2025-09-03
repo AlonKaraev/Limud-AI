@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Upload Form Validation Test</title>
+    <style>
+        :root {
+            --color-surface: #ffffff;
+            --color-background: #f8f9fa;
+            --color-text: #2c3e50;
+            --color-textSecondary: #7f8c8d;
+            --color-textOnPrimary: #ffffff;
+            --color-primary: #3498db;
+            --color-primaryHover: #2980b9;
+            --color-success: #27ae60;
+            --color-successHover: #229954;
+            --color-successLight: #d5f4e6;
+            --color-successBorder: #a9dfbf;
+            --color-danger: #e74c3c;
+            --color-dangerLight: #fadbd8;
+            --color-dangerBorder: #f5b7b1;
+            --color-border: #e9ecef;
+            --color-surfaceElevated: #f8f9fa;
+            --color-disabled: #bdc3c7;
+            --color-shadowLight: rgba(0, 0, 0, 0.1);
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition-fast: all 0.2s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Heebo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.6;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: 0 4px 12px var(--color-shadowLight);
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .test-header h1 {
+            color: var(--color-primary);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .test-header p {
+            color: var(--color-textSecondary);
+            margin: 0;
+        }
+
+        .test-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-surfaceElevated);
+        }
+
+        .test-section h2 {
+            color: var(--color-primary);
+            margin: 0 0 1rem 0;
+            font-size: 1.3rem;
+        }
+
+        .test-result {
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+
+        .test-result.pass {
+            background: var(--color-successLight);
+            color: var(--color-success);
+            border: 1px solid var(--color-successBorder);
+        }
+
+        .test-result.fail {
+            background: var(--color-dangerLight);
+            color: var(--color-danger);
+            border: 1px solid var(--color-dangerBorder);
+        }
+
+        .component-container {
+            margin: 2rem 0;
+            padding: 1rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-surface);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: var(--transition-fast);
+            margin: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: var(--color-textOnPrimary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--color-primaryHover);
+        }
+
+        .btn-success {
+            background-color: var(--color-success);
+            color: var(--color-textOnPrimary);
+        }
+
+        .btn-success:hover {
+            background-color: var(--color-successHover);
+        }
+
+        .test-actions {
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--color-textSecondary);
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--color-border);
+            border-top: 2px solid var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-details {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        .test-file-item {
+            background: var(--color-surfaceElevated);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin: 0.5rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .test-file-info {
+            flex: 1;
+        }
+
+        .test-file-name {
+            font-weight: 500;
+            color: var(--color-text);
+        }
+
+        .test-file-details {
+            font-size: 0.8rem;
+            color: var(--color-textSecondary);
+        }
+
+        .test-file-status {
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .test-file-status.valid {
+            background: var(--color-successLight);
+            color: var(--color-success);
+        }
+
+        .test-file-status.invalid {
+            background: var(--color-dangerLight);
+            color: var(--color-danger);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🎵 Audio Upload Form Validation Test</h1>
+            <p>Testing audio file validation, supported formats, and size limits</p>
+        </div>
+
+        <div class="test-section">
+            <h2>📋 Test Results</h2>
+            <div id="test-results">
+                <div class="loading">Running tests...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📁 Test Files</h2>
+            <div id="test-files-container">
+                <!-- Test files will be displayed here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎵 Audio Upload Form</h2>
+            <div class="component-container">
+                <div id="upload-form-container">
+                    <!-- Upload form will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="test-actions">
+            <button class="btn btn-primary" onclick="runTests()">🔄 Run Tests Again</button>
+            <button class="btn btn-success" onclick="testAllFiles()">🧪 Test All Files</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Test results
+        let testResults = [];
+
+        // Mock file validation class
+        class AudioFileValidator {
+            constructor() {
+                this.supportedTypes = [
+                    'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave',
+                    'audio/x-wav', 'audio/ogg', 'audio/aac', 'audio/m4a',
+                    'audio/mp4', 'audio/x-m4a'
+                ];
+                this.supportedExtensions = ['.mp3', '.wav', '.ogg', '.aac', '.m4a'];
+                this.maxFileSize = 50 * 1024 * 1024; // 50MB
+            }
+
+            validateFile(file) {
+                // Check file type
+                if (!this.supportedTypes.includes(file.type)) {
+                    const fileName = file.name.toLowerCase();
+                    const hasValidExtension = this.supportedExtensions.some(ext => fileName.endsWith(ext));
+                    
+                    if (!hasValidExtension) {
+                        return {
+                            valid: false,
+                            error: `סוג קובץ אודיו לא נתמך: ${file.name}. אנא בחר קובץ מהסוגים הנתמכים.`
+                        };
+                    }
+                }
+
+                // Check file size
+                if (file.size > this.maxFileSize) {
+                    return {
+                        valid: false,
+                        error: `קובץ האודיו ${file.name} גדול מדי. גודל מקסימלי: 50MB`
+                    };
+                }
+
+                return { valid: true, error: null };
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        }
+
+        // Test file definitions
+        const testFiles = [
+            // Valid files
+            { name: 'song.mp3', type: 'audio/mpeg', size: 5 * 1024 * 1024, expected: true },
+            { name: 'recording.wav', type: 'audio/wav', size: 10 * 1024 * 1024, expected: true },
+            { name: 'music.ogg', type: 'audio/ogg', size: 3 * 1024 * 1024, expected: true },
+            { name: 'voice.aac', type: 'audio/aac', size: 2 * 1024 * 1024, expected: true },
+            { name: 'audio.m4a', type: 'audio/m4a', size: 4 * 1024 * 1024, expected: true },
+            
+            // Invalid file types
+            { name: 'document.pdf', type: 'application/pdf', size: 1 * 1024 * 1024, expected: false },
+            { name: 'image.jpg', type: 'image/jpeg', size: 2 * 1024 * 1024, expected: false },
+            { name: 'text.txt', type: 'text/plain', size: 1024, expected: false },
+            { name: 'video.mp4', type: 'video/mp4', size: 10 * 1024 * 1024, expected: false },
+            
+            // Oversized files
+            { name: 'large_audio.mp3', type: 'audio/mpeg', size: 60 * 1024 * 1024, expected: false },
+            { name: 'huge_recording.wav', type: 'audio/wav', size: 100 * 1024 * 1024, expected: false },
+            
+            // Edge cases
+            { name: 'empty.mp3', type: 'audio/mpeg', size: 0, expected: true },
+            { name: 'max_size.wav', type: 'audio/wav', size: 50 * 1024 * 1024, expected: true },
+            { name: 'just_over_limit.mp3', type: 'audio/mpeg', size: 50 * 1024 * 1024 + 1, expected: false },
+            
+            // Extension fallback tests
+            { name: 'unknown_type.mp3', type: '', size: 1 * 1024 * 1024, expected: true },
+            { name: 'wrong_extension.txt', type: 'audio/mpeg', size: 1 * 1024 * 1024, expected: false }
+        ];
+
+        // Global validator instance
+        let validator;
+
+        // Initialize validator and render test files
+        function initializeTest() {
+            validator = new AudioFileValidator();
+            renderTestFiles();
+            renderUploadForm();
+        }
+
+        // Render test files display
+        function renderTestFiles() {
+            const container = document.getElementById('test-files-container');
+            if (!container) return;
+
+            container.innerHTML = `
+                <p style="margin-bottom: 1rem; color: var(--color-textSecondary);">
+                    הקבצים הבאים ישמשו לבדיקת תקינות הוולידציה:
+                </p>
+                ${testFiles.map(file => `
+                    <div class="test-file-item">
+                        <div class="test-file-info">
+                            <div class="test-file-name">${file.name}</div>
+                            <div class="test-file-details">
+                                סוג: ${file.type || 'לא מוגדר'} | גודל: ${validator.formatFileSize(file.size)}
+                            </div>
+                        </div>
+                        <div class="test-file-status ${file.expected ? 'valid' : 'invalid'}">
+                            ${file.expected ? 'תקין' : 'לא תקין'}
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        // Render upload form
+        function renderUploadForm() {
+            const container = document.getElementById('upload-form-container');
+            if (!container) return;
+
+            container.innerHTML = `
+                <div style="
+                    background: var(--color-surfaceElevated);
+                    border: 2px dashed var(--color-border);
+                    border-radius: var(--radius-md);
+                    padding: 2rem;
+                    text-align: center;
+                    margin-bottom: 2rem;
+                ">
+                    <button class="btn btn-primary" onclick="document.getElementById('test-file-input').click()">
+                        🎵 בחר קבצי אודיו
+                    </button>
+                    
+                    <input id="test-file-input" type="file" multiple accept=".mp3,.wav,.ogg,.aac,.m4a,audio/*" style="display: none;" onchange="handleFileSelect(event)">
+
+                    <p style="color: var(--color-textSecondary); margin: 0.5rem 0; font-size: 0.9rem;">
+                        או גרור קבצי אודיו לכאן
+                    </p>
+
+                    <div style="color: var(--color-textSecondary); font-size: 0.8rem; margin-top: 0.5rem;">
+                        קבצי אודיו נתמכים: MP3, WAV, OGG, AAC, M4A<br>
+                        גודל מקסימלי: 50MB לכל קובץ
+                    </div>
+                </div>
+
+                <div id="validation-results" style="margin-top: 1rem;">
+                    <!-- Validation results will appear here -->
+                </div>
+            `;
+        }
+
+        // Handle file selection
+        window.handleFileSelect = function(event) {
+            const files = Array.from(event.target.files);
+            const resultsContainer = document.getElementById('validation-results');
+            
+            if (files.length === 0) {
+                resultsContainer.innerHTML = '';
+                return;
+            }
+
+            const results = files.map(file => {
+                const validation = validator.validateFile(file);
+                return {
+                    file,
+                    validation
+                };
+            });
+
+            resultsContainer.innerHTML = `
+                <h4 style="color: var(--color-text); margin-bottom: 1rem;">
+                    תוצאות וולידציה (${files.length} קבצים)
+                </h4>
+                ${results.map(result => `
+                    <div class="test-file-item">
+                        <div class="test-file-info">
+                            <div class="test-file-name">${result.file.name}</div>
+                            <div class="test-file-details">
+                                סוג: ${result.file.type || 'לא מוגדר'} | גודל: ${validator.formatFileSize(result.file.size)}
+                            </div>
+                            ${!result.validation.valid ? `
+                                <div style="color: var(--color-danger); font-size: 0.8rem; margin-top: 0.25rem;">
+                                    ${result.validation.error}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="test-file-status ${result.validation.valid ? 'valid' : 'invalid'}">
+                            ${result.validation.valid ? '✅ תקין' : '❌ לא תקין'}
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        };
+
+        // Test all predefined files
+        window.testAllFiles = function() {
+            const results = testFiles.map(fileData => {
+                const mockFile = {
+                    name: fileData.name,
+                    type: fileData.type,
+                    size: fileData.size
+                };
+                
+                const validation = validator.validateFile(mockFile);
+                return {
+                    file: mockFile,
+                    validation,
+                    expected: fileData.expected
+                };
+            });
+
+            const resultsContainer = document.getElementById('validation-results');
+            resultsContainer.innerHTML = `
+                <h4 style="color: var(--color-text); margin-bottom: 1rem;">
+                    תוצאות בדיקה אוטומטית (${testFiles.length} קבצים)
+                </h4>
+                ${results.map(result => {
+                    const isCorrect = result.validation.valid === result.expected;
+                    return `
+                        <div class="test-file-item" style="border-color: ${isCorrect ? 'var(--color-success)' : 'var(--color-danger)'};">
+                            <div class="test-file-info">
+                                <div class="test-file-name">${result.file.name}</div>
+                                <div class="test-file-details">
+                                    סוג: ${result.file.type || 'לא מוגדר'} | גודל: ${validator.formatFileSize(result.file.size)}
+                                </div>
+                                ${!result.validation.valid ? `
+                                    <div style="color: var(--color-danger); font-size: 0.8rem; margin-top: 0.25rem;">
+                                        ${result.validation.error}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <div class="test-file-status ${result.validation.valid ? 'valid' : 'invalid'}">
+                                    ${result.validation.valid ? 'תקין' : 'לא תקין'}
+                                </div>
+                                <div style="font-size: 1.2rem;">
+                                    ${isCorrect ? '✅' : '❌'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            `;
+        };
+
+        // Test functions
+        function testValidatorInitialization() {
+            try {
+                validator = new AudioFileValidator();
+                
+                if (!validator.supportedTypes || validator.supportedTypes.length === 0) {
+                    return { pass: false, message: 'Supported types not initialized' };
+                }
+
+                if (!validator.supportedExtensions || validator.supportedExtensions.length === 0) {
+                    return { pass: false, message: 'Supported extensions not initialized' };
+                }
+
+                if (!validator.maxFileSize || validator.maxFileSize <= 0) {
+                    return { pass: false, message: 'Max file size not set correctly' };
+                }
+
+                return { pass: true, message: 'AudioFileValidator initialized correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error initializing validator: ${error.message}` };
+            }
+        }
+
+        function testValidAudioFiles() {
+            try {
+                if (!validator) {
+                    return { pass: false, message: 'Validator not available' };
+                }
+
+                const validFiles = [
+                    { name: 'test.mp3', type: 'audio/mpeg', size: 1024 * 1024 },
+                    { name: 'test.wav', type: 'audio/wav', size: 2 * 1024 * 1024 },
+                    { name: 'test.ogg', type: 'audio/ogg', size: 3 * 1024 * 1024 },
+                    { name: 'test.aac', type: 'audio/aac', size: 4 * 1024 * 1024 },
+                    { name: 'test.m4a', type: 'audio/m4a', size: 5 * 1024 * 1024 }
+                ];
+
+                for (const file of validFiles) {
+                    const result = validator.validateFile(file);
+                    if (!result.valid) {
+                        return { pass: false, message: `Valid file ${file.name} was rejected: ${result.error}` };
+                    }
+                }
+
+                return { pass: true, message: 'All valid audio files pass validation' };
+            } catch (error) {
+                return { pass: false, message: `Error testing valid files: ${error.message}` };
+            }
+        }
+
+        function testInvalidFileTypes() {
+            try {
+                if (!validator) {
+                    return { pass: false, message: 'Validator not available' };
+                }
+
+                const invalidFiles = [
+                    { name: 'test.txt', type: 'text/plain', size: 1024 },
+                    { name: 'test.pdf', type: 'application/pdf', size: 1024 * 1024 },
+                    { name: 'test.jpg', type: 'image/jpeg', size: 2 * 1024 * 1024 },
+                    { name: 'test.mp4', type: 'video/mp4', size: 10 * 1024 * 1024 }
+                ];
+
+                for (const file of invalidFiles) {
+                    const result = validator.validateFile(file);
+                    if (result.valid) {
+                        return { pass: false, message: `Invalid file ${file.name} was accepted` };
+                    }
+                }
+
+                return { pass: true, message: 'All invalid file types are correctly rejected' };
+            } catch (error) {
+                return { pass: false, message: `Error testing invalid files: ${error.message}` };
+            }
+        }
+
+        function testFileSizeValidation() {
+            try {
+                if (!validator) {
+                    return { pass: false, message: 'Validator not available' };
+                }
+
+                // Test file at size limit (should pass)
+                const maxSizeFile = { name: 'max.mp3', type: 'audio/mpeg', size: 50 * 1024 * 1024 };
+                const maxResult = validator.validateFile(maxSizeFile);
+                if (!maxResult.valid) {
+                    return { pass: false, message: `File at size limit was rejected: ${maxResult.error}` };
+                }
+
+                // Test oversized file (should fail)
+                const oversizedFile = { name: 'large.mp3', type: 'audio/mpeg', size: 60 * 1024 * 1024 };
+                const oversizedResult = validator.validateFile(oversizedFile);
+                if (oversizedResult.valid) {
+                    return { pass: false, message: 'Oversized file was accepted' };
+                }
+
+                // Test empty file (should pass)
+                const emptyFile = { name: 'empty.mp3', type: 'audio/mpeg', size: 0 };
+                const emptyResult = validator.validateFile(emptyFile);
+                if (!emptyResult.valid) {
+                    return { pass: false, message: `Empty file was rejected: ${emptyResult.error}` };
+                }
+
+                return { pass: true, message: 'File size validation works correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error testing file size validation: ${error.message}` };
+            }
+        }
+
+        function testExtensionFallback() {
+            try {
+                if (!validator) {
+                    return { pass: false, message: 'Validator not available' };
+                }
+
+                // Test file with correct extension but no MIME type (should pass)
+                const noMimeFile = { name: 'test.mp3', type: '', size: 1024 * 1024 };
+                const noMimeResult = validator.validateFile(noMimeFile);
+                if (!noMimeResult.valid) {
+                    return { pass: false, message: `File with correct extension but no MIME type was rejected: ${noMimeResult.error}` };
+                }
+
+                // Test file with wrong extension and no MIME type (should fail)
+                const wrongExtFile = { name: 'test.txt', type: '', size: 1024 };
+                const wrongExtResult = validator.validateFile(wrongExtFile);
+                if (wrongExtResult.valid) {
+                    return { pass: false, message: 'File with wrong extension was accepted' };
+                }
+
+                return { pass: true, message: 'Extension fallback validation works correctly' };
+            } catch (error) {
+                return { pass: false, message: `Error testing extension fallback: ${error.message}` };
+            }
+        }
+
+        function testComprehensiveValidation() {
+            try {
+                if (!validator) {
+                    return { pass: false, message: 'Validator not available' };
+                }
+
+                let passed = 0;
+                let failed = 0;
+
+                for (const testFile of testFiles) {
+                    const mockFile = {
+                        name: testFile.name,
+                        type: testFile.type,
+                        size: testFile.size
+                    };
+
+                    const result = validator.validateFile(mockFile);
+                    const isCorrect = result.valid === testFile.expected;
+
+                    if (isCorrect) {
+                        passed++;
+                    } else {
+                        failed++;
+                    }
+                }
+
+                if (failed > 0) {
+                    return { 
+                        pass: false, 
+                        message: `${failed} out of ${testFiles.length} test files failed validation. ${passed} passed.` 
+                    };
+                }
+
+                return { 
+                    pass: true, 
+                    message: `All ${testFiles.length} test files validated correctly` 
+                };
+            } catch (error) {
+                return { pass: false, message: `Error in comprehensive validation test: ${error.message}` };
+            }
+        }
+
+        // Run all tests
+        window.runTests = function() {
+            testResults = [];
+            
+            const tests = [
+                { name: 'Validator Initialization', fn: testValidatorInitialization },
+                { name: 'Valid Audio Files', fn: testValidAudioFiles },
+                { name: 'Invalid File Types', fn: testInvalidFileTypes },
+                { name: 'File Size Validation', fn: testFileSizeValidation },
+                { name: 'Extension Fallback', fn: testExtensionFallback },
+                { name: 'Comprehensive Validation', fn: testComprehensiveValidation }
+            ];
+
+            const resultsContainer = document.getElementById('test-results');
+            resultsContainer.innerHTML = '';
+
+            tests.forEach(test => {
+                try {
+                    const result = test.fn();
+                    testResults.push({ name: test.name, ...result });
+                    
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = `test-result ${result.pass ? 'pass' : 'fail'}`;
+                    resultDiv.innerHTML = `
+                        <strong>${result.pass ? '✅' : '❌'} ${test.name}</strong><br>
+                        ${result.message}
+                        ${!result.pass && result.details ? `<div class="error-details">${result.details}</div>` : ''}
+                    `;
+                    resultsContainer.appendChild(resultDiv);
+                } catch (error) {
+                    testResults.push({ name: test.name, pass: false, message: `Test error: ${error.message}` });
+                    
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'test-result fail';
+                    resultDiv.innerHTML = `
+                        <strong>❌ ${test.name}</strong><br>
+                        Test error: ${error.message}
+                        <div class="error-details">${error.stack}</div>
+                    `;
+                    resultsContainer.appendChild(resultDiv);
+                }
+            });
+
+            // Summary
+            const passed = testResults.filter(r => r.pass).length;
+            const total = testResults.length;
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = `test-result ${passed === total ? 'pass' : 'fail'}`;
+            summaryDiv.innerHTML = `
+                <strong>📊 Test Summary</strong><br>
+                ${passed}/${total} tests passed
+            `;
+            resultsContainer.appendChild(summaryDiv);
+        };
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeTest();
+            setTimeout(runTests, 100);
+        });
+    </script>
+</body>
+</html>

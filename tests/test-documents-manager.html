@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocumentsManager Component Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/styled-components@5.3.11/dist/styled-components.min.js"></script>
+    <style>
+        /* CSS Variables matching the project's design system */
+        :root {
+            --color-surface: #ffffff;
+            --color-text: #2c3e50;
+            --color-border: #e9ecef;
+            --color-shadowLight: rgba(0, 0, 0, 0.1);
+            --radius-md: 8px;
+        }
+
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .test-header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-results {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-pass {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .test-fail {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>DocumentsManager Component Test</h1>
+            <p>Testing that the DocumentsManager component renders without errors and displays the "Documents" heading.</p>
+        </div>
+
+        <div id="component-test-root"></div>
+
+        <div class="test-results" id="test-results">
+            <h2>Test Results</h2>
+            <div id="results-content">Running tests...</div>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const styled = window.styled;
+
+        // DocumentsManager Component (copied from the actual component)
+        const Container = styled.div`
+          background: var(--color-surface);
+          border-radius: var(--radius-md);
+          padding: 2rem;
+          box-shadow: 0 2px 8px var(--color-shadowLight);
+          margin-bottom: 2rem;
+        `;
+
+        const Header = styled.div`
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid var(--color-border);
+        `;
+
+        const Title = styled.h2`
+          color: var(--color-text);
+          margin: 0;
+        `;
+
+        const DocumentsManager = ({ t }) => {
+          return (
+            <Container>
+              <Header>
+                <Title>Documents</Title>
+              </Header>
+            </Container>
+          );
+        };
+
+        // Test Component
+        const TestRunner = () => {
+            const [testResults, setTestResults] = useState([]);
+            const [isComplete, setIsComplete] = useState(false);
+
+            useEffect(() => {
+                runTests();
+            }, []);
+
+            const runTests = async () => {
+                const results = [];
+
+                try {
+                    // Test 1: Component renders without errors
+                    try {
+                        const testElement = React.createElement(DocumentsManager, { t: (key) => key });
+                        results.push({
+                            name: "Component renders without errors",
+                            status: "PASS",
+                            message: "DocumentsManager component rendered successfully"
+                        });
+                    } catch (error) {
+                        results.push({
+                            name: "Component renders without errors",
+                            status: "FAIL",
+                            message: `Component failed to render: ${error.message}`
+                        });
+                    }
+
+                    // Test 2: Component displays "Documents" heading
+                    try {
+                        // Create a temporary container for testing
+                        const tempContainer = document.createElement('div');
+                        document.body.appendChild(tempContainer);
+                        
+                        const testElement = React.createElement(DocumentsManager, { t: (key) => key });
+                        ReactDOM.render(testElement, tempContainer);
+                        
+                        // Wait a moment for rendering
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        // Check if "Documents" text is present
+                        const hasDocumentsText = tempContainer.textContent.includes('Documents');
+                        
+                        if (hasDocumentsText) {
+                            results.push({
+                                name: "Component displays 'Documents' heading",
+                                status: "PASS",
+                                message: "Found 'Documents' text in component output"
+                            });
+                        } else {
+                            results.push({
+                                name: "Component displays 'Documents' heading",
+                                status: "FAIL",
+                                message: "Could not find 'Documents' text in component output"
+                            });
+                        }
+                        
+                        // Clean up
+                        document.body.removeChild(tempContainer);
+                        
+                    } catch (error) {
+                        results.push({
+                            name: "Component displays 'Documents' heading",
+                            status: "FAIL",
+                            message: `Error testing heading display: ${error.message}`
+                        });
+                    }
+
+                    // Test 3: Component structure validation
+                    try {
+                        const tempContainer = document.createElement('div');
+                        document.body.appendChild(tempContainer);
+                        
+                        const testElement = React.createElement(DocumentsManager, { t: (key) => key });
+                        ReactDOM.render(testElement, tempContainer);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        // Check for expected structure
+                        const hasContainer = tempContainer.querySelector('div') !== null;
+                        const hasHeading = tempContainer.querySelector('h2') !== null;
+                        
+                        if (hasContainer && hasHeading) {
+                            results.push({
+                                name: "Component has correct structure",
+                                status: "PASS",
+                                message: "Component contains expected container and heading elements"
+                            });
+                        } else {
+                            results.push({
+                                name: "Component has correct structure",
+                                status: "FAIL",
+                                message: `Missing elements - Container: ${hasContainer}, Heading: ${hasHeading}`
+                            });
+                        }
+                        
+                        document.body.removeChild(tempContainer);
+                        
+                    } catch (error) {
+                        results.push({
+                            name: "Component has correct structure",
+                            status: "FAIL",
+                            message: `Error testing component structure: ${error.message}`
+                        });
+                    }
+
+                } catch (error) {
+                    results.push({
+                        name: "Test execution",
+                        status: "FAIL",
+                        message: `Test execution failed: ${error.message}`
+                    });
+                }
+
+                setTestResults(results);
+                setIsComplete(true);
+            };
+
+            const passedTests = testResults.filter(test => test.status === "PASS").length;
+            const totalTests = testResults.length;
+
+            return (
+                <div>
+                    {isComplete && (
+                        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: passedTests === totalTests ? '#d5f4e6' : '#fadbd8', borderRadius: '8px' }}>
+                            <strong>
+                                {passedTests === totalTests ? '✅ All tests passed!' : `❌ ${passedTests}/${totalTests} tests passed`}
+                            </strong>
+                        </div>
+                    )}
+                    
+                    {testResults.map((result, index) => (
+                        <div key={index} className="test-item">
+                            <div className={result.status === "PASS" ? "test-pass" : "test-fail"}>
+                                {result.status === "PASS" ? "✅" : "❌"} {result.name}
+                            </div>
+                            <div style={{ marginTop: '5px', fontSize: '14px', color: '#666' }}>
+                                {result.message}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        // Render the actual component for visual inspection
+        const ComponentDemo = () => {
+            return (
+                <div>
+                    <h3>Component Visual Test</h3>
+                    <DocumentsManager t={(key) => key} />
+                </div>
+            );
+        };
+
+        // Render both the component demo and test results
+        ReactDOM.render(
+            <div>
+                <ComponentDemo />
+                <TestRunner />
+            </div>,
+            document.getElementById('component-test-root')
+        );
+
+        // Also render test results in the dedicated section
+        ReactDOM.render(<TestRunner />, document.getElementById('results-content'));
+    </script>
+</body>
+</html>

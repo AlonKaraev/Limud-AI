@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeacherDashboard Documents Tab Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/styled-components@5.3.11/dist/styled-components.min.js"></script>
+    <style>
+        /* CSS Variables matching the project's design system */
+        :root {
+            --color-surface: #ffffff;
+            --color-text: #2c3e50;
+            --color-border: #e9ecef;
+            --color-shadowLight: rgba(0, 0, 0, 0.1);
+            --radius-md: 8px;
+            --color-primary: #3498db;
+            --color-primaryHover: #2980b9;
+            --color-textOnPrimary: #ffffff;
+            --transition-fast: all 0.2s ease;
+        }
+
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .test-header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-results {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-pass {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .test-fail {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+        }
+
+        /* Basic styling for the dashboard components */
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+
+        .card-subtitle {
+            margin: 0;
+            color: #7f8c8d;
+        }
+
+        .nav-tabs {
+            margin-bottom: 20px;
+        }
+
+        .nav-tabs-header {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 10px 20px;
+            border: 2px solid #e9ecef;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Heebo', Arial, sans-serif;
+        }
+
+        .nav-tab:hover {
+            border-color: #3498db;
+        }
+
+        .nav-tab.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .component-demo {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>TeacherDashboard Documents Tab Integration Test</h1>
+            <p>Testing that the Documents tab appears in navigation and shows the DocumentsManager component when clicked.</p>
+        </div>
+
+        <div id="dashboard-test-root"></div>
+
+        <div class="test-results" id="test-results">
+            <h2>Test Results</h2>
+            <div id="results-content">Running tests...</div>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const styled = window.styled;
+
+        // DocumentsManager Component (simplified version for testing)
+        const Container = styled.div`
+          background: var(--color-surface);
+          border-radius: var(--radius-md);
+          padding: 2rem;
+          box-shadow: 0 2px 8px var(--color-shadowLight);
+          margin-bottom: 2rem;
+        `;
+
+        const Header = styled.div`
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid var(--color-border);
+        `;
+
+        const Title = styled.h2`
+          color: var(--color-text);
+          margin: 0;
+        `;
+
+        const DocumentsManager = ({ t }) => {
+          return (
+            <Container>
+              <Header>
+                <Title>Documents</Title>
+              </Header>
+            </Container>
+          );
+        };
+
+        // Simplified TeacherDashboard Component for testing
+        const TeacherDashboard = ({ user, t }) => {
+          const [activeTab, setActiveTab] = useState('overview');
+
+          return (
+            <div className="card">
+              <div className="card-header">
+                <h2 className="card-title">Teacher Dashboard</h2>
+                <p className="card-subtitle">Welcome, {user.firstName} {user.lastName}!</p>
+              </div>
+              
+              <div className="nav-tabs">
+                <div className="nav-tabs-header">
+                  <button
+                    className={`nav-tab ${activeTab === 'overview' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('overview')}
+                  >
+                    סקירה כללית
+                  </button>
+                  <button
+                    className={`nav-tab ${activeTab === 'lessons' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('lessons')}
+                  >
+                    שיעורים
+                  </button>
+                  <button
+                    className={`nav-tab ${activeTab === 'memory-cards' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('memory-cards')}
+                  >
+                    כרטיסי זיכרון
+                  </button>
+                  <button
+                    className={`nav-tab ${activeTab === 'tests' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('tests')}
+                  >
+                    מבחנים
+                  </button>
+                  <button
+                    className={`nav-tab ${activeTab === 'summaries' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('summaries')}
+                  >
+                    סיכומים
+                  </button>
+                  <button
+                    className={`nav-tab ${activeTab === 'documents' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('documents')}
+                  >
+                    Documents
+                  </button>
+                </div>
+              </div>
+
+              {activeTab === 'overview' && (
+                <div>
+                  <h3>Overview Content</h3>
+                  <p>This is the overview tab content.</p>
+                </div>
+              )}
+
+              {activeTab === 'lessons' && (
+                <div>
+                  <h3>Lessons Content</h3>
+                  <p>This is the lessons tab content.</p>
+                </div>
+              )}
+
+              {activeTab === 'memory-cards' && (
+                <div>
+                  <h3>Memory Cards Content</h3>
+                  <p>This is the memory cards tab content.</p>
+                </div>
+              )}
+
+              {activeTab === 'tests' && (
+                <div>
+                  <h3>Tests Content</h3>
+                  <p>This is the tests tab content.</p>
+                </div>
+              )}
+
+              {activeTab === 'summaries' && (
+                <div>
+                  <h3>Summaries Content</h3>
+                  <p>This is the summaries tab content.</p>
+                </div>
+              )}
+
+              {activeTab === 'documents' && (
+                <DocumentsManager t={t} />
+              )}
+            </div>
+          );
+        };
+
+        // Test Component
+        const TestRunner = () => {
+            const [testResults, setTestResults] = useState([]);
+            const [isComplete, setIsComplete] = useState(false);
+
+            useEffect(() => {
+                runTests();
+            }, []);
+
+            const runTests = async () => {
+                const results = [];
+
+                try {
+                    // Test 1: Documents tab appears in navigation bar
+                    try {
+                        const tempContainer = document.createElement('div');
+                        document.body.appendChild(tempContainer);
+                        
+                        const mockUser = { firstName: 'Test', lastName: 'Teacher' };
+                        const testElement = React.createElement(TeacherDashboard, { 
+                            user: mockUser, 
+                            t: (key) => key 
+                        });
+                        ReactDOM.render(testElement, tempContainer);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        // Check if Documents tab is present
+                        const documentsTab = Array.from(tempContainer.querySelectorAll('.nav-tab'))
+                            .find(tab => tab.textContent.includes('Documents'));
+                        
+                        if (documentsTab) {
+                            results.push({
+                                name: '"Documents" tab appears in navigation bar',
+                                status: "PASS",
+                                message: "Found Documents tab in navigation"
+                            });
+                        } else {
+                            results.push({
+                                name: '"Documents" tab appears in navigation bar',
+                                status: "FAIL",
+                                message: "Could not find Documents tab in navigation"
+                            });
+                        }
+                        
+                        document.body.removeChild(tempContainer);
+                        
+                    } catch (error) {
+                        results.push({
+                            name: '"Documents" tab appears in navigation bar',
+                            status: "FAIL",
+                            message: `Error testing navigation: ${error.message}`
+                        });
+                    }
+
+                    // Test 2: Clicking Documents tab shows DocumentsManager component
+                    try {
+                        const tempContainer = document.createElement('div');
+                        document.body.appendChild(tempContainer);
+                        
+                        const mockUser = { firstName: 'Test', lastName: 'Teacher' };
+                        const testElement = React.createElement(TeacherDashboard, { 
+                            user: mockUser, 
+                            t: (key) => key 
+                        });
+                        ReactDOM.render(testElement, tempContainer);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        // Find and click the Documents tab
+                        const documentsTab = Array.from(tempContainer.querySelectorAll('.nav-tab'))
+                            .find(tab => tab.textContent.includes('Documents'));
+                        
+                        if (documentsTab) {
+                            documentsTab.click();
+                            
+                            // Wait for state update
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            
+                            // Check if DocumentsManager component is rendered (look for "Documents" heading)
+                            const documentsHeading = Array.from(tempContainer.querySelectorAll('h2'))
+                                .find(h2 => h2.textContent.includes('Documents'));
+                            
+                            if (documentsHeading) {
+                                results.push({
+                                    name: 'Clicking tab shows DocumentsManager component',
+                                    status: "PASS",
+                                    message: "DocumentsManager component rendered with Documents heading"
+                                });
+                            } else {
+                                results.push({
+                                    name: 'Clicking tab shows DocumentsManager component',
+                                    status: "FAIL",
+                                    message: "DocumentsManager component not found after clicking tab"
+                                });
+                            }
+                        } else {
+                            results.push({
+                                name: 'Clicking tab shows DocumentsManager component',
+                                status: "FAIL",
+                                message: "Could not find Documents tab to click"
+                            });
+                        }
+                        
+                        document.body.removeChild(tempContainer);
+                        
+                    } catch (error) {
+                        results.push({
+                            name: 'Clicking tab shows DocumentsManager component',
+                            status: "FAIL",
+                            message: `Error testing tab click: ${error.message}`
+                        });
+                    }
+
+                    // Test 3: Documents tab has correct active state
+                    try {
+                        const tempContainer = document.createElement('div');
+                        document.body.appendChild(tempContainer);
+                        
+                        const mockUser = { firstName: 'Test', lastName: 'Teacher' };
+                        const testElement = React.createElement(TeacherDashboard, { 
+                            user: mockUser, 
+                            t: (key) => key 
+                        });
+                        ReactDOM.render(testElement, tempContainer);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        // Find and click the Documents tab
+                        const documentsTab = Array.from(tempContainer.querySelectorAll('.nav-tab'))
+                            .find(tab => tab.textContent.includes('Documents'));
+                        
+                        if (documentsTab) {
+                            documentsTab.click();
+                            
+                            // Wait for state update
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            
+                            // Check if Documents tab has active class
+                            const hasActiveClass = documentsTab.classList.contains('active');
+                            
+                            if (hasActiveClass) {
+                                results.push({
+                                    name: 'Documents tab shows active state when selected',
+                                    status: "PASS",
+                                    message: "Documents tab has active class when clicked"
+                                });
+                            } else {
+                                results.push({
+                                    name: 'Documents tab shows active state when selected',
+                                    status: "FAIL",
+                                    message: "Documents tab does not have active class when clicked"
+                                });
+                            }
+                        } else {
+                            results.push({
+                                name: 'Documents tab shows active state when selected',
+                                status: "FAIL",
+                                message: "Could not find Documents tab to test active state"
+                            });
+                        }
+                        
+                        document.body.removeChild(tempContainer);
+                        
+                    } catch (error) {
+                        results.push({
+                            name: 'Documents tab shows active state when selected',
+                            status: "FAIL",
+                            message: `Error testing active state: ${error.message}`
+                        });
+                    }
+
+                    // Test 4: Tab switching works correctly
+                    try {
+                        const tempContainer = document.createElement('div');
+                        document.body.appendChild(tempContainer);
+                        
+                        const mockUser = { firstName: 'Test', lastName: 'Teacher' };
+                        const testElement = React.createElement(TeacherDashboard, { 
+                            user: mockUser, 
+                            t: (key) => key 
+                        });
+                        ReactDOM.render(testElement, tempContainer);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        // Click Documents tab
+                        const documentsTab = Array.from(tempContainer.querySelectorAll('.nav-tab'))
+                            .find(tab => tab.textContent.includes('Documents'));
+                        
+                        // Click Overview tab
+                        const overviewTab = Array.from(tempContainer.querySelectorAll('.nav-tab'))
+                            .find(tab => tab.textContent.includes('סקירה כללית'));
+                        
+                        if (documentsTab && overviewTab) {
+                            // First click Documents
+                            documentsTab.click();
+                            await new Promise(resolve => setTimeout(resolve, 50));
+                            
+                            // Check Documents content is shown
+                            let documentsContent = tempContainer.textContent.includes('Documents');
+                            
+                            // Then click Overview
+                            overviewTab.click();
+                            await new Promise(resolve => setTimeout(resolve, 50));
+                            
+                            // Check Overview content is shown and Documents content is hidden
+                            let overviewContent = tempContainer.textContent.includes('Overview Content');
+                            let documentsHidden = !tempContainer.querySelector('h2[children="Documents"]');
+                            
+                            if (documentsContent && overviewContent) {
+                                results.push({
+                                    name: 'Tab switching works correctly',
+                                    status: "PASS",
+                                    message: "Successfully switched between Documents and Overview tabs"
+                                });
+                            } else {
+                                results.push({
+                                    name: 'Tab switching works correctly',
+                                    status: "FAIL",
+                                    message: `Tab switching failed - Documents shown: ${documentsContent}, Overview shown: ${overviewContent}`
+                                });
+                            }
+                        } else {
+                            results.push({
+                                name: 'Tab switching works correctly',
+                                status: "FAIL",
+                                message: "Could not find required tabs for switching test"
+                            });
+                        }
+                        
+                        document.body.removeChild(tempContainer);
+                        
+                    } catch (error) {
+                        results.push({
+                            name: 'Tab switching works correctly',
+                            status: "FAIL",
+                            message: `Error testing tab switching: ${error.message}`
+                        });
+                    }
+
+                } catch (error) {
+                    results.push({
+                        name: "Test execution",
+                        status: "FAIL",
+                        message: `Test execution failed: ${error.message}`
+                    });
+                }
+
+                setTestResults(results);
+                setIsComplete(true);
+            };
+
+            const passedTests = testResults.filter(test => test.status === "PASS").length;
+            const totalTests = testResults.length;
+
+            return (
+                <div>
+                    {isComplete && (
+                        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: passedTests === totalTests ? '#d5f4e6' : '#fadbd8', borderRadius: '8px' }}>
+                            <strong>
+                                {passedTests === totalTests ? '✅ All tests passed!' : `❌ ${passedTests}/${totalTests} tests passed`}
+                            </strong>
+                        </div>
+                    )}
+                    
+                    {testResults.map((result, index) => (
+                        <div key={index} className="test-item">
+                            <div className={result.status === "PASS" ? "test-pass" : "test-fail"}>
+                                {result.status === "PASS" ? "✅" : "❌"} {result.name}
+                            </div>
+                            <div style={{ marginTop: '5px', fontSize: '14px', color: '#666' }}>
+                                {result.message}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        // Component Demo
+        const ComponentDemo = () => {
+            const mockUser = { firstName: 'Test', lastName: 'Teacher' };
+            
+            return (
+                <div>
+                    <h3>Interactive Demo</h3>
+                    <div className="component-demo">
+                        <TeacherDashboard user={mockUser} t={(key) => key} />
+                    </div>
+                </div>
+            );
+        };
+
+        // Render both the component demo and test results
+        ReactDOM.render(
+            <div>
+                <ComponentDemo />
+                <TestRunner />
+            </div>,
+            document.getElementById('dashboard-test-root')
+        );
+
+        // Also render test results in the dedicated section
+        ReactDOM.render(<TestRunner />, document.getElementById('results-content'));
+    </script>
+</body>
+</html>

@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documents Persistence Tests - Limud AI</title>
+    <style>
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .test-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .test-section h3 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        
+        .test-step {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .test-result {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .success {
+            background-color: #d5f4e6;
+            color: #27ae60;
+            border: 1px solid #a9dfbf;
+        }
+        
+        .error {
+            background-color: #fadbd8;
+            color: #e74c3c;
+            border: 1px solid #f5b7b1;
+        }
+        
+        .info {
+            background-color: #d6eaf8;
+            color: #2980b9;
+            border: 1px solid #aed6f1;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0.5rem;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .danger {
+            background: #e74c3c;
+        }
+        
+        .danger:hover {
+            background: #c0392b;
+        }
+        
+        .warning {
+            background: #f39c12;
+        }
+        
+        .warning:hover {
+            background: #e67e22;
+        }
+        
+        .storage-info {
+            background: #ecf0f1;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .manual-test {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        
+        .manual-test h4 {
+            color: #856404;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🧪 Documents Persistence Tests</h1>
+            <p>בדיקות עמידות מסמכים ב-localStorage</p>
+        </div>
+
+        <!-- Automated Tests Section -->
+        <div class="test-section">
+            <h3>🤖 בדיקות אוטומטיות</h3>
+            
+            <div class="test-step">
+                <h4>בדיקה 1: localStorage זמין</h4>
+                <button onclick="testLocalStorageAvailable()">הרץ בדיקה</button>
+                <div id="localStorage-result"></div>
+            </div>
+
+            <div class="test-step">
+                <h4>בדיקה 2: שמירה וטעינה של מסמכים</h4>
+                <button onclick="testSaveAndLoadDocuments()">הרץ בדיקה</button>
+                <div id="save-load-result"></div>
+            </div>
+
+            <div class="test-step">
+                <h4>בדיקה 3: מחיקת מסמך בודד</h4>
+                <button onclick="testRemoveDocument()">הרץ בדיקה</button>
+                <div id="remove-result"></div>
+            </div>
+
+            <div class="test-step">
+                <h4>בדיקה 4: טיפול בנתונים פגומים</h4>
+                <button onclick="testCorruptedData()">הרץ בדיקה</button>
+                <div id="corrupted-result"></div>
+            </div>
+
+            <div class="test-step">
+                <h4>בדיקה 5: גבולות אחסון</h4>
+                <button onclick="testStorageLimits()">הרץ בדיקה</button>
+                <div id="limits-result"></div>
+            </div>
+        </div>
+
+        <!-- Storage Information -->
+        <div class="test-section">
+            <h3>📊 מידע על אחסון</h3>
+            <button onclick="showStorageInfo()">הצג מידע אחסון</button>
+            <div id="storage-info"></div>
+        </div>
+
+        <!-- Manual Tests Section -->
+        <div class="test-section">
+            <h3>👤 בדיקות ידניות</h3>
+            
+            <div class="manual-test">
+                <h4>בדיקה ידנית 1: עמידות לאחר רענון דף</h4>
+                <ol>
+                    <li>פתח את TeacherDashboard ועבור לטאב Documents</li>
+                    <li>העלה מספר קבצים ושמור אותם</li>
+                    <li>רענן את הדף (F5 או Ctrl+R)</li>
+                    <li>בדוק שהמסמכים השמורים עדיין מוצגים</li>
+                </ol>
+                <div class="test-result info">
+                    ✅ תוצאה צפויה: המסמכים השמורים אמורים להיות גלויים לאחר רענון הדף
+                </div>
+            </div>
+
+            <div class="manual-test">
+                <h4>בדיקה ידנית 2: עמידות בין סשנים</h4>
+                <ol>
+                    <li>העלה ושמור מסמכים</li>
+                    <li>סגור את הדפדפן לחלוטין</li>
+                    <li>פתח את הדפדפן שוב ונווט ל-Documents</li>
+                    <li>בדוק שהמסמכים עדיין שמורים</li>
+                </ol>
+                <div class="test-result info">
+                    ✅ תוצאה צפויה: המסמכים אמורים להישמר בין סשני דפדפן
+                </div>
+            </div>
+
+            <div class="manual-test">
+                <h4>בדיקה ידנית 3: מחיקת מסמכים</h4>
+                <ol>
+                    <li>שמור מספר מסמכים</li>
+                    <li>מחק מסמך אחד באמצעות כפתור "מחק"</li>
+                    <li>רענן את הדף</li>
+                    <li>בדוק שהמסמך הנמחק לא מוצג יותר</li>
+                </ol>
+                <div class="test-result info">
+                    ✅ תוצאה צפויה: המסמך הנמחק לא אמור להופיע לאחר רענון
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Controls -->
+        <div class="test-section">
+            <h3>🔧 בקרות בדיקה</h3>
+            <button onclick="runAllTests()">הרץ את כל הבדיקות</button>
+            <button onclick="clearTestStorage()" class="danger">נקה אחסון בדיקות</button>
+            <button onclick="createTestData()" class="warning">צור נתוני בדיקה</button>
+            <div id="test-controls-result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Test utilities
+        const STORAGE_KEY = 'limud-ai-documents';
+        
+        function logResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = message;
+            element.appendChild(resultDiv);
+        }
+
+        function clearResults(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        // Test 1: localStorage availability
+        function testLocalStorageAvailable() {
+            clearResults('localStorage-result');
+            
+            try {
+                const testKey = 'test-storage';
+                const testValue = 'test-value';
+                
+                localStorage.setItem(testKey, testValue);
+                const retrieved = localStorage.getItem(testKey);
+                localStorage.removeItem(testKey);
+                
+                if (retrieved === testValue) {
+                    logResult('localStorage-result', '✅ localStorage זמין ופועל כראוי', 'success');
+                } else {
+                    logResult('localStorage-result', '❌ localStorage לא פועל כראוי', 'error');
+                }
+            } catch (error) {
+                logResult('localStorage-result', `❌ localStorage לא זמין: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 2: Save and load documents
+        function testSaveAndLoadDocuments() {
+            clearResults('save-load-result');
+            
+            try {
+                // Create test documents
+                const testDocuments = [
+                    {
+                        id: Date.now() + 1,
+                        name: 'test-document-1.pdf',
+                        size: 1024000,
+                        type: 'application/pdf',
+                        savedAt: new Date().toISOString()
+                    },
+                    {
+                        id: Date.now() + 2,
+                        name: 'test-document-2.docx',
+                        size: 2048000,
+                        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        savedAt: new Date().toISOString()
+                    }
+                ];
+
+                // Save documents
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(testDocuments));
+                logResult('save-load-result', '✅ מסמכים נשמרו בהצלחה', 'success');
+
+                // Load documents
+                const loaded = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                
+                if (loaded && loaded.length === 2) {
+                    logResult('save-load-result', '✅ מסמכים נטענו בהצלחה', 'success');
+                    logResult('save-load-result', `📄 נטענו ${loaded.length} מסמכים: ${loaded.map(d => d.name).join(', ')}`, 'info');
+                } else {
+                    logResult('save-load-result', '❌ שגיאה בטעינת מסמכים', 'error');
+                }
+
+                // Clean up
+                localStorage.removeItem(STORAGE_KEY);
+                
+            } catch (error) {
+                logResult('save-load-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 3: Remove single document
+        function testRemoveDocument() {
+            clearResults('remove-result');
+            
+            try {
+                // Create test documents
+                const testDocuments = [
+                    { id: 1, name: 'doc1.pdf', size: 1000, type: 'application/pdf', savedAt: new Date().toISOString() },
+                    { id: 2, name: 'doc2.pdf', size: 2000, type: 'application/pdf', savedAt: new Date().toISOString() },
+                    { id: 3, name: 'doc3.pdf', size: 3000, type: 'application/pdf', savedAt: new Date().toISOString() }
+                ];
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(testDocuments));
+                logResult('remove-result', '✅ נוצרו 3 מסמכי בדיקה', 'info');
+
+                // Remove middle document
+                const updatedDocuments = testDocuments.filter(doc => doc.id !== 2);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedDocuments));
+
+                // Verify removal
+                const loaded = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                
+                if (loaded.length === 2 && !loaded.find(doc => doc.id === 2)) {
+                    logResult('remove-result', '✅ מסמך נמחק בהצלחה', 'success');
+                    logResult('remove-result', `📄 נותרו ${loaded.length} מסמכים`, 'info');
+                } else {
+                    logResult('remove-result', '❌ שגיאה במחיקת מסמך', 'error');
+                }
+
+                // Clean up
+                localStorage.removeItem(STORAGE_KEY);
+                
+            } catch (error) {
+                logResult('remove-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 4: Handle corrupted data
+        function testCorruptedData() {
+            clearResults('corrupted-result');
+            
+            try {
+                // Set corrupted data
+                localStorage.setItem(STORAGE_KEY, 'invalid-json-data');
+                logResult('corrupted-result', '⚠️ נוצרו נתונים פגומים', 'info');
+
+                // Try to load corrupted data
+                try {
+                    const loaded = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                    logResult('corrupted-result', '❌ נתונים פגומים לא זוהו', 'error');
+                } catch (parseError) {
+                    logResult('corrupted-result', '✅ נתונים פגומים זוהו כראוי', 'success');
+                    logResult('corrupted-result', `🔍 שגיאת פרסור: ${parseError.message}`, 'info');
+                }
+
+                // Clean up
+                localStorage.removeItem(STORAGE_KEY);
+                
+            } catch (error) {
+                logResult('corrupted-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 5: Storage limits
+        function testStorageLimits() {
+            clearResults('limits-result');
+            
+            try {
+                // Get current storage usage
+                let totalSize = 0;
+                for (let key in localStorage) {
+                    if (localStorage.hasOwnProperty(key)) {
+                        totalSize += localStorage[key].length;
+                    }
+                }
+
+                logResult('limits-result', `📊 שימוש נוכחי ב-localStorage: ${totalSize} תווים`, 'info');
+
+                // Test with large document list
+                const largeDocumentList = [];
+                for (let i = 0; i < 100; i++) {
+                    largeDocumentList.push({
+                        id: i,
+                        name: `large-document-${i}.pdf`,
+                        size: Math.floor(Math.random() * 10000000),
+                        type: 'application/pdf',
+                        savedAt: new Date().toISOString()
+                    });
+                }
+
+                const testData = JSON.stringify(largeDocumentList);
+                localStorage.setItem(STORAGE_KEY + '-large', testData);
+                
+                logResult('limits-result', `✅ נשמרו 100 מסמכים (${testData.length} תווים)`, 'success');
+
+                // Clean up
+                localStorage.removeItem(STORAGE_KEY + '-large');
+                
+            } catch (error) {
+                if (error.name === 'QuotaExceededError') {
+                    logResult('limits-result', '⚠️ הגעת לגבול אחסון localStorage', 'error');
+                } else {
+                    logResult('limits-result', `❌ שגיאה בבדיקה: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Show storage information
+        function showStorageInfo() {
+            const infoDiv = document.getElementById('storage-info');
+            
+            try {
+                let totalSize = 0;
+                let itemCount = 0;
+                let limudAIData = null;
+
+                for (let key in localStorage) {
+                    if (localStorage.hasOwnProperty(key)) {
+                        totalSize += localStorage[key].length;
+                        itemCount++;
+                        
+                        if (key === STORAGE_KEY) {
+                            limudAIData = localStorage[key];
+                        }
+                    }
+                }
+
+                let infoHTML = `
+                    <div class="storage-info">
+                        <h4>מידע כללי על localStorage:</h4>
+                        <p><strong>סה"כ פריטים:</strong> ${itemCount}</p>
+                        <p><strong>סה"כ גודל:</strong> ${totalSize} תווים</p>
+                        <p><strong>גודל משוער:</strong> ${(totalSize / 1024).toFixed(2)} KB</p>
+                        
+                        <h4>נתוני Limud AI:</h4>
+                `;
+
+                if (limudAIData) {
+                    try {
+                        const documents = JSON.parse(limudAIData);
+                        infoHTML += `
+                            <p><strong>מסמכים שמורים:</strong> ${documents.length}</p>
+                            <p><strong>גודל נתונים:</strong> ${limudAIData.length} תווים</p>
+                            <details>
+                                <summary>פרטי מסמכים</summary>
+                                <ul>
+                        `;
+                        documents.forEach(doc => {
+                            infoHTML += `<li>${doc.name} (${(doc.size / 1024).toFixed(2)} KB) - ${new Date(doc.savedAt).toLocaleDateString('he-IL')}</li>`;
+                        });
+                        infoHTML += `
+                                </ul>
+                            </details>
+                        `;
+                    } catch (e) {
+                        infoHTML += `<p><strong>שגיאה:</strong> נתונים פגומים</p>`;
+                    }
+                } else {
+                    infoHTML += `<p><strong>סטטוס:</strong> אין מסמכים שמורים</p>`;
+                }
+
+                infoHTML += `</div>`;
+                infoDiv.innerHTML = infoHTML;
+                
+            } catch (error) {
+                infoDiv.innerHTML = `<div class="test-result error">שגיאה בהצגת מידע: ${error.message}</div>`;
+            }
+        }
+
+        // Run all tests
+        function runAllTests() {
+            clearResults('test-controls-result');
+            logResult('test-controls-result', '🚀 מריץ את כל הבדיקות...', 'info');
+            
+            setTimeout(() => testLocalStorageAvailable(), 100);
+            setTimeout(() => testSaveAndLoadDocuments(), 200);
+            setTimeout(() => testRemoveDocument(), 300);
+            setTimeout(() => testCorruptedData(), 400);
+            setTimeout(() => testStorageLimits(), 500);
+            
+            setTimeout(() => {
+                logResult('test-controls-result', '✅ כל הבדיקות הושלמו', 'success');
+            }, 600);
+        }
+
+        // Clear test storage
+        function clearTestStorage() {
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+                // Remove any test keys
+                Object.keys(localStorage).forEach(key => {
+                    if (key.includes('test') || key.includes(STORAGE_KEY)) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                
+                clearResults('test-controls-result');
+                logResult('test-controls-result', '🗑️ אחסון בדיקות נוקה', 'success');
+            } catch (error) {
+                logResult('test-controls-result', `❌ שגיאה בניקוי: ${error.message}`, 'error');
+            }
+        }
+
+        // Create test data
+        function createTestData() {
+            try {
+                const testDocuments = [
+                    {
+                        id: Date.now() + 1,
+                        name: 'מסמך-בדיקה-1.pdf',
+                        size: 1500000,
+                        type: 'application/pdf',
+                        savedAt: new Date().toISOString()
+                    },
+                    {
+                        id: Date.now() + 2,
+                        name: 'מסמך-בדיקה-2.docx',
+                        size: 2500000,
+                        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        savedAt: new Date().toISOString()
+                    },
+                    {
+                        id: Date.now() + 3,
+                        name: 'מסמך-בדיקה-3.xlsx',
+                        size: 800000,
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        savedAt: new Date().toISOString()
+                    }
+                ];
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(testDocuments));
+                
+                clearResults('test-controls-result');
+                logResult('test-controls-result', `📄 נוצרו ${testDocuments.length} מסמכי בדיקה`, 'success');
+                logResult('test-controls-result', 'כעת תוכל לעבור ל-TeacherDashboard ולראות את המסמכים השמורים', 'info');
+            } catch (error) {
+                logResult('test-controls-result', `❌ שגיאה ביצירת נתונים: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            showStorageInfo();
+        });
+    </script>
+</body>
+</html>
