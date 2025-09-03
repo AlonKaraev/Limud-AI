@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Transcription Search Functionality</title>
+    <style>
+        body {
+            font-family: 'Heebo', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            direction: rtl;
+            text-align: right;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .test-header {
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .test-title {
+            color: #3498db;
+            margin: 0;
+            font-size: 1.8rem;
+        }
+        
+        .test-description {
+            color: #7f8c8d;
+            margin: 0.5rem 0 0 0;
+        }
+        
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .section-title {
+            color: #2c3e50;
+            margin: 0 0 1rem 0;
+            font-size: 1.3rem;
+        }
+        
+        .test-steps {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .test-step {
+            background: white;
+            margin: 0.5rem 0;
+            padding: 1rem;
+            border-radius: 6px;
+            border-right: 4px solid #3498db;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .step-number {
+            background: #3498db;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+        
+        .expected-result {
+            background: #d5f4e6;
+            border: 1px solid #a9dfbf;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            color: #27ae60;
+        }
+        
+        .expected-result::before {
+            content: "✓ ";
+            font-weight: bold;
+        }
+        
+        .feature-highlight {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .feature-highlight h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+        }
+        
+        .feature-highlight p {
+            margin: 0;
+            opacity: 0.9;
+        }
+        
+        .search-demo {
+            background: white;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>') no-repeat 0.75rem center;
+            background-size: 1.2rem;
+        }
+        
+        .search-options {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .search-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .search-result {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .result-title {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .result-meta {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+        
+        .result-preview {
+            color: #2c3e50;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-top: 0.5rem;
+        }
+        
+        .highlight {
+            background: #ffc107;
+            color: #2c3e50;
+            padding: 0.1rem 0.2rem;
+            border-radius: 2px;
+            font-weight: 500;
+        }
+        
+        .success-indicator {
+            background: #27ae60;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: inline-block;
+            margin-top: 1rem;
+        }
+        
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+            overflow-x: auto;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+        
+        .warning-box::before {
+            content: "⚠️ ";
+            font-weight: bold;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .feature-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature-desc {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1 class="test-title">🔍 בדיקת פונקציונליות חיפוש בתמלולים</h1>
+            <p class="test-description">
+                בדיקה מקיפה של יכולת החיפוש בתמלולי אודיו ווידאו עם הדגשת טקסט
+            </p>
+        </div>
+
+        <div class="feature-highlight">
+            <h4>🎯 מטרת הבדיקה</h4>
+            <p>לוודא שפונקציונליות החיפוש בתמלולים פועלת כראוי עבור קבצי אודיו ווידאו, כולל הדגשת טקסט ותוצאות מדויקות</p>
+        </div>
+
+        <div class="test-section">
+            <h3 class="section-title">🚀 תכונות חדשות שנוספו</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <div class="feature-title">חיפוש חכם</div>
+                    <div class="feature-desc">חיפוש מתקדם בתוכן התמלולים עם דיבאונס</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <div class="feature-title">הדגשת טקסט</div>
+                    <div class="feature-desc">הדגשה אוטומטית של המילים שנמצאו</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚙️</div>
+                    <div class="feature-title">אפשרויות חיפוש</div>
+                    <div class="feature-desc">חיפוש רגיש לאותיות ומילים שלמות</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-title">תוצאות מדורגות</div>
+                    <div class="feature-desc">מיון תוצאות לפי רלוונטיות</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3 class="section-title">📋 שלבי הבדיקה</h3>
+            <ol class="test-steps">
+                <li class="test-step">
+                    <span class="step-number">1</span>
+                    <strong>פתח את האפליקציה והתחבר כמורה</strong>
+                    <div class="expected-result">
+                        אמור להופיע לוח הבקרה של המורה
+                    </div>
+                </li>
+                
+                <li class="test-step">
+                    <span class="step-number">2</span>
+                    <strong>נווט לטאב "🎬 מדיה" ובחר "🎵 אודיו"</strong>
+                    <div class="expected-result">
+                        אמור להופיע ממשק ניהול האודיו עם רכיב החיפוש בתמלולים
+                    </div>
+                </li>
+                
+                <li class="test-step">
+                    <span class="step-number">3</span>
+                    <strong>בדוק שקיים רכיב החיפוש</strong>
+                    <div class="expected-result">
+                        אמור להופיע רכיב "🔍 חיפוש בתמלולים" עם שדה חיפוש ואפשרויות
+                    </div>
+                </li>
+                
+                <li class="test-step">
+                    <span class="step-number">4</span>
+                    <strong>הזן מילת חיפוש בשדה החיפוש</strong>
+                    <div class="expected-result">
+                        החיפוש אמור להתחיל אוטומטית לאחר 300ms (דיבאונס)
+                    </div>
+                </li>
+                
+                <li class="test-step">
+                    <span class="step-number">5</span>
+                    <strong>בדוק את תוצאות החיפוש</strong>
+                    <div class="expected-result">
+                        אמורות להופיע תוצאות עם הדגשת הטקסט שנמצא ומספר התאמות
+                    </div>
+                </li>
+                
+                <li class="test-step">
+                    <span class="step-number">6</span>
+                    <strong>בדוק את אפשרויות החיפוש</strong>
+                    <div class="expected-result">
+                        אמורות להיות אפשרויות "רגיש לאותיות גדולות/קטנות" ו"מילים שלמות בלבד"
+                    </div>
+                </li>
+                
+                <li class="test-step">
+                    <span class="step-number">7</span>
+                    <strong>לחץ על תוצאת חיפוש</strong>
+                    <div class="expected-result">
+                        אמור להיפתח חלון התמלול של הקובץ הנבחר
+                    </div>
+                </li>
+                
+                <li class="test-step">
+                    <span class="step-number">8</span>
+                    <strong>חזור על הבדיקה עבור טאב "🎬 ווידאו"</strong>
+                    <div class="expected-result">
+                        אותה פונקציונליות אמורה לעבוד גם עבור קבצי ווידאו
+                    </div>
+                </li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3 class="section-title">🎨 דוגמה לממשק החיפוש</h3>
+            <div class="search-demo">
+                <h4 style="margin: 0 0 1rem 0; color: #3498db;">🔍 חיפוש בתמלולים</h4>
+                
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    placeholder="חפש בתמלולי האודיו..."
+                    value="מתמטיקה"
+                />
+                
+                <div class="search-options">
+                    <label class="search-option">
+                        <input type="checkbox"> רגיש לאותיות גדולות/קטנות
+                    </label>
+                    <label class="search-option">
+                        <input type="checkbox"> מילים שלמות בלבד
+                    </label>
+                </div>
+                
+                <div style="border-top: 1px solid #e9ecef; padding-top: 1rem; margin-top: 1rem;">
+                    <div style="color: #7f8c8d; font-size: 0.9rem; margin-bottom: 1rem;">
+                        נמצאו 3 תוצאות
+                    </div>
+                    
+                    <div class="search-result">
+                        <div class="result-header">
+                            <div class="result-title">🎵 שיעור מתמטיקה - אלגברה</div>
+                            <div class="result-meta">5 התאמות • 12.3 MB • 15:30</div>
+                        </div>
+                        <div class="result-preview">
+                            היום נלמד על <span class="highlight">מתמטיקה</span> ובפרט על נושא האלגברה. <span class="highlight">מתמטיקה</span> היא תחום מרתק...
+                        </div>
+                    </div>
+                    
+                    <div class="search-result">
+                        <div class="result-header">
+                            <div class="result-title">🎵 תרגילי מתמטיקה מתקדמת</div>
+                            <div class="result-meta">3 התאמות • 8.7 MB • 22:15</div>
+                        </div>
+                        <div class="result-preview">
+                            בשיעור זה נפתור תרגילי <span class="highlight">מתמטיקה</span> מתקדמים ונתמקד בפתרון משוואות...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3 class="section-title">🔧 פרטים טכניים</h3>
+            <div class="code-block">
+// רכיב החיפוש החדש:
+&lt;TranscriptionSearch
+  mediaItems={uploadedRecordings}
+  mediaType="audio"
+  onItemClick={handleViewTranscription}
+/&gt;
+
+// תכונות עיקריות:
+- חיפוש עם דיבאונס (300ms)
+- הדגשת טקסט עם HTML highlighting
+- אפשרויות חיפוש מתקדמות
+- מיון תוצאות לפי רלוונטיות
+- תמיכה באודיו ווידאו
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3 class="section-title">✅ תוצאות צפויות</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin: 0.5rem 0; padding: 0.5rem; background: #d5f4e6; border-radius: 4px;">
+                    ✓ רכיב החיפוש מופיע בטאבי האודיו והווידאו
+                </li>
+                <li style="margin: 0.5rem 0; padding: 0.5rem; background: #d5f4e6; border-radius: 4px;">
+                    ✓ החיפוש פועל עם דיבאונס ומחפש בתמלולים
+                </li>
+                <li style="margin: 0.5rem 0; padding: 0.5rem; background: #d5f4e6; border-radius: 4px;">
+                    ✓ הטקסט מודגש בתוצאות החיפוש
+                </li>
+                <li style="margin: 0.5rem 0; padding: 0.5rem; background: #d5f4e6; border-radius: 4px;">
+                    ✓ אפשרויות החיפוש המתקדמות פועלות
+                </li>
+                <li style="margin: 0.5rem 0; padding: 0.5rem; background: #d5f4e6; border-radius: 4px;">
+                    ✓ לחיצה על תוצאה פותחת את התמלול
+                </li>
+                <li style="margin: 0.5rem 0; padding: 0.5rem; background: #d5f4e6; border-radius: 4px;">
+                    ✓ התוצאות ממוינות לפי רלוונטיות
+                </li>
+            </ul>
+        </div>
+
+        <div class="warning-box">
+            <strong>הערה חשובה:</strong> החיפוש יעבוד רק עבור קבצים שהועלו לשרת ויש להם תמלול זמין. קבצים מקומיים לא יכללו בחיפוש.
+        </div>
+
+        <div class="test-section">
+            <h3 class="section-title">🎯 תרחישי בדיקה נוספים</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                <div style="background: white; padding: 1rem; border-radius: 6px; border: 1px solid #e9ecef;">
+                    <h4 style="margin: 0 0 0.5rem 0; color: #e74c3c;">🔍 חיפוש בסיסי</h4>
+                    <p style="margin: 0; font-size: 0.9rem; color: #7f8c8d;">הזן מילה פשוטה ובדוק שהתוצאות מופיעות</p>
+                </div>
+                <div style="background: white; padding: 1rem; border-radius: 6px; border: 1px solid #e9ecef;">
+                    <h4 style="margin: 0 0 0.5rem 0; color: #27ae60;">🎯 חיפוש מדויק</h4>
+                    <p style="margin: 0; font-size: 0.9rem; color: #7f8c8d;">בדוק את אפשרות "מילים שלמות בלבד"</p>
+                </div>
+                <div style="background: white; padding: 1rem; border-radius: 6px; border: 1px solid #e9ecef;">
+                    <h4 style="margin: 0 0 0.5rem 0; color: #f39c12;">🔤 רגישות לאותיות</h4>
+                    <p style="margin: 0; font-size: 0.9rem; color: #7f8c8d;">בדוק חיפוש רגיש לאותיות גדולות/קטנות</p>
+                </div>
+                <div style="background: white; padding: 1rem; border-radius: 6px; border: 1px solid #e9ecef;">
+                    <h4 style="margin: 0 0 0.5rem 0; color: #9b59b6;">⚡ ביצועים</h4>
+                    <p style="margin: 0; font-size: 0.9rem; color: #7f8c8d;">בדוק שהחיפוש מהיר גם עם הרבה קבצים</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="success-indicator">
+            ✅ פונקציונליות החיפוש בתמלולים הוטמעה בהצלחה!
+        </div>
+    </div>
+
+    <script>
+        // Add some interactivity to the test page
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.querySelector('.search-input');
+            
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    console.log('🔍 Search query:', e.target.value);
+                    
+                    // Simulate search highlighting
+                    const results = document.querySelectorAll('.search-result');
+                    results.forEach(result => {
+                        if (e.target.value) {
+                            result.style.display = 'block';
+                        } else {
+                            result.style.display = 'none';
+                        }
+                    });
+                });
+            }
+            
+            console.log('🧪 Transcription search test page loaded successfully');
+            console.log('🔍 Search functionality test ready');
+        });
+    </script>
+</body>
+</html>

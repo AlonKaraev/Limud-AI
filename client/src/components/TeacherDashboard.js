@@ -726,11 +726,18 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
         >
           🎬 ווידאו
         </button>
+        <button
+          className={`sub-tab ${activeMediaSubTab === 'documents' ? 'active' : ''}`}
+          onClick={() => setActiveMediaSubTab('documents')}
+        >
+          📄 מסמכים
+        </button>
       </div>
       
       <div className="sub-tab-content">
         {activeMediaSubTab === 'audio' && <AudioManager t={t} />}
         {activeMediaSubTab === 'video' && <VideoManager t={t} />}
+        {activeMediaSubTab === 'documents' && <DocumentsManager t={t} />}
       </div>
     </div>
   );

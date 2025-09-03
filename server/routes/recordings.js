@@ -5,6 +5,7 @@ const fs = require('fs').promises;
 const { authenticate } = require('../middleware/auth');
 const AudioProcessingService = require('../services/AudioProcessingService');
 const VideoProcessingService = require('../services/VideoProcessingService');
+const TranscriptionService = require('../services/TranscriptionService');
 
 const router = express.Router();
 
@@ -202,6 +203,10 @@ router.post('/upload/finalize', authenticate, async (req, res) => {
       writeStream.on('error', reject);
     });
 
+    // Determine media type from filename
+    const isVideo = uploadSession.filename.match(/\.(mp4|avi|mov|wmv|mkv|webm|flv|3gp)$/i);
+    const mediaType = isVideo ? 'video' : 'audio';
+
     // Save recording metadata to database
     const recording = await saveRecordingToDatabase({
       userId,
@@ -209,8 +214,17 @@ router.post('/upload/finalize', authenticate, async (req, res) => {
       filename: uploadSession.filename,
       filePath: finalPath,
       fileSize: uploadSession.fileSize,
-      metadata: uploadSession.metadata
+      metadata: uploadSession.metadata,
+      mediaType: mediaType
     });
+
+    // Start automatic transcription for audio/video files
+    startAutomaticTranscription(recording.id, finalPath, userId);
+
+    // Start async video processing if it's a video file
+    if (isVideo) {
+      processVideoAsync(recording.id, finalPath, uploadSession.filename);
+    }
 
     // Cleanup temp directory
     await fs.rmdir(uploadSession.uploadDir, { recursive: true });
@@ -222,6 +236,9 @@ router.post('/upload/finalize', authenticate, async (req, res) => {
         id: recording.id,
         filename: recording.filename,
         size: recording.file_size,
+        mediaType: mediaType,
+        transcriptionStatus: 'pending',
+        processingStatus: isVideo ? 'processing' : 'completed',
         createdAt: recording.created_at
       }
     });
@@ -293,6 +310,9 @@ router.post('/upload', authenticate, upload.single('media'), async (req, res) =>
       mediaType: mediaType
     });
 
+    // Start automatic transcription for audio/video files
+    startAutomaticTranscription(recording.id, req.file.path, userId);
+
     // Start async video processing if it's a video file
     if (isVideo) {
       // Don't await - process in background
@@ -306,6 +326,7 @@ router.post('/upload', authenticate, upload.single('media'), async (req, res) =>
         filename: recording.filename,
         size: recording.file_size,
         mediaType: mediaType,
+        transcriptionStatus: 'pending',
         processingStatus: isVideo ? 'processing' : 'completed',
         createdAt: recording.created_at
       }
@@ -318,6 +339,69 @@ router.post('/upload', authenticate, upload.single('media'), async (req, res) =>
     });
   }
 });
+
+/**
+ * Start automatic transcription for uploaded media
+ */
+async function startAutomaticTranscription(recordingId, filePath, userId) {
+  try {
+    console.log(`Starting automatic transcription for recording ${recordingId}`);
+    
+    // Create AI processing job for transcription
+    const { run } = require('../config/database-sqlite');
+    const jobResult = await run(`
+      INSERT INTO ai_processing_jobs (
+        recording_id, user_id, job_type, status, ai_provider, 
+        processing_config, created_at, updated_at
+      ) VALUES (?, ?, 'transcription', 'pending', 'openai', '{}', datetime('now'), datetime('now'))
+    `, [recordingId, userId]);
+
+    const jobId = jobResult.lastID;
+    console.log(`Created transcription job ${jobId} for recording ${recordingId}`);
+
+    // Start transcription in background (don't await)
+    processTranscriptionAsync(recordingId, filePath, userId, jobId);
+    
+  } catch (error) {
+    console.error(`Failed to start automatic transcription for recording ${recordingId}:`, error);
+  }
+}
+
+/**
+ * Async transcription processing function
+ */
+async function processTranscriptionAsync(recordingId, filePath, userId, jobId) {
+  try {
+    console.log(`Processing transcription for recording ${recordingId}, job ${jobId}`);
+    
+    // Update job status to processing
+    await TranscriptionService.updateJobStatus(jobId, 'processing');
+    
+    // Perform transcription
+    const transcriptionResult = await TranscriptionService.transcribeAudio({
+      filePath,
+      recordingId,
+      userId,
+      jobId,
+      provider: 'openai',
+      useEnhancedProcessing: true
+    });
+
+    if (transcriptionResult.success) {
+      // Update job status to completed
+      await TranscriptionService.updateJobStatus(jobId, 'completed');
+      console.log(`Transcription completed successfully for recording ${recordingId}`);
+    } else {
+      throw new Error('Transcription failed without specific error');
+    }
+
+  } catch (error) {
+    console.error(`Transcription processing failed for recording ${recordingId}:`, error);
+    
+    // Update job status to failed
+    await TranscriptionService.updateJobStatus(jobId, 'failed', error.message);
+  }
+}
 
 /**
  * Async video processing function
@@ -665,6 +749,323 @@ router.get('/:id/thumbnail/:size?', authenticate, async (req, res) => {
     res.status(500).json({
       error: 'שגיאה בהגשת תמונה ממוזערת',
       code: 'THUMBNAIL_SERVE_ERROR'
+    });
+  }
+});
+
+/**
+ * Get transcription status for a recording
+ */
+router.get('/:id/transcription-status', authenticate, async (req, res) => {
+  try {
+    const recordingId = req.params.id;
+    const userId = req.user.id;
+
+    const recording = await getRecordingById(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    // Get transcription job status
+    const { query } = require('../config/database-sqlite');
+    const jobResult = await query(`
+      SELECT * FROM ai_processing_jobs 
+      WHERE recording_id = ? AND user_id = ? AND job_type = 'transcription'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [recordingId, userId]);
+
+    let transcriptionStatus = 'not_started';
+    let jobDetails = null;
+
+    if (jobResult.rows.length > 0) {
+      const job = jobResult.rows[0];
+      transcriptionStatus = job.status;
+      jobDetails = {
+        id: job.id,
+        status: job.status,
+        aiProvider: job.ai_provider,
+        startedAt: job.started_at,
+        completedAt: job.completed_at,
+        errorMessage: job.error_message,
+        createdAt: job.created_at
+      };
+    }
+
+    // Get transcription result if completed
+    let transcription = null;
+    if (transcriptionStatus === 'completed') {
+      transcription = await TranscriptionService.getTranscriptionByRecordingId(recordingId, userId);
+    }
+
+    res.json({
+      success: true,
+      transcriptionStatus,
+      job: jobDetails,
+      transcription: transcription ? {
+        id: transcription.id,
+        text: transcription.transcription_text,
+        language: transcription.language_detected,
+        confidenceScore: transcription.confidence_score,
+        processingDuration: transcription.processing_duration,
+        createdAt: transcription.created_at
+      } : null
+    });
+  } catch (error) {
+    console.error('Error fetching transcription status:', error);
+    res.status(500).json({
+      error: 'שגיאה בטעינת סטטוס התמלול',
+      code: 'TRANSCRIPTION_STATUS_ERROR'
+    });
+  }
+});
+
+/**
+ * Get transcription text for a recording
+ */
+router.get('/:id/transcription', authenticate, async (req, res) => {
+  try {
+    const recordingId = req.params.id;
+    const userId = req.user.id;
+
+    const recording = await getRecordingById(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    const transcription = await TranscriptionService.getTranscriptionByRecordingId(recordingId, userId);
+    if (!transcription) {
+      return res.status(404).json({
+        error: 'תמלול לא נמצא עבור הקלטה זו',
+        code: 'TRANSCRIPTION_NOT_FOUND'
+      });
+    }
+
+    res.json({
+      success: true,
+      transcription: {
+        id: transcription.id,
+        text: transcription.transcription_text,
+        language: transcription.language_detected,
+        confidenceScore: transcription.confidence_score,
+        processingDuration: transcription.processing_duration,
+        aiProvider: transcription.ai_provider,
+        modelVersion: transcription.model_version,
+        segments: transcription.segments,
+        metadata: transcription.metadata,
+        createdAt: transcription.created_at
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching transcription:', error);
+    res.status(500).json({
+      error: 'שגיאה בטעינת התמלול',
+      code: 'TRANSCRIPTION_FETCH_ERROR'
+    });
+  }
+});
+
+/**
+ * Manually trigger transcription for a recording
+ */
+router.post('/:id/transcribe', authenticate, async (req, res) => {
+  try {
+    const recordingId = req.params.id;
+    const userId = req.user.id;
+    const { provider = 'openai', useEnhancedProcessing = true } = req.body;
+
+    const recording = await getRecordingById(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    // Check if transcription is already in progress
+    const { query } = require('../config/database-sqlite');
+    const existingJobResult = await query(`
+      SELECT * FROM ai_processing_jobs 
+      WHERE recording_id = ? AND user_id = ? AND job_type = 'transcription' AND status IN ('pending', 'processing')
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [recordingId, userId]);
+
+    if (existingJobResult.rows.length > 0) {
+      return res.status(409).json({
+        error: 'תמלול כבר מתבצע עבור הקלטה זו',
+        code: 'TRANSCRIPTION_IN_PROGRESS'
+      });
+    }
+
+    // Start transcription
+    startAutomaticTranscription(recordingId, recording.file_path, userId);
+
+    res.json({
+      success: true,
+      message: 'תמלול החל בהצלחה',
+      transcriptionStatus: 'pending'
+    });
+  } catch (error) {
+    console.error('Error starting manual transcription:', error);
+    res.status(500).json({
+      error: 'שגיאה בהתחלת התמלול',
+      code: 'TRANSCRIPTION_START_ERROR'
+    });
+  }
+});
+
+/**
+ * Edit transcription text
+ */
+router.put('/:id/transcription', authenticate, async (req, res) => {
+  try {
+    const recordingId = req.params.id;
+    const userId = req.user.id;
+    const { editedText, editReason } = req.body;
+
+    if (!editedText || typeof editedText !== 'string') {
+      return res.status(400).json({
+        error: 'נדרש טקסט תמלול מערוך',
+        code: 'MISSING_EDITED_TEXT'
+      });
+    }
+
+    const recording = await getRecordingById(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    // Get current transcription
+    const transcription = await TranscriptionService.getTranscriptionByRecordingId(recordingId, userId);
+    if (!transcription) {
+      return res.status(404).json({
+        error: 'תמלול לא נמצא עבור הקלטה זו',
+        code: 'TRANSCRIPTION_NOT_FOUND'
+      });
+    }
+
+    const { run } = require('../config/database-sqlite');
+
+    // Save original text if this is the first edit
+    if (!transcription.is_edited) {
+      await run(`
+        UPDATE transcriptions 
+        SET original_text = transcription_text
+        WHERE id = ?
+      `, [transcription.id]);
+    }
+
+    // Save edit to history
+    await run(`
+      INSERT INTO transcription_edit_history (
+        transcription_id, user_id, original_text, edited_text, edit_reason, created_at
+      ) VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `, [transcription.id, userId, transcription.transcription_text, editedText, editReason || null]);
+
+    // Update transcription with edited text
+    await run(`
+      UPDATE transcriptions 
+      SET transcription_text = ?, is_edited = TRUE, edited_at = datetime('now'), edited_by = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `, [editedText, userId, transcription.id]);
+
+    res.json({
+      success: true,
+      message: 'תמלול עודכן בהצלחה',
+      transcription: {
+        id: transcription.id,
+        text: editedText,
+        isEdited: true,
+        editedAt: new Date().toISOString(),
+        editedBy: userId
+      }
+    });
+  } catch (error) {
+    console.error('Error editing transcription:', error);
+    res.status(500).json({
+      error: 'שגיאה בעריכת התמלול',
+      code: 'TRANSCRIPTION_EDIT_ERROR'
+    });
+  }
+});
+
+/**
+ * Get transcription edit history
+ */
+router.get('/:id/transcription/history', authenticate, async (req, res) => {
+  try {
+    const recordingId = req.params.id;
+    const userId = req.user.id;
+
+    const recording = await getRecordingById(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    // Get transcription
+    const transcription = await TranscriptionService.getTranscriptionByRecordingId(recordingId, userId);
+    if (!transcription) {
+      return res.status(404).json({
+        error: 'תמלול לא נמצא עבור הקלטה זו',
+        code: 'TRANSCRIPTION_NOT_FOUND'
+      });
+    }
+
+    // Get edit history
+    const { query } = require('../config/database-sqlite');
+    const historyResult = await query(`
+      SELECT 
+        teh.*,
+        u.first_name,
+        u.last_name
+      FROM transcription_edit_history teh
+      LEFT JOIN users u ON teh.user_id = u.id
+      WHERE teh.transcription_id = ?
+      ORDER BY teh.created_at DESC
+    `, [transcription.id]);
+
+    const history = historyResult.rows.map(row => ({
+      id: row.id,
+      originalText: row.original_text,
+      editedText: row.edited_text,
+      editReason: row.edit_reason,
+      createdAt: row.created_at,
+      editedBy: {
+        id: row.user_id,
+        name: `${row.first_name || ''} ${row.last_name || ''}`.trim() || 'משתמש לא ידוע'
+      }
+    }));
+
+    res.json({
+      success: true,
+      history,
+      transcription: {
+        id: transcription.id,
+        currentText: transcription.transcription_text,
+        originalText: transcription.original_text,
+        isEdited: transcription.is_edited,
+        editedAt: transcription.edited_at,
+        editedBy: transcription.edited_by
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching transcription history:', error);
+    res.status(500).json({
+      error: 'שגיאה בטעינת היסטוריית עריכות',
+      code: 'TRANSCRIPTION_HISTORY_ERROR'
     });
   }
 });

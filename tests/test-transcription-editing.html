@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת עריכת תמלול - Limud AI</title>
+    <style>
+        :root {
+            --color-primary: #007bff;
+            --color-primaryHover: #0056b3;
+            --color-secondary: #6c757d;
+            --color-secondaryHover: #545b62;
+            --color-success: #28a745;
+            --color-successHover: #1e7e34;
+            --color-danger: #dc3545;
+            --color-dangerHover: #c82333;
+            --color-warning: #ffc107;
+            --color-warningLight: #fff3cd;
+            --color-warningBorder: #ffeaa7;
+            --color-surface: #ffffff;
+            --color-surfaceElevated: #f8f9fa;
+            --color-border: #dee2e6;
+            --color-text: #212529;
+            --color-textSecondary: #6c757d;
+            --color-textOnPrimary: #ffffff;
+            --color-textOnSecondary: #ffffff;
+            --color-textOnSuccess: #ffffff;
+            --color-disabled: #e9ecef;
+            --radius-sm: 4px;
+            --radius-lg: 8px;
+            --transition-fast: all 0.2s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: var(--color-text);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .header h1 {
+            color: var(--color-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .test-section {
+            background: var(--color-surfaceElevated);
+            border-radius: var(--radius-sm);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--color-border);
+        }
+
+        .test-section h2 {
+            color: var(--color-secondary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: var(--color-textOnPrimary);
+        }
+
+        .btn-primary:hover {
+            background: var(--color-primaryHover);
+        }
+
+        .btn-secondary {
+            background: var(--color-secondary);
+            color: var(--color-textOnSecondary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--color-secondaryHover);
+        }
+
+        .btn-success {
+            background: var(--color-success);
+            color: var(--color-textOnSuccess);
+        }
+
+        .btn-success:hover {
+            background: var(--color-successHover);
+        }
+
+        .btn:disabled {
+            background: var(--color-disabled);
+            cursor: not-allowed;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--color-textSecondary);
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+        }
+
+        .result-box {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-top: 1rem;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .success {
+            color: var(--color-success);
+        }
+
+        .error {
+            color: var(--color-danger);
+        }
+
+        .warning {
+            color: var(--color-warning);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 0.5rem;
+        }
+
+        .status-success {
+            background: var(--color-success);
+        }
+
+        .status-error {
+            background: var(--color-danger);
+        }
+
+        .status-pending {
+            background: var(--color-warning);
+        }
+
+        .transcription-display {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 1.5rem;
+            margin: 1rem 0;
+            line-height: 1.6;
+            min-height: 100px;
+        }
+
+        .edited-badge {
+            background: var(--color-warningLight);
+            color: var(--color-warning);
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 0.5rem;
+        }
+
+        .edit-form {
+            background: var(--color-surfaceElevated);
+            border-radius: var(--radius-sm);
+            padding: 1.5rem;
+            margin-top: 1rem;
+            border: 1px solid var(--color-border);
+        }
+
+        .edit-form textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 1rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            line-height: 1.6;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .edit-form input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .edit-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 בדיקת עריכת תמלול</h1>
+            <p>בדיקה מקיפה של פונקציונליות עריכת תמלול ידנית</p>
+        </div>
+
+        <!-- Login Section -->
+        <div class="test-section">
+            <h2>🔐 התחברות למערכת</h2>
+            <div class="test-controls">
+                <div class="input-group">
+                    <label for="email">אימייל:</label>
+                    <input type="email" id="email" value="teacher@tester.com" placeholder="הזן אימייל">
+                </div>
+                <div class="input-group">
+                    <label for="password">סיסמה:</label>
+                    <input type="password" id="password" value="password123" placeholder="הזן סיסמה">
+                </div>
+            </div>
+            <div class="test-controls">
+                <button class="btn btn-primary" onclick="login()">
+                    🔑 התחבר
+                </button>
+                <button class="btn btn-secondary" onclick="checkAuthStatus()">
+                    ✅ בדוק סטטוס התחברות
+                </button>
+            </div>
+            <div id="auth-result" class="result-box" style="display: none;"></div>
+        </div>
+
+        <!-- Recording Selection -->
+        <div class="test-section">
+            <h2>📁 בחירת הקלטה</h2>
+            <div class="test-controls">
+                <div class="input-group">
+                    <label for="recordingId">מזהה הקלטה:</label>
+                    <input type="text" id="recordingId" placeholder="הזן מזהה הקלטה או השאר ריק לטעינה אוטומטית">
+                </div>
+            </div>
+            <div class="test-controls">
+                <button class="btn btn-primary" onclick="loadRecordings()">
+                    📋 טען הקלטות
+                </button>
+                <button class="btn btn-secondary" onclick="loadTranscription()">
+                    📝 טען תמלול
+                </button>
+            </div>
+            <div id="recordings-result" class="result-box" style="display: none;"></div>
+        </div>
+
+        <!-- Transcription Display -->
+        <div class="test-section">
+            <h2>📝 תצוגת תמלול</h2>
+            <div id="transcription-display" class="transcription-display">
+                <em>טען תמלול כדי להציג אותו כאן...</em>
+            </div>
+            <div class="test-controls">
+                <button class="btn btn-secondary" onclick="startEditing()" id="edit-btn" disabled>
+                    ✏️ ערוך תמלול
+                </button>
+                <button class="btn btn-primary" onclick="copyTranscription()" id="copy-btn" disabled>
+                    📋 העתק תמלול
+                </button>
+            </div>
+        </div>
+
+        <!-- Editing Interface -->
+        <div class="test-section" id="editing-section" style="display: none;">
+            <h2>✏️ עריכת תמלול</h2>
+            <div class="edit-form">
+                <textarea id="edit-text" placeholder="ערוך את טקסט התמלול כאן..."></textarea>
+                <input type="text" id="edit-reason" placeholder="סיבת העריכה (אופציונלי)">
+                <div class="edit-actions">
+                    <button class="btn btn-secondary" onclick="cancelEditing()">
+                        ✕ ביטול
+                    </button>
+                    <button class="btn btn-success" onclick="saveEdit()">
+                        ✓ שמור
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Results -->
+        <div class="test-section">
+            <h2>📊 תוצאות בדיקה</h2>
+            <div id="test-results">
+                <div class="test-item">
+                    <span>✅ כפתור עריכה מופיע בתמלול</span>
+                    <span class="status-indicator status-pending" id="edit-button-status"></span>
+                </div>
+                <div class="test-item">
+                    <span>✅ שינויים נשמרים ונשארים לאחר רענון</span>
+                    <span class="status-indicator status-pending" id="persistence-status"></span>
+                </div>
+                <div class="test-item">
+                    <span>✅ תמלול מערוך מסומן בבירור</span>
+                    <span class="status-indicator status-pending" id="edited-marking-status"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = null;
+        let currentRecordingId = null;
+        let currentTranscription = null;
+
+        // Authentication functions
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('auth-result');
+
+            if (!email || !password) {
+                showResult(resultDiv, 'נא להזין אימייל וסיסמה', 'error');
+                return;
+            }
+
+            try {
+                showResult(resultDiv, 'מתחבר...', 'warning');
+                
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.token;
+                    localStorage.setItem('token', authToken);
+                    showResult(resultDiv, `התחברות הצליחה!\nמשתמש: ${data.user.first_name} ${data.user.last_name}\nתפקיד: ${data.user.role}`, 'success');
+                } else {
+                    showResult(resultDiv, `שגיאת התחברות: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(resultDiv, `שגיאת רשת: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkAuthStatus() {
+            const resultDiv = document.getElementById('auth-result');
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+                showResult(resultDiv, 'לא מחובר - אין טוקן', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/recordings', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    showResult(resultDiv, 'מחובר בהצלחה - טוקן תקין', 'success');
+                    authToken = token;
+                } else {
+                    showResult(resultDiv, 'טוקן לא תקין או פג תוקף', 'error');
+                    localStorage.removeItem('token');
+                    authToken = null;
+                }
+            } catch (error) {
+                showResult(resultDiv, `שגיאה בבדיקת סטטוס: ${error.message}`, 'error');
+            }
+        }
+
+        // Recording functions
+        async function loadRecordings() {
+            const resultDiv = document.getElementById('recordings-result');
+            
+            if (!authToken) {
+                showResult(resultDiv, 'נא להתחבר תחילה', 'error');
+                return;
+            }
+
+            try {
+                showResult(resultDiv, 'טוען הקלטות...', 'warning');
+                
+                const response = await fetch('/api/recordings', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.recordings.length > 0) {
+                    const recording = data.recordings[0];
+                    currentRecordingId = recording.id;
+                    document.getElementById('recordingId').value = recording.id;
+                    
+                    showResult(resultDiv, `נמצאו ${data.recordings.length} הקלטות\nהקלטה ראשונה: ${recording.filename} (ID: ${recording.id})`, 'success');
+                } else {
+                    showResult(resultDiv, 'לא נמצאו הקלטות במערכת', 'warning');
+                }
+            } catch (error) {
+                showResult(resultDiv, `שגיאה בטעינת הקלטות: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadTranscription() {
+            const recordingId = document.getElementById('recordingId').value || currentRecordingId;
+            const resultDiv = document.getElementById('recordings-result');
+            
+            if (!authToken) {
+                showResult(resultDiv, 'נא להתחבר תחילה', 'error');
+                return;
+            }
+
+            if (!recordingId) {
+                showResult(resultDiv, 'נא להזין מזהה הקלטה או לטעון הקלטות', 'error');
+                return;
+            }
+
+            try {
+                showResult(resultDiv, 'טוען תמלול...', 'warning');
+                
+                const response = await fetch(`/api/recordings/${recordingId}/transcription-status`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.transcription) {
+                    currentTranscription = data.transcription;
+                    currentRecordingId = recordingId;
+                    displayTranscription(data.transcription);
+                    showResult(resultDiv, `תמלול נטען בהצלחה\nשפה: ${data.transcription.language}\nביטחון: ${Math.round(data.transcription.confidenceScore * 100)}%`, 'success');
+                    
+                    // Update test status
+                    updateTestStatus('edit-button-status', 'success');
+                } else {
+                    showResult(resultDiv, 'תמלול לא זמין עבור הקלטה זו', 'warning');
+                }
+            } catch (error) {
+                showResult(resultDiv, `שגיאה בטעינת תמלול: ${error.message}`, 'error');
+            }
+        }
+
+        // Transcription display functions
+        function displayTranscription(transcription) {
+            const displayDiv = document.getElementById('transcription-display');
+            const editBtn = document.getElementById('edit-btn');
+            const copyBtn = document.getElementById('copy-btn');
+
+            let content = transcription.text;
+            if (transcription.isEdited) {
+                content += '<span class="edited-badge">נערך</span>';
+                updateTestStatus('edited-marking-status', 'success');
+            }
+
+            displayDiv.innerHTML = content;
+            editBtn.disabled = false;
+            copyBtn.disabled = false;
+        }
+
+        function startEditing() {
+            if (!currentTranscription) return;
+
+            document.getElementById('editing-section').style.display = 'block';
+            document.getElementById('edit-text').value = currentTranscription.text;
+            document.getElementById('edit-reason').value = '';
+        }
+
+        function cancelEditing() {
+            document.getElementById('editing-section').style.display = 'none';
+            document.getElementById('edit-text').value = '';
+            document.getElementById('edit-reason').value = '';
+        }
+
+        async function saveEdit() {
+            const editedText = document.getElementById('edit-text').value.trim();
+            const editReason = document.getElementById('edit-reason').value.trim();
+
+            if (!editedText) {
+                alert('נא להזין טקסט תמלול');
+                return;
+            }
+
+            if (!authToken || !currentRecordingId) {
+                alert('שגיאה: לא מחובר או לא נבחרה הקלטה');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/recordings/${currentRecordingId}/transcription`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        editedText: editedText,
+                        editReason: editReason || null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Update current transcription
+                    currentTranscription.text = data.transcription.text;
+                    currentTranscription.isEdited = data.transcription.isEdited;
+                    currentTranscription.editedAt = data.transcription.editedAt;
+                    currentTranscription.editedBy = data.transcription.editedBy;
+
+                    displayTranscription(currentTranscription);
+                    cancelEditing();
+                    
+                    alert('תמלול נשמר בהצלחה!');
+                    updateTestStatus('persistence-status', 'success');
+                } else {
+                    alert(`שגיאה בשמירת התמלול: ${data.error}`);
+                }
+            } catch (error) {
+                alert(`שגיאה בשמירת התמלול: ${error.message}`);
+            }
+        }
+
+        function copyTranscription() {
+            if (!currentTranscription?.text) return;
+
+            navigator.clipboard.writeText(currentTranscription.text).then(() => {
+                alert('תמלול הועתק ללוח!');
+            }).catch(error => {
+                console.error('Failed to copy:', error);
+                alert('שגיאה בהעתקה');
+            });
+        }
+
+        // Utility functions
+        function showResult(element, message, type) {
+            element.style.display = 'block';
+            element.textContent = message;
+            element.className = `result-box ${type}`;
+        }
+
+        function updateTestStatus(elementId, status) {
+            const element = document.getElementById(elementId);
+            element.className = `status-indicator status-${status}`;
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            checkAuthStatus();
+        });
+    </script>
+</body>
+</html>

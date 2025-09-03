@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import CompressionControls from './CompressionControls';
+import MediaViewModal from './MediaViewModal';
 import { compressFile, supportsCompression, getCompressionRatio } from '../utils/mediaCompression';
 
 const Container = styled.div`
@@ -216,6 +217,37 @@ const SaveButton = styled.button`
   }
 `;
 
+const ViewButton = styled.button`
+  background: var(--color-primary);
+  color: var(--color-textOnPrimary);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+
+  &:hover {
+    background: var(--color-primaryHover);
+  }
+
+  &:disabled {
+    background-color: var(--color-disabled);
+    cursor: not-allowed;
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
 const DocumentsManager = ({ t }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [savedDocuments, setSavedDocuments] = useState([]);
@@ -225,6 +257,8 @@ const DocumentsManager = ({ t }) => {
   const [compressionEnabled, setCompressionEnabled] = useState(false);
   const [compressionQuality, setCompressionQuality] = useState(0.7);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedMediaItem, setSelectedMediaItem] = useState(null);
 
   // Load saved documents from localStorage on component mount
   useEffect(() => {
@@ -453,6 +487,18 @@ const DocumentsManager = ({ t }) => {
     return filename.split('.').pop().toUpperCase();
   };
 
+  // Handle view media item
+  const handleViewMedia = (mediaItem) => {
+    setSelectedMediaItem(mediaItem);
+    setViewModalOpen(true);
+  };
+
+  // Handle close modal
+  const handleCloseModal = () => {
+    setViewModalOpen(false);
+    setSelectedMediaItem(null);
+  };
+
   return (
     <Container>
       <Header>
@@ -525,9 +571,14 @@ const DocumentsManager = ({ t }) => {
                 <FileName>{fileData.name}</FileName>
                 <FileSize>{formatFileSize(fileData.size)}</FileSize>
               </FileInfo>
-              <RemoveButton onClick={() => removeFile(fileData.id)}>
-                הסר
-              </RemoveButton>
+              <ButtonGroup>
+                <ViewButton onClick={() => handleViewMedia(fileData)} disabled={isCompressing}>
+                  👁️ צפה
+                </ViewButton>
+                <RemoveButton onClick={() => removeFile(fileData.id)}>
+                  הסר
+                </RemoveButton>
+              </ButtonGroup>
             </FilePreview>
           ))}
           <SaveButton onClick={saveSelectedFiles} disabled={isCompressing}>
@@ -553,13 +604,25 @@ const DocumentsManager = ({ t }) => {
                   <span>נשמר: {new Date(document.savedAt).toLocaleDateString('he-IL')}</span>
                 </SavedDocumentMeta>
               </SavedDocumentInfo>
-              <RemoveButton onClick={() => removeSavedDocument(document.id)}>
-                מחק
-              </RemoveButton>
+              <ButtonGroup>
+                <ViewButton onClick={() => handleViewMedia(document)}>
+                  👁️ צפה
+                </ViewButton>
+                <RemoveButton onClick={() => removeSavedDocument(document.id)}>
+                  מחק
+                </RemoveButton>
+              </ButtonGroup>
             </SavedDocumentItem>
           ))}
         </SavedDocumentsSection>
       )}
+
+      <MediaViewModal
+        isOpen={viewModalOpen}
+        onClose={handleCloseModal}
+        mediaItem={selectedMediaItem}
+        mediaType="document"
+      />
     </Container>
   );
 };

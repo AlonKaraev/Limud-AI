@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import CompressionControls from './CompressionControls';
 import ProgressBar from './ProgressBar';
+import TranscriptionStatus from './TranscriptionStatus';
+import MediaViewModal from './MediaViewModal';
+import TranscriptionModal from './TranscriptionModal';
+import TranscriptionSearch from './TranscriptionSearch';
 import { compressFile, supportsCompression, getCompressionRatio, shouldCompress } from '../utils/mediaCompression';
 
 const Container = styled.div`
@@ -229,6 +233,37 @@ const SaveButton = styled.button`
   }
 `;
 
+const ViewButton = styled.button`
+  background: var(--color-primary);
+  color: var(--color-textOnPrimary);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+
+  &:hover {
+    background: var(--color-primaryHover);
+  }
+
+  &:disabled {
+    background-color: var(--color-disabled);
+    cursor: not-allowed;
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
 const VideoManager = ({ t }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [savedVideoFiles, setSavedVideoFiles] = useState([]);
@@ -240,6 +275,10 @@ const VideoManager = ({ t }) => {
   const [isCompressing, setIsCompressing] = useState(false);
   const [fileProgress, setFileProgress] = useState({});
   const [currentProcessingFile, setCurrentProcessingFile] = useState(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedMediaItem, setSelectedMediaItem] = useState(null);
+  const [transcriptionModalOpen, setTranscriptionModalOpen] = useState(false);
+  const [selectedRecordingForTranscription, setSelectedRecordingForTranscription] = useState(null);
 
   // Load saved video files from server and localStorage on component mount
   useEffect(() => {
@@ -753,6 +792,30 @@ const VideoManager = ({ t }) => {
     }
   };
 
+  // Handle view media item
+  const handleViewMedia = (mediaItem) => {
+    setSelectedMediaItem(mediaItem);
+    setViewModalOpen(true);
+  };
+
+  // Handle close modal
+  const handleCloseModal = () => {
+    setViewModalOpen(false);
+    setSelectedMediaItem(null);
+  };
+
+  // Handle view transcription
+  const handleViewTranscription = (videoFile) => {
+    setSelectedRecordingForTranscription(videoFile);
+    setTranscriptionModalOpen(true);
+  };
+
+  // Handle close transcription modal
+  const handleCloseTranscriptionModal = () => {
+    setTranscriptionModalOpen(false);
+    setSelectedRecordingForTranscription(null);
+  };
+
   return (
     <Container>
       <Header>
@@ -845,15 +908,29 @@ const VideoManager = ({ t }) => {
                   />
                 )}
               </FileInfo>
-              <RemoveButton onClick={() => removeFile(fileData.id)} disabled={isCompressing}>
-                הסר
-              </RemoveButton>
+              <ButtonGroup>
+                <ViewButton onClick={() => handleViewMedia(fileData)} disabled={isCompressing}>
+                  👁️ צפה
+                </ViewButton>
+                <RemoveButton onClick={() => removeFile(fileData.id)} disabled={isCompressing}>
+                  הסר
+                </RemoveButton>
+              </ButtonGroup>
             </FilePreview>
           ))}
           <SaveButton onClick={saveSelectedFiles} disabled={isCompressing}>
-            {isCompressing ? '🗜️ דוחס קבצים...' : '💾 שמור קבצי ווידאו'}
+            {isCompressing ? '🗜️ דוחס קבצים...' : '💾 שמור ווידאו עם תמלול'}
           </SaveButton>
         </div>
+      )}
+
+      {/* Search functionality for saved video files with transcriptions */}
+      {savedVideoFiles.filter(video => video.isFromServer && video.serverRecordingId).length > 0 && (
+        <TranscriptionSearch
+          mediaItems={savedVideoFiles.filter(video => video.isFromServer && video.serverRecordingId)}
+          mediaType="video"
+          onItemClick={handleViewTranscription}
+        />
       )}
 
       {savedVideoFiles.length > 0 && (
@@ -875,6 +952,14 @@ const VideoManager = ({ t }) => {
                     {videoFile.duration && <span>משך: {formatDuration(videoFile.duration)}</span>}
                     <span>נשמר: {new Date(videoFile.savedAt).toLocaleDateString('he-IL')}</span>
                   </SavedVideoMeta>
+                  {videoFile.isFromServer && videoFile.serverRecordingId && (
+                    <TranscriptionStatus 
+                      recordingId={videoFile.serverRecordingId}
+                      onTranscriptionComplete={(transcription) => {
+                        console.log('Video transcription completed:', transcription);
+                      }}
+                    />
+                  )}
                   {blobUrl && (
                     <VideoPreview>
                       <VideoPlayer controls>
@@ -884,14 +969,38 @@ const VideoManager = ({ t }) => {
                     </VideoPreview>
                   )}
                 </SavedVideoInfo>
-                <RemoveButton onClick={() => removeSavedVideoFile(videoFile.id)}>
-                  מחק
-                </RemoveButton>
+                <ButtonGroup>
+                  <ViewButton onClick={() => handleViewMedia(videoFile)}>
+                    👁️ צפה
+                  </ViewButton>
+                  {videoFile.isFromServer && videoFile.serverRecordingId && (
+                    <ViewButton onClick={() => handleViewTranscription(videoFile)}>
+                      📝 צפה בתמלול
+                    </ViewButton>
+                  )}
+                  <RemoveButton onClick={() => removeSavedVideoFile(videoFile.id)}>
+                    מחק
+                  </RemoveButton>
+                </ButtonGroup>
               </SavedVideoItem>
             );
           })}
         </SavedVideoSection>
       )}
+
+      <MediaViewModal
+        isOpen={viewModalOpen}
+        onClose={handleCloseModal}
+        mediaItem={selectedMediaItem}
+        mediaType="video"
+      />
+
+      <TranscriptionModal
+        isOpen={transcriptionModalOpen}
+        onClose={handleCloseTranscriptionModal}
+        recordingId={selectedRecordingForTranscription?.serverRecordingId}
+        recordingName={selectedRecordingForTranscription?.name}
+      />
     </Container>
   );
 };

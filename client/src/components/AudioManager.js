@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import CompressionControls from './CompressionControls';
 import ProgressBar from './ProgressBar';
+import TranscriptionStatus from './TranscriptionStatus';
+import MediaViewModal from './MediaViewModal';
+import TranscriptionModal from './TranscriptionModal';
+import TranscriptionSearch from './TranscriptionSearch';
 import { compressFile, supportsCompression, getCompressionRatio, shouldCompress } from '../utils/mediaCompression';
 
 const Container = styled.div`
@@ -228,17 +232,54 @@ const SaveButton = styled.button`
   }
 `;
 
+const ViewButton = styled.button`
+  background: var(--color-primary);
+  color: var(--color-textOnPrimary);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+
+  &:hover {
+    background: var(--color-primaryHover);
+  }
+
+  &:disabled {
+    background-color: var(--color-disabled);
+    cursor: not-allowed;
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
 const AudioManager = ({ t }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [savedAudioFiles, setSavedAudioFiles] = useState([]);
+  const [uploadedRecordings, setUploadedRecordings] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [compressionEnabled, setCompressionEnabled] = useState(false);
   const [compressionQuality, setCompressionQuality] = useState(0.7);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [fileProgress, setFileProgress] = useState({});
   const [currentProcessingFile, setCurrentProcessingFile] = useState(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedMediaItem, setSelectedMediaItem] = useState(null);
+  const [transcriptionModalOpen, setTranscriptionModalOpen] = useState(false);
+  const [selectedRecordingForTranscription, setSelectedRecordingForTranscription] = useState(null);
 
   // Load saved audio files from localStorage on component mount
   useEffect(() => {
@@ -251,6 +292,59 @@ const AudioManager = ({ t }) => {
     } catch (error) {
       console.error('Error loading saved audio files:', error);
     }
+  }, []);
+
+  // Load uploaded recordings from server on component mount
+  useEffect(() => {
+    const loadUploadedRecordings = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.log('No auth token found, skipping server recordings load');
+          return;
+        }
+
+        const response = await fetch('/api/recordings', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            console.log('Authentication failed, skipping server recordings load');
+            return;
+          }
+          throw new Error(`Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success && data.recordings) {
+          // Transform server recordings to match the expected format
+          const transformedRecordings = data.recordings.map(recording => ({
+            id: recording.id,
+            filename: recording.filename,
+            originalFileName: recording.filename,
+            size: recording.file_size,
+            mediaType: recording.media_type || 'audio',
+            createdAt: recording.created_at,
+            transcriptionStatus: 'completed', // Assume completed for existing recordings
+            processingStatus: recording.processing_status || 'completed'
+          }));
+          
+          setUploadedRecordings(transformedRecordings);
+          console.log(`Loaded ${transformedRecordings.length} recordings from server`);
+        }
+      } catch (error) {
+        console.error('Error loading uploaded recordings from server:', error);
+        // Don't show error to user as this is a background operation
+        // and the component should still work with local files
+      }
+    };
+
+    loadUploadedRecordings();
   }, []);
 
   // Save audio files to localStorage
@@ -453,6 +547,140 @@ const AudioManager = ({ t }) => {
     });
   };
 
+  // Upload selected files to server with automatic transcription
+  const uploadSelectedFiles = async () => {
+    if (selectedFiles.length === 0) {
+      setError('אין קבצי אודיו להעלאה');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setError('');
+      setSuccess('');
+      setFileProgress({});
+      setCurrentProcessingFile(null);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
+      }
+
+      const uploadedFiles = [];
+
+      // Upload files sequentially to show individual progress
+      for (let index = 0; index < selectedFiles.length; index++) {
+        const fileData = selectedFiles[index];
+        setCurrentProcessingFile(fileData.name);
+
+        // Initialize progress for this file
+        setFileProgress(prev => ({
+          ...prev,
+          [fileData.id]: { progress: 0, status: 'uploading', message: 'מתחיל העלאה...' }
+        }));
+
+        try {
+          let fileToUpload = fileData.file;
+
+          // Apply compression if enabled
+          if (compressionEnabled && supportsCompression(fileData.type)) {
+            setFileProgress(prev => ({
+              ...prev,
+              [fileData.id]: { progress: 10, status: 'compressing', message: 'דוחס קובץ...' }
+            }));
+
+            fileToUpload = await compressFile(
+              fileData.file,
+              compressionQuality,
+              (progress, message) => {
+                setFileProgress(prev => ({
+                  ...prev,
+                  [fileData.id]: {
+                    progress: Math.round(10 + (progress * 0.3)), // 10-40% for compression
+                    status: 'compressing',
+                    message: message || 'דוחס...'
+                  }
+                }));
+              }
+            );
+          }
+
+          // Upload to server
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 50, status: 'uploading', message: 'מעלה לשרת...' }
+          }));
+
+          const formData = new FormData();
+          formData.append('media', fileToUpload);
+          formData.append('recordingId', `audio_${Date.now()}_${index}`);
+          formData.append('metadata', JSON.stringify({
+            originalName: fileData.name,
+            duration: fileData.duration,
+            uploadedAt: new Date().toISOString(),
+            compressed: compressionEnabled && supportsCompression(fileData.type)
+          }));
+
+          const response = await fetch('/api/recordings/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'שגיאה בהעלאת הקובץ');
+          }
+
+          const result = await response.json();
+
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 100, status: 'complete', message: 'הועלה בהצלחה' }
+          }));
+
+          uploadedFiles.push({
+            ...result.recording,
+            originalFileId: fileData.id,
+            originalFileName: fileData.name
+          });
+
+        } catch (fileError) {
+          console.error(`Failed to upload ${fileData.name}:`, fileError);
+          setFileProgress(prev => ({
+            ...prev,
+            [fileData.id]: { progress: 0, status: 'error', message: `שגיאה: ${fileError.message}` }
+          }));
+          setError(prev => (prev ? prev + '\n' : '') + `שגיאה בהעלאת ${fileData.name}: ${fileError.message}`);
+        }
+      }
+
+      if (uploadedFiles.length > 0) {
+        setUploadedRecordings(prev => [...prev, ...uploadedFiles]);
+        setSuccess(`הועלו ${uploadedFiles.length} מתוך ${selectedFiles.length} קבצי אודיו בהצלחה. התמלול האוטומטי החל.`);
+        
+        // Clear selected files after successful upload
+        setSelectedFiles([]);
+      } else {
+        setError('לא הצליח להעלות אף קובץ אודיו');
+      }
+
+    } catch (error) {
+      console.error('Error uploading audio files:', error);
+      setError('שגיאה כללית בהעלאת קבצי האודיו. אנא נסה שוב.');
+    } finally {
+      setIsUploading(false);
+      setCurrentProcessingFile(null);
+
+      // Clear progress after a delay
+      setTimeout(() => {
+        setFileProgress({});
+      }, 3000);
+    }
+  };
+
   // Remove saved audio file
   const removeSavedAudioFile = (audioFileId) => {
     const updatedAudioFiles = savedAudioFiles.filter(audio => audio.id !== audioFileId);
@@ -460,6 +688,45 @@ const AudioManager = ({ t }) => {
     saveAudioFilesToStorage(updatedAudioFiles);
     setSuccess('קובץ האודיו נמחק בהצלחה');
     setError('');
+  };
+
+  // Remove uploaded recording from server
+  const removeUploadedRecording = async (recordingId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('לא נמצא טוקן אימות. אנא התחבר מחדש.');
+        return;
+      }
+
+      const response = await fetch(`/api/recordings/${recordingId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'שגיאה במחיקת ההקלטה');
+      }
+
+      // Remove from local state
+      const updatedRecordings = uploadedRecordings.filter(recording => recording.id !== recordingId);
+      setUploadedRecordings(updatedRecordings);
+      setSuccess('הקלטה נמחקה בהצלחה מהשרת');
+      setError('');
+    } catch (error) {
+      console.error('Error deleting uploaded recording:', error);
+      setError(`שגיאה במחיקת ההקלטה: ${error.message}`);
+    }
+  };
+
+  // Handle transcription completion
+  const handleTranscriptionComplete = (transcription) => {
+    console.log('Transcription completed:', transcription);
+    // You can add additional logic here when transcription completes
   };
 
   // Supported audio file types
@@ -636,6 +903,30 @@ const AudioManager = ({ t }) => {
     }
   };
 
+  // Handle view media item
+  const handleViewMedia = (mediaItem) => {
+    setSelectedMediaItem(mediaItem);
+    setViewModalOpen(true);
+  };
+
+  // Handle close modal
+  const handleCloseModal = () => {
+    setViewModalOpen(false);
+    setSelectedMediaItem(null);
+  };
+
+  // Handle view transcription
+  const handleViewTranscription = (recording) => {
+    setSelectedRecordingForTranscription(recording);
+    setTranscriptionModalOpen(true);
+  };
+
+  // Handle close transcription modal
+  const handleCloseTranscriptionModal = () => {
+    setTranscriptionModalOpen(false);
+    setSelectedRecordingForTranscription(null);
+  };
+
   return (
     <Container>
       <Header>
@@ -728,21 +1019,73 @@ const AudioManager = ({ t }) => {
                   />
                 )}
               </FileInfo>
-              <RemoveButton onClick={() => removeFile(fileData.id)} disabled={isCompressing}>
-                הסר
-              </RemoveButton>
+              <ButtonGroup>
+                <ViewButton onClick={() => handleViewMedia(fileData)} disabled={isCompressing}>
+                  👁️ צפה
+                </ViewButton>
+                <RemoveButton onClick={() => removeFile(fileData.id)} disabled={isCompressing}>
+                  הסר
+                </RemoveButton>
+              </ButtonGroup>
             </FilePreview>
           ))}
-          <SaveButton onClick={saveSelectedFiles} disabled={isCompressing}>
-            {isCompressing ? '🗜️ דוחס קבצים...' : '💾 שמור קבצי אודיו'}
+          <SaveButton 
+            onClick={uploadSelectedFiles} 
+            disabled={isUploading || isCompressing}
+          >
+            {isUploading ? '📤 מעלה קבצים...' : '💾 שמור אודיו עם תמלול'}
           </SaveButton>
         </div>
+      )}
+
+      {/* Search functionality for uploaded recordings with transcriptions */}
+      {uploadedRecordings.length > 0 && (
+        <TranscriptionSearch
+          mediaItems={uploadedRecordings}
+          mediaType="audio"
+          onItemClick={handleViewTranscription}
+        />
+      )}
+
+      {uploadedRecordings.length > 0 && (
+        <SavedAudioSection>
+          <SavedAudioTitle>
+            📤 קבצי אודיו שהועלו לשרת ({uploadedRecordings.length})
+          </SavedAudioTitle>
+          {uploadedRecordings.map(recording => (
+            <SavedAudioItem key={recording.id}>
+              <FileIcon>
+                {recording.mediaType === 'video' ? '🎥' : '🎵'}
+              </FileIcon>
+              <SavedAudioInfo>
+                <SavedAudioName>{recording.originalFileName || recording.filename}</SavedAudioName>
+                <SavedAudioMeta>
+                  <span>{formatFileSize(recording.size)}</span>
+                  <span>סוג: {recording.mediaType === 'video' ? 'וידאו' : 'אודיו'}</span>
+                  <span>הועלה: {new Date(recording.createdAt).toLocaleDateString('he-IL')}</span>
+                </SavedAudioMeta>
+                <TranscriptionStatus 
+                  recordingId={recording.id}
+                  onTranscriptionComplete={handleTranscriptionComplete}
+                />
+              </SavedAudioInfo>
+              <ButtonGroup>
+                <ViewButton onClick={() => handleViewTranscription(recording)}>
+                  📝 צפה בתמלול
+                </ViewButton>
+                <RemoveButton onClick={() => removeUploadedRecording(recording.id)}>
+                  מחק
+                </RemoveButton>
+              </ButtonGroup>
+            </SavedAudioItem>
+          ))}
+        </SavedAudioSection>
       )}
 
       {savedAudioFiles.length > 0 && (
         <SavedAudioSection>
           <SavedAudioTitle>
-            🎵 קבצי אודיו שמורים ({savedAudioFiles.length})
+            🎵 קבצי אודיו שמורים מקומית ({savedAudioFiles.length})
           </SavedAudioTitle>
           {savedAudioFiles.map(audioFile => {
             const blobUrl = createBlobUrl(audioFile.base64Data);
@@ -767,14 +1110,34 @@ const AudioManager = ({ t }) => {
                     </AudioPreview>
                   )}
                 </SavedAudioInfo>
-                <RemoveButton onClick={() => removeSavedAudioFile(audioFile.id)}>
-                  מחק
-                </RemoveButton>
+                <ButtonGroup>
+                  <ViewButton onClick={() => handleViewMedia(audioFile)}>
+                    👁️ צפה
+                  </ViewButton>
+                  <RemoveButton onClick={() => removeSavedAudioFile(audioFile.id)}>
+                    מחק
+                  </RemoveButton>
+                </ButtonGroup>
               </SavedAudioItem>
             );
           })}
         </SavedAudioSection>
       )}
+
+      <MediaViewModal
+        isOpen={viewModalOpen}
+        onClose={handleCloseModal}
+        mediaItem={selectedMediaItem}
+        mediaType="audio"
+      />
+
+      <TranscriptionModal
+        isOpen={transcriptionModalOpen}
+        onClose={handleCloseTranscriptionModal}
+        recordingId={selectedRecordingForTranscription?.id}
+        mediaName={selectedRecordingForTranscription?.originalFileName || selectedRecordingForTranscription?.filename}
+        mediaType={selectedRecordingForTranscription?.mediaType || 'audio'}
+      />
     </Container>
   );
 };
