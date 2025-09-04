@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import CompressionControls from './CompressionControls';
 import MediaViewModal from './MediaViewModal';
-import { compressFile, supportsCompression, getCompressionRatio } from '../utils/mediaCompression';
+import EditMediaModal from './EditMediaModal';
+import ExtractedTextModal from './ExtractedTextModal';
+import TagInput from './TagInput';
+import MetadataForm from './MetadataForm';
+import FilterControls from './FilterControls';
 
 const Container = styled.div`
   background: var(--color-surface);
@@ -137,6 +140,93 @@ const FileSize = styled.div`
   color: var(--color-textSecondary);
 `;
 
+const ExtractionStatus = styled.div`
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  
+  &.pending {
+    background: var(--color-warningLight, #fff3cd);
+    color: var(--color-warning, #856404);
+  }
+  
+  &.processing {
+    background: var(--color-infoLight, #d1ecf1);
+    color: var(--color-info, #0c5460);
+  }
+  
+  &.completed {
+    background: var(--color-successLight, #d5f4e6);
+    color: var(--color-success, #155724);
+  }
+  
+  &.failed {
+    background: var(--color-dangerLight, #fadbd8);
+    color: var(--color-danger, #721c24);
+  }
+`;
+
+const ProgressMessage = styled.div`
+  font-size: 0.75rem;
+  color: var(--color-textSecondary);
+  margin-top: 0.25rem;
+  font-style: italic;
+`;
+
+const ExtractionDetails = styled.div`
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--color-surfaceElevated, #f8f9fa);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-primary);
+`;
+
+const ExtractionMetadata = styled.div`
+  font-size: 0.75rem;
+  color: var(--color-textTertiary);
+  margin-top: 0.25rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+`;
+
+const ConfidenceScore = styled.span`
+  background: ${props => {
+    const confidence = props.confidence || 0;
+    if (confidence >= 0.9) return 'var(--color-successLight, #d5f4e6)';
+    if (confidence >= 0.7) return 'var(--color-warningLight, #fff3cd)';
+    return 'var(--color-dangerLight, #fadbd8)';
+  }};
+  color: ${props => {
+    const confidence = props.confidence || 0;
+    if (confidence >= 0.9) return 'var(--color-success, #155724)';
+    if (confidence >= 0.7) return 'var(--color-warning, #856404)';
+    return 'var(--color-danger, #721c24)';
+  }};
+  padding: 0.125rem 0.25rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 500;
+`;
+
+const ProgressBar = styled.div`
+  width: 100%;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  margin-top: 0.5rem;
+  overflow: hidden;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 0.3s ease;
+  width: ${props => props.progress || 0}%;
+`;
+
 const RemoveButton = styled.button`
   background: var(--color-danger);
   color: var(--color-textOnPrimary);
@@ -192,6 +282,7 @@ const SavedDocumentMeta = styled.div`
   color: var(--color-textSecondary);
   display: flex;
   gap: 1rem;
+  flex-wrap: wrap;
 `;
 
 const SaveButton = styled.button`
@@ -242,143 +333,369 @@ const ViewButton = styled.button`
   }
 `;
 
+const ExtractButton = styled.button`
+  background: var(--color-info, #17a2b8);
+  color: var(--color-textOnPrimary);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  &:hover {
+    background: var(--color-infoHover, #138496);
+  }
+
+  &:disabled {
+    background-color: var(--color-disabled);
+    cursor: not-allowed;
+  }
+`;
+
 const ButtonGroup = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
+`;
+
+const TextPreview = styled.div`
+  background: var(--color-surfaceElevated, #f8f9fa);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-top: 0.5rem;
+  max-height: 150px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  color: var(--color-textSecondary);
 `;
 
 const DocumentsManager = ({ t }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [savedDocuments, setSavedDocuments] = useState([]);
+  const [filteredSelectedFiles, setFilteredSelectedFiles] = useState([]);
+  const [filteredSavedDocuments, setFilteredSavedDocuments] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [compressionEnabled, setCompressionEnabled] = useState(false);
-  const [compressionQuality, setCompressionQuality] = useState(0.7);
-  const [isCompressing, setIsCompressing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedMediaItem, setSelectedMediaItem] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedMediaItemForEdit, setSelectedMediaItemForEdit] = useState(null);
+  const [globalTags, setGlobalTags] = useState([]);
+  const [extractionStatuses, setExtractionStatuses] = useState({});
+  const [extractedTextModalOpen, setExtractedTextModalOpen] = useState(false);
+  const [selectedDocumentForText, setSelectedDocumentForText] = useState(null);
 
-  // Load saved documents from localStorage on component mount
+  // Load saved documents from server on component mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('limud-ai-documents');
-      if (saved) {
-        const parsedDocuments = JSON.parse(saved);
-        setSavedDocuments(parsedDocuments);
-      }
-    } catch (error) {
-      console.error('Error loading saved documents:', error);
-    }
+    loadDocumentsFromServer();
   }, []);
 
-  // Save documents to localStorage
-  const saveDocumentsToStorage = (documents) => {
+  // Initialize filtered arrays when data changes
+  useEffect(() => {
+    setFilteredSelectedFiles(selectedFiles);
+  }, [selectedFiles]);
+
+  useEffect(() => {
+    setFilteredSavedDocuments(savedDocuments);
+  }, [savedDocuments]);
+
+  // Update global tags when documents change
+  useEffect(() => {
+    const allTags = new Set();
+    
+    // Collect tags from selected files
+    selectedFiles.forEach(file => {
+      if (file.tags && Array.isArray(file.tags)) {
+        file.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    
+    // Collect tags from saved documents
+    savedDocuments.forEach(doc => {
+      if (doc.tags && Array.isArray(doc.tags)) {
+        doc.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    
+    setGlobalTags(Array.from(allTags));
+  }, [selectedFiles, savedDocuments]);
+
+  // Poll extraction statuses for documents that are being processed
+  useEffect(() => {
+    const documentsBeingProcessed = savedDocuments.filter(doc => 
+      doc.extractionStatus && ['pending', 'processing'].includes(doc.extractionStatus)
+    );
+
+    if (documentsBeingProcessed.length > 0) {
+      const interval = setInterval(() => {
+        documentsBeingProcessed.forEach(doc => {
+          checkExtractionStatus(doc.id);
+        });
+      }, 5000); // Check every 5 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [savedDocuments]);
+
+  // Load documents from server
+  const loadDocumentsFromServer = async () => {
     try {
-      localStorage.setItem('limud-ai-documents', JSON.stringify(documents));
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No authentication token found');
+        setError('נדרש להתחבר מחדש');
+        return;
+      }
+
+      console.log('Loading documents from server...');
+      const response = await fetch('/api/documents', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      console.log('Documents API response status:', response.status);
+      const data = await response.json();
+      console.log('Documents API response data:', data);
+
+      if (response.ok) {
+        if (data.success) {
+          const documentsWithExtraction = await Promise.all(
+            (data.documents || []).map(async (document) => {
+              // Fetch extracted text for completed extractions
+              if (document.extractionStatus === 'completed') {
+                try {
+                  const textResponse = await fetch(`/api/documents/${document.id}/text`, {
+                    headers: {
+                      'Authorization': `Bearer ${token}`
+                    }
+                  });
+                  
+                  if (textResponse.ok) {
+                    const textData = await textResponse.json();
+                    return {
+                      ...document,
+                      extraction: textData.extraction
+                    };
+                  }
+                } catch (error) {
+                  console.error(`Error fetching text for document ${document.id}:`, error);
+                }
+              }
+              return document;
+            })
+          );
+          
+          setSavedDocuments(documentsWithExtraction);
+          console.log(`Loaded ${documentsWithExtraction.length} documents with extraction data`);
+        } else {
+          console.error('API returned success=false:', data);
+          setError(data.error || 'שגיאה בטעינת המסמכים');
+        }
+      } else {
+        console.error('API request failed:', response.status, data);
+        if (response.status === 401) {
+          setError('נדרש להתחבר מחדש');
+          localStorage.removeItem('token');
+        } else {
+          setError(data.error || 'שגיאה בטעינת המסמכים');
+        }
+      }
     } catch (error) {
-      console.error('Error saving documents to localStorage:', error);
-      setError('שגיאה בשמירת המסמכים. אנא נסה שוב.');
+      console.error('Error loading documents from server:', error);
+      setError('שגיאה בחיבור לשרת');
     }
   };
 
-  // Save selected files to localStorage
-  const saveSelectedFiles = async () => {
+  // Check extraction status for a document
+  const checkExtractionStatus = async (documentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`/api/documents/${documentId}/extraction-status`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        setExtractionStatuses(prev => ({
+          ...prev,
+          [documentId]: {
+            status: data.extractionStatus,
+            progress: data.job?.progress || 0,
+            progressMessage: data.job?.progressMessage,
+            errorMessage: data.job?.errorMessage,
+            extraction: data.extraction
+          }
+        }));
+
+        // Update document in saved documents if status changed
+        if (data.extractionStatus === 'completed' || data.extractionStatus === 'failed') {
+          setSavedDocuments(prev => prev.map(doc => 
+            doc.id === documentId 
+              ? { ...doc, extractionStatus: data.extractionStatus, extraction: data.extraction }
+              : doc
+          ));
+        }
+      }
+    } catch (error) {
+      console.error('Error checking extraction status:', error);
+    }
+  };
+
+  // Handle filter changes for selected files
+  const handleSelectedFilesFilterChange = (filteredItems) => {
+    setFilteredSelectedFiles(filteredItems);
+  };
+
+  // Handle filter changes for saved documents
+  const handleSavedDocumentsFilterChange = (filteredItems) => {
+    setFilteredSavedDocuments(filteredItems);
+  };
+
+  // Upload selected files to server
+  const uploadSelectedFiles = async () => {
     if (selectedFiles.length === 0) {
-      setError('אין קבצים לשמירה');
+      setError('אין קבצים להעלאה');
       return;
     }
 
     try {
-      setIsCompressing(true);
-      setSuccess('מעבד קבצים...');
+      setIsUploading(true);
+      setSuccess('מעלה קבצים...');
       
-      const documentsToSave = await Promise.all(
-        selectedFiles.map(async (fileData, index) => {
-          let fileToProcess = fileData.file;
-          let processedName = fileData.name;
-          let processedSize = fileData.size;
-          let processedType = fileData.type;
-          let compressionInfo = null;
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('נדרש להתחבר מחדש');
+        return;
+      }
 
-          // Apply compression if enabled and file supports it
-          if (compressionEnabled && supportsCompression(fileData.type)) {
-            try {
-              setSuccess(`דוחס קובץ ${index + 1} מתוך ${selectedFiles.length}: ${fileData.name}...`);
-              
-              const compressedFile = await compressFile(fileData.file, compressionQuality);
-              const originalSize = fileData.size;
-              const compressedSize = compressedFile.size;
-              const compressionRatio = getCompressionRatio(originalSize, compressedSize);
-              
-              fileToProcess = compressedFile;
-              processedName = compressedFile.name;
-              processedSize = compressedFile.size;
-              processedType = compressedFile.type;
-              
-              compressionInfo = {
-                originalSize,
-                compressedSize,
-                compressionRatio,
-                quality: compressionQuality
-              };
-              
-              console.log(`Compressed ${fileData.name}: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} (${compressionRatio}% reduction)`);
-            } catch (compressionError) {
-              console.error(`Failed to compress ${fileData.name}:`, compressionError);
-              setError(prev => prev + `\nשגיאה בדחיסת ${fileData.name}: ${compressionError.message}`);
-              // Continue with original file if compression fails
-            }
-          }
+      const uploadPromises = selectedFiles.map(async (fileData, index) => {
+        setSuccess(`מעלה קובץ ${index + 1} מתוך ${selectedFiles.length}: ${fileData.name}...`);
+        
+        const formData = new FormData();
+        formData.append('document', fileData.file);
+        formData.append('metadata', JSON.stringify(fileData.metadata || {}));
+        formData.append('tags', JSON.stringify(fileData.tags || []));
 
-          return {
-            id: fileData.id,
-            name: processedName,
-            size: processedSize,
-            type: processedType,
-            compressionInfo,
-            savedAt: new Date().toISOString()
-          };
-        })
-      );
+        const response = await fetch('/api/documents/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
 
-      const updatedSavedDocuments = [...savedDocuments, ...documentsToSave];
-      setSavedDocuments(updatedSavedDocuments);
-      saveDocumentsToStorage(updatedSavedDocuments);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'שגיאה בהעלאת הקובץ');
+        }
+
+        return await response.json();
+      });
+
+      const results = await Promise.all(uploadPromises);
       
+      // Add uploaded documents to saved documents list
+      const newDocuments = results.map(result => ({
+        ...result.document,
+        extractionStatus: 'pending'
+      }));
+      
+      setSavedDocuments(prev => [...prev, ...newDocuments]);
       setSelectedFiles([]);
       
-      // Calculate total compression savings
-      const totalOriginalSize = documentsToSave.reduce((sum, file) => 
-        sum + (file.compressionInfo?.originalSize || file.size), 0
-      );
-      const totalCompressedSize = documentsToSave.reduce((sum, file) => file.size, 0);
-      const totalSavings = totalOriginalSize - totalCompressedSize;
-      
-      let successMessage = `נשמרו ${documentsToSave.length} מסמכים בהצלחה`;
-      if (compressionEnabled && totalSavings > 0) {
-        const savingsRatio = getCompressionRatio(totalOriginalSize, totalCompressedSize);
-        successMessage += `\nחיסכון בדחיסה: ${formatFileSize(totalSavings)} (${savingsRatio}%)`;
-      }
-      
-      setSuccess(successMessage);
+      setSuccess(`הועלו ${results.length} מסמכים בהצלחה. חילוץ הטקסט החל...`);
       setError('');
     } catch (error) {
-      console.error('Error saving documents:', error);
-      setError('שגיאה בשמירת המסמכים. אנא נסה שוב.');
+      console.error('Error uploading documents:', error);
+      setError(`שגיאה בהעלאת המסמכים: ${error.message}`);
     } finally {
-      setIsCompressing(false);
+      setIsUploading(false);
     }
   };
 
   // Remove saved document
-  const removeSavedDocument = (documentId) => {
-    const updatedDocuments = savedDocuments.filter(doc => doc.id !== documentId);
-    setSavedDocuments(updatedDocuments);
-    saveDocumentsToStorage(updatedDocuments);
-    setSuccess('המסמך נמחק בהצלחה');
-    setError('');
+  const removeSavedDocument = async (documentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('נדרש להתחבר מחדש');
+        return;
+      }
+
+      const response = await fetch(`/api/documents/${documentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setSavedDocuments(prev => prev.filter(doc => doc.id !== documentId));
+        setSuccess('המסמך נמחק בהצלחה');
+        setError('');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'שגיאה במחיקת המסמך');
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      setError('שגיאה במחיקת המסמך');
+    }
+  };
+
+  // Manually trigger text extraction
+  const triggerTextExtraction = async (documentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('נדרש להתחבר מחדש');
+        return;
+      }
+
+      const response = await fetch(`/api/documents/${documentId}/extract`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ method: 'auto' })
+      });
+
+      if (response.ok) {
+        setSuccess('חילוץ טקסט החל בהצלחה');
+        setError('');
+        
+        // Update document status
+        setSavedDocuments(prev => prev.map(doc => 
+          doc.id === documentId 
+            ? { ...doc, extractionStatus: 'pending' }
+            : doc
+        ));
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'שגיאה בהתחלת חילוץ הטקסט');
+      }
+    } catch (error) {
+      console.error('Error triggering text extraction:', error);
+      setError('שגיאה בהתחלת חילוץ הטקסט');
+    }
   };
 
   // Supported file types
@@ -487,8 +804,37 @@ const DocumentsManager = ({ t }) => {
     return filename.split('.').pop().toUpperCase();
   };
 
+  const getExtractionStatusText = (status) => {
+    switch (status) {
+      case 'pending': return 'ממתין לחילוץ';
+      case 'processing': return 'מחלץ טקסט...';
+      case 'completed': return 'הושלם';
+      case 'failed': return 'נכשל';
+      default: return 'לא החל';
+    }
+  };
+
   // Handle view media item
-  const handleViewMedia = (mediaItem) => {
+  const handleViewMedia = async (mediaItem) => {
+    // If it's a saved document with extracted text, fetch the text
+    if (mediaItem.id && mediaItem.extractionStatus === 'completed') {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/documents/${mediaItem.id}/text`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          mediaItem.extractedText = data.extraction.text;
+        }
+      } catch (error) {
+        console.error('Error fetching extracted text:', error);
+      }
+    }
+
     setSelectedMediaItem(mediaItem);
     setViewModalOpen(true);
   };
@@ -497,6 +843,61 @@ const DocumentsManager = ({ t }) => {
   const handleCloseModal = () => {
     setViewModalOpen(false);
     setSelectedMediaItem(null);
+  };
+
+  // Handle edit media item
+  const handleEditMedia = (mediaItem) => {
+    setSelectedMediaItemForEdit(mediaItem);
+    setEditModalOpen(true);
+  };
+
+  // Handle close edit modal
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    setSelectedMediaItemForEdit(null);
+  };
+
+  // Handle save edited media
+  const handleSaveEditedMedia = async (updatedMediaItem) => {
+    try {
+      if (updatedMediaItem.id) {
+        // Server-side document - update via API
+        const token = localStorage.getItem('token');
+        // Note: We would need to implement an update endpoint for tags/metadata
+        // For now, just update locally
+        setSavedDocuments(prev => prev.map(document => 
+          document.id === updatedMediaItem.id 
+            ? { ...document, tags: updatedMediaItem.tags, metadata: updatedMediaItem.metadata }
+            : document
+        ));
+      } else {
+        // Local file - update in selectedFiles
+        setSelectedFiles(prev => prev.map(file => 
+          file.id === updatedMediaItem.id 
+            ? { ...file, tags: updatedMediaItem.tags, metadata: updatedMediaItem.metadata }
+            : file
+        ));
+      }
+      
+      setSuccess('התגיות והמטא-דאטה עודכנו בהצלחה');
+      setError('');
+      handleCloseEditModal();
+    } catch (error) {
+      console.error('Error saving edited media:', error);
+      setError(`שגיאה בשמירת השינויים: ${error.message}`);
+    }
+  };
+
+  // Handle view extracted text
+  const handleViewExtractedText = (document) => {
+    setSelectedDocumentForText(document);
+    setExtractedTextModalOpen(true);
+  };
+
+  // Handle close extracted text modal
+  const handleCloseExtractedTextModal = () => {
+    setExtractedTextModalOpen(false);
+    setSelectedDocumentForText(null);
   };
 
   return (
@@ -513,6 +914,7 @@ const DocumentsManager = ({ t }) => {
       >
         <UploadButton
           onClick={() => document.getElementById('file-input').click()}
+          disabled={isUploading}
         >
           📁 בחר קבצים
         </UploadButton>
@@ -533,6 +935,8 @@ const DocumentsManager = ({ t }) => {
           קבצים נתמכים: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, JPG, PNG, GIF
           <br />
           גודל מקסימלי: 10MB לכל קובץ
+          <br />
+          <strong>חילוץ טקסט אוטומטי יתחיל לאחר ההעלאה</strong>
         </SupportedFormats>
       </UploadSection>
 
@@ -551,18 +955,18 @@ const DocumentsManager = ({ t }) => {
 
       {selectedFiles.length > 0 && (
         <div>
-          <CompressionControls
-            files={selectedFiles}
-            compressionEnabled={compressionEnabled}
-            onCompressionToggle={setCompressionEnabled}
-            compressionQuality={compressionQuality}
-            onQualityChange={setCompressionQuality}
+          {/* Filter controls for selected files */}
+          <FilterControls
+            mediaItems={selectedFiles}
+            onFilterChange={handleSelectedFilesFilterChange}
+            availableTags={globalTags}
+            mediaType="document"
           />
           
           <h3 style={{ color: 'var(--color-text)', marginBottom: '1rem' }}>
-            קבצים נבחרים ({selectedFiles.length})
+            קבצים נבחרים ({filteredSelectedFiles.length} מתוך {selectedFiles.length})
           </h3>
-          {selectedFiles.map(fileData => (
+          {filteredSelectedFiles.map(fileData => (
             <FilePreview key={fileData.id}>
               <FileIcon>
                 {getFileExtension(fileData.name)}
@@ -570,9 +974,33 @@ const DocumentsManager = ({ t }) => {
               <FileInfo>
                 <FileName>{fileData.name}</FileName>
                 <FileSize>{formatFileSize(fileData.size)}</FileSize>
+                <MetadataForm
+                  fileData={fileData}
+                  onChange={(metadata) => {
+                    setSelectedFiles(prev => prev.map(f => 
+                      f.id === fileData.id ? { ...f, metadata } : f
+                    ));
+                  }}
+                  disabled={isUploading}
+                  mediaType="document"
+                />
+                <TagInput
+                  tags={fileData.tags || []}
+                  onChange={(newTags) => {
+                    setSelectedFiles(prev => prev.map(f => 
+                      f.id === fileData.id ? { ...f, tags: newTags } : f
+                    ));
+                    // Update global tags list
+                    const allTags = new Set(globalTags);
+                    newTags.forEach(tag => allTags.add(tag));
+                    setGlobalTags(Array.from(allTags));
+                  }}
+                  placeholder="הוסף תגיות למסמך..."
+                  suggestions={globalTags}
+                />
               </FileInfo>
               <ButtonGroup>
-                <ViewButton onClick={() => handleViewMedia(fileData)} disabled={isCompressing}>
+                <ViewButton onClick={() => handleViewMedia(fileData)} disabled={isUploading}>
                   👁️ צפה
                 </ViewButton>
                 <RemoveButton onClick={() => removeFile(fileData.id)}>
@@ -581,39 +1009,122 @@ const DocumentsManager = ({ t }) => {
               </ButtonGroup>
             </FilePreview>
           ))}
-          <SaveButton onClick={saveSelectedFiles} disabled={isCompressing}>
-            {isCompressing ? '🗜️ דוחס קבצים...' : '💾 שמור מסמכים'}
+          <SaveButton onClick={uploadSelectedFiles} disabled={isUploading}>
+            {isUploading ? '📤 מעלה קבצים...' : '📤 העלה מסמכים'}
           </SaveButton>
         </div>
       )}
 
       {savedDocuments.length > 0 && (
         <SavedDocumentsSection>
+          {/* Filter controls for saved documents */}
+          <FilterControls
+            mediaItems={savedDocuments}
+            onFilterChange={handleSavedDocumentsFilterChange}
+            availableTags={globalTags}
+            mediaType="document"
+          />
+          
           <SavedDocumentsTitle>
-            📚 מסמכים שמורים ({savedDocuments.length})
+            📚 מסמכים שמורים ({filteredSavedDocuments.length} מתוך {savedDocuments.length})
           </SavedDocumentsTitle>
-          {savedDocuments.map(document => (
-            <SavedDocumentItem key={document.id}>
-              <FileIcon>
-                {getFileExtension(document.name)}
-              </FileIcon>
-              <SavedDocumentInfo>
-                <SavedDocumentName>{document.name}</SavedDocumentName>
-                <SavedDocumentMeta>
-                  <span>{formatFileSize(document.size)}</span>
-                  <span>נשמר: {new Date(document.savedAt).toLocaleDateString('he-IL')}</span>
-                </SavedDocumentMeta>
-              </SavedDocumentInfo>
-              <ButtonGroup>
-                <ViewButton onClick={() => handleViewMedia(document)}>
-                  👁️ צפה
-                </ViewButton>
-                <RemoveButton onClick={() => removeSavedDocument(document.id)}>
-                  מחק
-                </RemoveButton>
-              </ButtonGroup>
-            </SavedDocumentItem>
-          ))}
+          {filteredSavedDocuments.map(document => {
+            const status = extractionStatuses[document.id] || { status: document.extractionStatus || 'not_started', progress: 0 };
+            
+            return (
+              <SavedDocumentItem key={document.id}>
+                <FileIcon>
+                  {getFileExtension(document.filename || document.original_filename || document.name)}
+                </FileIcon>
+                <SavedDocumentInfo>
+                  <SavedDocumentName>
+                    {document.filename || document.original_filename || document.name}
+                  </SavedDocumentName>
+                  <SavedDocumentMeta>
+                    <span>{formatFileSize(document.size || document.file_size)}</span>
+                    <span>הועלה: {new Date(document.createdAt || document.created_at).toLocaleDateString('he-IL')}</span>
+                    {document.fileType && <span>סוג: {document.fileType.toUpperCase()}</span>}
+                  </SavedDocumentMeta>
+                  
+                  <ExtractionStatus className={status.status}>
+                    🔍 {getExtractionStatusText(status.status)}
+                    {status.status === 'processing' && status.progress > 0 && ` (${status.progress}%)`}
+                  </ExtractionStatus>
+                  
+                  {status.progressMessage && status.status === 'processing' && (
+                    <ProgressMessage>
+                      {status.progressMessage}
+                    </ProgressMessage>
+                  )}
+                  
+                  {status.errorMessage && status.status === 'failed' && (
+                    <ProgressMessage style={{ color: 'var(--color-danger)', fontWeight: '500' }}>
+                      ❌ {status.errorMessage}
+                    </ProgressMessage>
+                  )}
+                  
+                  {status.status === 'processing' && (
+                    <ProgressBar>
+                      <ProgressFill progress={status.progress} />
+                    </ProgressBar>
+                  )}
+                  
+                  {status.extraction && status.extraction.text && (
+                    <ExtractionDetails>
+                      <TextPreview>
+                        {status.extraction.text.substring(0, 200)}
+                        {status.extraction.text.length > 200 && '...'}
+                      </TextPreview>
+                      
+                      <ExtractionMetadata>
+                        <span>שיטה: {status.extraction.method}</span>
+                        {status.extraction.confidence && (
+                          <ConfidenceScore confidence={status.extraction.confidence}>
+                            דיוק: {Math.round(status.extraction.confidence * 100)}%
+                          </ConfidenceScore>
+                        )}
+                        {status.extraction.language && (
+                          <span>שפה: {status.extraction.language === 'hebrew' ? 'עברית' : 'אנגלית'}</span>
+                        )}
+                        {status.extraction.processingDuration && (
+                          <span>זמן עיבוד: {Math.round(status.extraction.processingDuration / 1000)}s</span>
+                        )}
+                      </ExtractionMetadata>
+                    </ExtractionDetails>
+                  )}
+                </SavedDocumentInfo>
+                <ButtonGroup>
+                  {status.status === 'failed' && (
+                    <ExtractButton onClick={() => triggerTextExtraction(document.id)}>
+                      🔄 נסה שוב
+                    </ExtractButton>
+                  )}
+                  {status.status === 'not_started' && (
+                    <ExtractButton onClick={() => triggerTextExtraction(document.id)}>
+                      🔍 חלץ טקסט
+                    </ExtractButton>
+                  )}
+                  {status.status === 'completed' && status.extraction && status.extraction.text && (
+                    <ViewButton 
+                      onClick={() => handleViewExtractedText(document)}
+                      style={{ background: 'var(--color-success)' }}
+                    >
+                      📄 צפה בטקסט
+                    </ViewButton>
+                  )}
+                  <ViewButton onClick={() => handleEditMedia(document)}>
+                    ✏️ ערוך
+                  </ViewButton>
+                  <ViewButton onClick={() => handleViewMedia(document)}>
+                    👁️ צפה
+                  </ViewButton>
+                  <RemoveButton onClick={() => removeSavedDocument(document.id)}>
+                    מחק
+                  </RemoveButton>
+                </ButtonGroup>
+              </SavedDocumentItem>
+            );
+          })}
         </SavedDocumentsSection>
       )}
 
@@ -621,6 +1132,23 @@ const DocumentsManager = ({ t }) => {
         isOpen={viewModalOpen}
         onClose={handleCloseModal}
         mediaItem={selectedMediaItem}
+        mediaType="document"
+      />
+
+      <EditMediaModal
+        isOpen={editModalOpen}
+        onClose={handleCloseEditModal}
+        mediaItem={selectedMediaItemForEdit}
+        onSave={handleSaveEditedMedia}
+        availableTags={globalTags}
+        mediaType="document"
+      />
+
+      <ExtractedTextModal
+        isOpen={extractedTextModalOpen}
+        onClose={handleCloseExtractedTextModal}
+        documentId={selectedDocumentForText?.id}
+        documentName={selectedDocumentForText?.filename || selectedDocumentForText?.original_filename || selectedDocumentForText?.name}
         mediaType="document"
       />
     </Container>

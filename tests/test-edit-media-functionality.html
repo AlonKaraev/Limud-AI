@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת עריכת תגיות ומטא-דאטה</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 2px solid #e74c3c;
+            border-radius: 8px;
+            background-color: #fff5f5;
+        }
+        
+        .test-section.passed {
+            border-color: #27ae60;
+            background-color: #f0fff4;
+        }
+        
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .test-steps {
+            list-style-type: decimal;
+            padding-right: 20px;
+        }
+        
+        .test-steps li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        
+        .expected-result {
+            background-color: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            border-right: 4px solid #3498db;
+        }
+        
+        .expected-result strong {
+            color: #2980b9;
+        }
+        
+        .checkbox-container {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .checkbox-container input[type="checkbox"] {
+            margin-left: 10px;
+            transform: scale(1.2);
+        }
+        
+        .checkbox-container label {
+            font-weight: bold;
+            color: #27ae60;
+        }
+        
+        .api-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .api-info h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        
+        .code-block {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 10px 0;
+            direction: ltr;
+            text-align: left;
+        }
+        
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 בדיקת עריכת תגיות ומטא-דאטה לאחר העלאה</h1>
+        
+        <div class="warning">
+            <strong>⚠️ הערה חשובה:</strong> בדיקה זו דורשת שתהיה מחובר למערכת ושיהיו לך קבצי מדיה שמורים (אודיו, ווידאו או מסמכים).
+        </div>
+
+        <div class="api-info">
+            <h3>🔧 API Endpoint שנוסף</h3>
+            <p>נוסף endpoint חדש לעדכון תגיות ומטא-דאטה:</p>
+            <div class="code-block">
+PUT /api/recordings/:id/tags-metadata
+Content-Type: application/json
+Authorization: Bearer [token]
+
+{
+  "tags": ["תגית1", "תגית2"],
+  "metadata": {
+    "fileName": "שם קובץ חדש",
+    "subject": "נושא חדש",
+    "description": "תיאור חדש"
+  }
+}
+            </div>
+        </div>
+
+        <!-- Test 1: Edit Button Visibility -->
+        <div class="test-section" id="test1">
+            <div class="test-title">🔍 בדיקה 1: הופעת כפתור עריכה</div>
+            <ol class="test-steps">
+                <li>פתח את לוח הבקרה של המורה</li>
+                <li>עבור לכרטיסיית "אודיו", "ווידאו" או "מסמכים"</li>
+                <li>חפש קבצי מדיה שמורים בסעיף "קבצים שמורים"</li>
+                <li>בדוק שבכל פריט מדיה יש כפתור "✏️ ערוך" לצד הכפתורים האחרים</li>
+            </ol>
+            <div class="expected-result">
+                <strong>תוצאה צפויה:</strong> כפתור "✏️ ערוך" מופיע בכל פריט מדיה שמור, ממוקם בין כפתור "👁️ צפה" לכפתור "מחק".
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="test1-checkbox" onchange="updateTestStatus('test1')">
+                <label for="test1-checkbox">✅ הבדיקה עברה בהצלחה</label>
+            </div>
+        </div>
+
+        <!-- Test 2: Edit Modal Opening -->
+        <div class="test-section" id="test2">
+            <div class="test-title">📝 בדיקה 2: פתיחת חלון עריכה</div>
+            <ol class="test-steps">
+                <li>לחץ על כפתור "✏️ ערוך" של אחד מפריטי המדיה</li>
+                <li>בדוק שנפתח חלון עריכה (modal)</li>
+                <li>ודא שהחלון מכיל:</li>
+                <ul>
+                    <li>כותרת עם אייקון המדיה המתאים (🎵/🎬/📄)</li>
+                    <li>פרטי הקובץ (שם, גודל, תאריך)</li>
+                    <li>שדה עריכת תגיות</li>
+                    <li>טופס מטא-דאטה</li>
+                    <li>כפתורי "ביטול" ו"שמור שינויים"</li>
+                </ul>
+            </ol>
+            <div class="expected-result">
+                <strong>תוצאה צפויה:</strong> חלון עריכה נפתח עם כל השדות הנדרשים, מוצגים הנתונים הקיימים של הקובץ.
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="test2-checkbox" onchange="updateTestStatus('test2')">
+                <label for="test2-checkbox">✅ הבדיקה עברה בהצלחה</label>
+            </div>
+        </div>
+
+        <!-- Test 3: Edit Tags -->
+        <div class="test-section" id="test3">
+            <div class="test-title">🏷️ בדיקה 3: עריכת תגיות</div>
+            <ol class="test-steps">
+                <li>בחלון העריכה, הוסף תגיות חדשות (לדוגמה: "בדיקה", "עריכה")</li>
+                <li>הסר תגיות קיימות אם יש</li>
+                <li>בדוק שהתגיות מתעדכנות בזמן אמת בשדה</li>
+                <li>לחץ על "שמור שינויים"</li>
+                <li>בדוק שמופיעה הודעת הצלחה</li>
+                <li>ודא שהחלון נסגר אחרי כמה שניות</li>
+            </ol>
+            <div class="expected-result">
+                <strong>תוצאה צפויה:</strong> התגיות מתעדכנות, הודעת הצלחה מופיעה, והחלון נסגר אוטומטית.
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="test3-checkbox" onchange="updateTestStatus('test3')">
+                <label for="test3-checkbox">✅ הבדיקה עברה בהצלחה</label>
+            </div>
+        </div>
+
+        <!-- Test 4: Edit Metadata -->
+        <div class="test-section" id="test4">
+            <div class="test-title">📋 בדיקה 4: עריכת מטא-דאטה</div>
+            <ol class="test-steps">
+                <li>פתח שוב את חלון העריכה של אותו קובץ</li>
+                <li>ערוך שדות במטא-דאטה:</li>
+                <ul>
+                    <li>שם הקובץ</li>
+                    <li>נושא</li>
+                    <li>תיאור</li>
+                    <li>מילות מפתח</li>
+                    <li>שדות נוספים לפי סוג המדיה</li>
+                </ul>
+                <li>לחץ על "שמור שינויים"</li>
+                <li>בדוק שהשינויים נשמרו</li>
+            </ol>
+            <div class="expected-result">
+                <strong>תוצאה צפויה:</strong> כל השדות ניתנים לעריכה והשינויים נשמרים בהצלחה.
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="test4-checkbox" onchange="updateTestStatus('test4')">
+                <label for="test4-checkbox">✅ הבדיקה עברה בהצלחה</label>
+            </div>
+        </div>
+
+        <!-- Test 5: Persistence After Refresh -->
+        <div class="test-section" id="test5">
+            <div class="test-title">🔄 בדיקה 5: שמירת שינויים לאחר רענון</div>
+            <ol class="test-steps">
+                <li>לאחר עריכת התגיות והמטא-דאטה, רענן את הדף (F5)</li>
+                <li>חזור לכרטיסיית המדיה הרלוונטית</li>
+                <li>פתח שוב את חלון העריכה של אותו קובץ</li>
+                <li>בדוק שכל השינויים שביצעת עדיין שמורים</li>
+                <li>בדוק גם שהתגיות מופיעות ברשימת התגיות הזמינות</li>
+            </ol>
+            <div class="expected-result">
+                <strong>תוצאה צפויה:</strong> כל השינויים נשמרו ומופיעים גם לאחר רענון הדף. עבור קבצים בשרת - השינויים נשמרו בבסיס הנתונים.
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="test5-checkbox" onchange="updateTestStatus('test5')">
+                <label for="test5-checkbox">✅ הבדיקה עברה בהצלחה</label>
+            </div>
+        </div>
+
+        <!-- Test 6: Server vs Local Files -->
+        <div class="test-section" id="test6">
+            <div class="test-title">🌐 בדיקה 6: קבצי שרת מול קבצים מקומיים</div>
+            <ol class="test-steps">
+                <li>בדוק עריכה של קובץ שהועלה לשרת (מסומן כ"הועלה לשרת")</li>
+                <li>בדוק עריכה של קובץ מקומי (אם יש)</li>
+                <li>ודא שבשני המקרים העריכה עובדת</li>
+                <li>עבור קבצי שרת - בדוק שהשינויים נשלחים לשרת</li>
+                <li>עבור קבצים מקומיים - בדוק שהשינויים נשמרים ב-localStorage</li>
+            </ol>
+            <div class="expected-result">
+                <strong>תוצאה צפויה:</strong> עריכה עובדת עבור שני סוגי הקבצים, עם שמירה במקום המתאים (שרת או localStorage).
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="test6-checkbox" onchange="updateTestStatus('test6')">
+                <label for="test6-checkbox">✅ הבדיקה עברה בהצלחה</label>
+            </div>
+        </div>
+
+        <!-- Test 7: Error Handling -->
+        <div class="test-section" id="test7">
+            <div class="test-title">⚠️ בדיקה 7: טיפול בשגיאות</div>
+            <ol class="test-steps">
+                <li>נתק את החיבור לאינטרנט (או השבת את השרת)</li>
+                <li>נסה לערוך קובץ שרת</li>
+                <li>בדוק שמופיעה הודעת שגיאה מתאימה</li>
+                <li>חבר חזרה את האינטרנט</li>
+                <li>נסה שוב - בדוק שהעריכה עובדת</li>
+            </ol>
+            <div class="expected-result">
+                <strong>תוצאה צפויה:</strong> הודעות שגיאה ברורות מופיעות כשיש בעיות חיבור, והמערכת חוזרת לעבוד כשהחיבור מתוקן.
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="test7-checkbox" onchange="updateTestStatus('test7')">
+                <label for="test7-checkbox">✅ הבדיקה עברה בהצלחה</label>
+            </div>
+        </div>
+
+        <!-- Test 8: Multiple Media Types -->
+        <div class="test-section" id="test8">
+            <div class="test-title">🎭 בדיקה 8: סוגי מדיה שונים</div>
+            <ol class="test-steps">
+                <li>בדוק עריכה בכרטיסיית האודיו (🎵)</li>
+                <li>בדוק עריכה בכרטיסיית הווידאו (🎬)</li>
+                <li>בדוק עריכה בכרטיסיית המסמכים (📄)</li>
+                <li>ודא שבכל סוג מדיה:</li>
+                <ul>
+                    <li>האייקון המתאים מופיע בחלון העריכה</li>
+                    <li>השדות המתאימים לסוג המדיה מופיעים</li>
+                    <li>העריכה עובדת כמו שצריך</li>
+                </ul>
+            </ol>
+            <div class="expected-result">
+                <strong>תוצאה צפויה:</strong> עריכה עובדת עבור כל סוגי המדיה עם התאמה לכל סוג.
+            </div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="test8-checkbox" onchange="updateTestStatus('test8')">
+                <label for="test8-checkbox">✅ הבדיקה עברה בהצלחה</label>
+            </div>
+        </div>
+
+        <div id="summary" class="success" style="display: none;">
+            <h3>🎉 כל הבדיקות עברו בהצלחה!</h3>
+            <p>תכונת עריכת התגיות והמטא-דאטה עובדת כמו שצריך בכל סוגי המדיה.</p>
+        </div>
+    </div>
+
+    <script>
+        function updateTestStatus(testId) {
+            const checkbox = document.getElementById(testId + '-checkbox');
+            const testSection = document.getElementById(testId);
+            
+            if (checkbox.checked) {
+                testSection.classList.add('passed');
+            } else {
+                testSection.classList.remove('passed');
+            }
+            
+            checkAllTests();
+        }
+        
+        function checkAllTests() {
+            const totalTests = 8;
+            let passedTests = 0;
+            
+            for (let i = 1; i <= totalTests; i++) {
+                const checkbox = document.getElementById('test' + i + '-checkbox');
+                if (checkbox && checkbox.checked) {
+                    passedTests++;
+                }
+            }
+            
+            const summary = document.getElementById('summary');
+            if (passedTests === totalTests) {
+                summary.style.display = 'block';
+                summary.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                summary.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

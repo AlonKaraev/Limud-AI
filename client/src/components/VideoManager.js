@@ -2,10 +2,14 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import CompressionControls from './CompressionControls';
 import ProgressBar from './ProgressBar';
-import TranscriptionStatus from './TranscriptionStatus';
+import BulkTranscriptionStatusManager from './BulkTranscriptionStatusManager';
 import MediaViewModal from './MediaViewModal';
 import TranscriptionModal from './TranscriptionModal';
 import TranscriptionSearch from './TranscriptionSearch';
+import TagInput from './TagInput';
+import MetadataForm from './MetadataForm';
+import FilterControls from './FilterControls';
+import EditMediaModal from './EditMediaModal';
 import { compressFile, supportsCompression, getCompressionRatio, shouldCompress } from '../utils/mediaCompression';
 
 const Container = styled.div`
@@ -279,8 +283,45 @@ const VideoManager = ({ t }) => {
   const [selectedMediaItem, setSelectedMediaItem] = useState(null);
   const [transcriptionModalOpen, setTranscriptionModalOpen] = useState(false);
   const [selectedRecordingForTranscription, setSelectedRecordingForTranscription] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedMediaItemForEdit, setSelectedMediaItemForEdit] = useState(null);
+  const [globalTags, setGlobalTags] = useState([]);
+  
+  // Filtering state
+  const [filteredSavedVideoFiles, setFilteredSavedVideoFiles] = useState([]);
 
-  // Load saved video files from server and localStorage on component mount
+  // Initialize filtered arrays when data changes
+  useEffect(() => {
+    setFilteredSavedVideoFiles(savedVideoFiles);
+  }, [savedVideoFiles]);
+
+  // Collect all available tags from all video files
+  useEffect(() => {
+    const allTags = new Set();
+    
+    // Tags from saved video files
+    savedVideoFiles.forEach(videoFile => {
+      if (videoFile.tags && Array.isArray(videoFile.tags)) {
+        videoFile.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    
+    // Tags from selected files
+    selectedFiles.forEach(fileData => {
+      if (fileData.tags && Array.isArray(fileData.tags)) {
+        fileData.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    
+    setGlobalTags(Array.from(allTags).sort());
+  }, [savedVideoFiles, selectedFiles]);
+
+  // Handle filter changes for saved video files
+  const handleSavedVideoFilesFilterChange = (filteredItems) => {
+    setFilteredSavedVideoFiles(filteredItems);
+  };
+
+  // Load saved video files from server on component mount
   useEffect(() => {
     loadSavedVideoFiles();
   }, []);
@@ -290,50 +331,66 @@ const VideoManager = ({ t }) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        // Fallback to localStorage if no token
+        console.log('No auth token found, skipping server video files load');
+        // Still try to load from localStorage
         loadFromLocalStorage();
         return;
       }
 
       // Load from server
-      const response = await fetch('/api/recordings?mediaType=video', {
+      const response = await fetch('/api/recordings', {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const serverVideos = (data.recordings || [])
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.log('Authentication failed, skipping server video files load');
+          loadFromLocalStorage();
+          return;
+        }
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success && data.recordings) {
+        // Filter only video recordings and transform to expected format
+        const videoRecordings = data.recordings
           .filter(recording => recording.media_type === 'video')
           .map(recording => ({
             id: recording.id,
             name: recording.metadata?.originalFileName || recording.filename,
             size: recording.file_size,
             type: recording.metadata?.type || 'video/mp4',
-            duration: recording.metadata?.duration,
+            duration: recording.metadata?.duration || recording.video_metadata?.duration,
             serverRecordingId: recording.id,
             filename: recording.filename,
             mediaType: recording.media_type,
-            processingStatus: recording.processing_status,
+            processingStatus: recording.processing_status || 'completed',
             savedAt: recording.created_at,
-            isFromServer: true
+            isFromServer: true,
+            tags: recording.tags || []
           }));
 
         // Also load from localStorage for backward compatibility
         const localVideos = loadFromLocalStorage(false);
         
         // Combine and deduplicate (server takes priority)
-        const allVideos = [...serverVideos];
+        const allVideos = [...videoRecordings];
         localVideos.forEach(localVideo => {
-          if (!serverVideos.find(sv => sv.name === localVideo.name)) {
+          if (!videoRecordings.find(sv => sv.name === localVideo.name)) {
             allVideos.push(localVideo);
           }
         });
 
         setSavedVideoFiles(allVideos);
+        console.log(`Loaded ${videoRecordings.length} video recordings from server`);
       } else {
-        // Fallback to localStorage
+        console.log('No video recordings found or invalid response format');
+        // Still try to load from localStorage
         loadFromLocalStorage();
       }
     } catch (error) {
@@ -344,18 +401,23 @@ const VideoManager = ({ t }) => {
   };
 
   // Load from localStorage (fallback)
-  const loadFromLocalStorage = (setSate = true) => {
+  const loadFromLocalStorage = (setState = true) => {
     try {
       const saved = localStorage.getItem('limud-ai-video-files');
       if (saved) {
         const parsedVideoFiles = JSON.parse(saved);
-        if (setSate) {
+        if (setState) {
           setSavedVideoFiles(parsedVideoFiles);
         }
         return parsedVideoFiles;
       }
     } catch (error) {
       console.error('Error loading saved video files from localStorage:', error);
+    }
+    
+    // Return empty array if no localStorage data
+    if (setState) {
+      setSavedVideoFiles([]);
     }
     return [];
   };
@@ -470,13 +532,21 @@ const VideoManager = ({ t }) => {
           formData.append('media', fileToProcess);
           formData.append('recordingId', `video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
           formData.append('metadata', JSON.stringify({
-            lessonName: processedName.replace(/\.[^/.]+$/, ""), // Remove file extension
-            subject: 'ווידאו',
-            description: `קובץ ווידאו: ${processedName}`,
+            lessonName: fileData.metadata?.fileName || processedName.replace(/\.[^/.]+$/, ""),
+            subject: fileData.metadata?.subject || 'ווידאו',
+            description: fileData.metadata?.description || `קובץ ווידאו: ${processedName}`,
             duration: fileData.duration,
             originalFileName: fileData.name,
-            compressionInfo
+            compressionInfo,
+            domain: fileData.metadata?.domain || '',
+            topic: fileData.metadata?.topic || '',
+            gradeLevel: fileData.metadata?.gradeLevel || '',
+            keywords: fileData.metadata?.keywords || '',
+            language: fileData.metadata?.language || 'עברית',
+            difficulty: fileData.metadata?.difficulty || 'בינוני',
+            author: fileData.metadata?.author || ''
           }));
+          formData.append('tags', JSON.stringify(fileData.tags || []));
 
           const token = localStorage.getItem('token');
           if (!token) {
@@ -816,6 +886,44 @@ const VideoManager = ({ t }) => {
     setSelectedRecordingForTranscription(null);
   };
 
+  // Handle edit media item
+  const handleEditMedia = (mediaItem) => {
+    setSelectedMediaItemForEdit(mediaItem);
+    setEditModalOpen(true);
+  };
+
+  // Handle close edit modal
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    setSelectedMediaItemForEdit(null);
+  };
+
+  // Handle save edited media
+  const handleSaveEditedMedia = (updatedMediaItem) => {
+    // Update the saved video files list
+    setSavedVideoFiles(prev => prev.map(video => 
+      video.id === updatedMediaItem.id ? updatedMediaItem : video
+    ));
+
+    // Update localStorage for local files
+    if (!updatedMediaItem.isFromServer) {
+      const updatedVideoFiles = savedVideoFiles.map(video => 
+        video.id === updatedMediaItem.id ? updatedMediaItem : video
+      );
+      saveVideoFilesToStorage(updatedVideoFiles);
+    }
+
+    // Update global tags
+    const allTags = new Set(globalTags);
+    if (updatedMediaItem.tags) {
+      updatedMediaItem.tags.forEach(tag => allTags.add(tag));
+    }
+    setGlobalTags(Array.from(allTags).sort());
+
+    setSuccess('הנתונים עודכנו בהצלחה');
+    setError('');
+  };
+
   return (
     <Container>
       <Header>
@@ -907,6 +1015,30 @@ const VideoManager = ({ t }) => {
                     animated={fileProgress[fileData.id].status === 'compressing' || fileProgress[fileData.id].status === 'saving'}
                   />
                 )}
+                <MetadataForm
+                  fileData={fileData}
+                  onChange={(metadata) => {
+                    setSelectedFiles(prev => prev.map(f => 
+                      f.id === fileData.id ? { ...f, metadata } : f
+                    ));
+                  }}
+                  disabled={isCompressing}
+                  mediaType="video"
+                />
+                <TagInput
+                  tags={fileData.tags || []}
+                  onChange={(newTags) => {
+                    setSelectedFiles(prev => prev.map(f => 
+                      f.id === fileData.id ? { ...f, tags: newTags } : f
+                    ));
+                    // Update global tags list
+                    const allTags = new Set(globalTags);
+                    newTags.forEach(tag => allTags.add(tag));
+                    setGlobalTags(Array.from(allTags));
+                  }}
+                  placeholder="הוסף תגיות לווידאו..."
+                  suggestions={globalTags}
+                />
               </FileInfo>
               <ButtonGroup>
                 <ViewButton onClick={() => handleViewMedia(fileData)} disabled={isCompressing}>
@@ -924,21 +1056,31 @@ const VideoManager = ({ t }) => {
         </div>
       )}
 
+      {/* Filter controls for saved video files */}
+      {savedVideoFiles.length > 0 && (
+        <FilterControls
+          mediaItems={savedVideoFiles}
+          onFilterChange={handleSavedVideoFilesFilterChange}
+          availableTags={globalTags}
+          mediaType="video"
+        />
+      )}
+
       {/* Search functionality for saved video files with transcriptions */}
-      {savedVideoFiles.filter(video => video.isFromServer && video.serverRecordingId).length > 0 && (
+      {filteredSavedVideoFiles.filter(video => video.isFromServer && video.serverRecordingId).length > 0 && (
         <TranscriptionSearch
-          mediaItems={savedVideoFiles.filter(video => video.isFromServer && video.serverRecordingId)}
+          mediaItems={filteredSavedVideoFiles.filter(video => video.isFromServer && video.serverRecordingId)}
           mediaType="video"
           onItemClick={handleViewTranscription}
         />
       )}
 
-      {savedVideoFiles.length > 0 && (
+      {filteredSavedVideoFiles.length > 0 && (
         <SavedVideoSection>
           <SavedVideoTitle>
-            🎬 קבצי ווידאו שמורים ({savedVideoFiles.length})
+            🎬 קבצי ווידאו שמורים ({filteredSavedVideoFiles.length})
           </SavedVideoTitle>
-          {savedVideoFiles.map(videoFile => {
+          {filteredSavedVideoFiles.map(videoFile => {
             const blobUrl = createBlobUrl(videoFile.base64Data);
             return (
               <SavedVideoItem key={videoFile.id}>
@@ -952,14 +1094,6 @@ const VideoManager = ({ t }) => {
                     {videoFile.duration && <span>משך: {formatDuration(videoFile.duration)}</span>}
                     <span>נשמר: {new Date(videoFile.savedAt).toLocaleDateString('he-IL')}</span>
                   </SavedVideoMeta>
-                  {videoFile.isFromServer && videoFile.serverRecordingId && (
-                    <TranscriptionStatus 
-                      recordingId={videoFile.serverRecordingId}
-                      onTranscriptionComplete={(transcription) => {
-                        console.log('Video transcription completed:', transcription);
-                      }}
-                    />
-                  )}
                   {blobUrl && (
                     <VideoPreview>
                       <VideoPlayer controls>
@@ -973,6 +1107,9 @@ const VideoManager = ({ t }) => {
                   <ViewButton onClick={() => handleViewMedia(videoFile)}>
                     👁️ צפה
                   </ViewButton>
+                  <ViewButton onClick={() => handleEditMedia(videoFile)}>
+                    ✏️ ערוך
+                  </ViewButton>
                   {videoFile.isFromServer && videoFile.serverRecordingId && (
                     <ViewButton onClick={() => handleViewTranscription(videoFile)}>
                       📝 צפה בתמלול
@@ -985,6 +1122,14 @@ const VideoManager = ({ t }) => {
               </SavedVideoItem>
             );
           })}
+          <BulkTranscriptionStatusManager
+            recordings={filteredSavedVideoFiles.filter(video => video.isFromServer && video.serverRecordingId).map(video => ({
+              id: video.serverRecordingId
+            }))}
+            onTranscriptionComplete={(transcription) => {
+              console.log('Video transcription completed:', transcription);
+            }}
+          />
         </SavedVideoSection>
       )}
 
@@ -1000,6 +1145,15 @@ const VideoManager = ({ t }) => {
         onClose={handleCloseTranscriptionModal}
         recordingId={selectedRecordingForTranscription?.serverRecordingId}
         recordingName={selectedRecordingForTranscription?.name}
+      />
+
+      <EditMediaModal
+        isOpen={editModalOpen}
+        onClose={handleCloseEditModal}
+        mediaItem={selectedMediaItemForEdit}
+        mediaType="video"
+        availableTags={globalTags}
+        onSave={handleSaveEditedMedia}
       />
     </Container>
   );

@@ -276,6 +276,16 @@ router.post('/upload', authenticate, upload.single('media'), async (req, res) =>
       }
     }
 
+    // Parse tags if provided
+    let parsedTags = [];
+    if (req.body.tags) {
+      try {
+        parsedTags = typeof req.body.tags === 'string' ? JSON.parse(req.body.tags) : req.body.tags;
+      } catch (error) {
+        console.warn('Error parsing tags:', error);
+      }
+    }
+
     // Determine media type
     const isVideo = req.file.mimetype.startsWith('video/');
     const mediaType = isVideo ? 'video' : 'audio';
@@ -307,7 +317,8 @@ router.post('/upload', authenticate, upload.single('media'), async (req, res) =>
       filePath: req.file.path,
       fileSize: req.file.size,
       metadata: parsedMetadata,
-      mediaType: mediaType
+      mediaType: mediaType,
+      tags: parsedTags
     });
 
     // Start automatic transcription for audio/video files
@@ -754,6 +765,158 @@ router.get('/:id/thumbnail/:size?', authenticate, async (req, res) => {
 });
 
 /**
+ * Get transcription status for multiple recordings (bulk)
+ */
+router.post('/bulk-transcription-status', authenticate, async (req, res) => {
+  try {
+    const { recordingIds } = req.body;
+    const userId = req.user.id;
+
+    if (!recordingIds || !Array.isArray(recordingIds) || recordingIds.length === 0) {
+      return res.status(400).json({
+        error: 'נדרש מערך של מזהי הקלטות',
+        code: 'MISSING_RECORDING_IDS'
+      });
+    }
+
+    // Limit to reasonable number of recordings to prevent abuse
+    if (recordingIds.length > 100) {
+      return res.status(400).json({
+        error: 'ניתן לבדוק עד 100 הקלטות בבת אחת',
+        code: 'TOO_MANY_RECORDINGS'
+      });
+    }
+
+    const { query } = require('../config/database-sqlite');
+    
+    // Get all recordings that belong to the user
+    const placeholders = recordingIds.map(() => '?').join(',');
+    const recordingsResult = await query(`
+      SELECT id, recording_id FROM recordings 
+      WHERE (id IN (${placeholders}) OR recording_id IN (${placeholders})) AND user_id = ?
+    `, [...recordingIds, ...recordingIds, userId]);
+
+    const validRecordingIds = recordingsResult.rows.map(r => r.id);
+    
+    if (validRecordingIds.length === 0) {
+      return res.json({
+        success: true,
+        statuses: {}
+      });
+    }
+
+    // Get transcription jobs for all valid recordings
+    const jobPlaceholders = validRecordingIds.map(() => '?').join(',');
+    const jobsResult = await query(`
+      SELECT 
+        recording_id,
+        status,
+        ai_provider,
+        started_at,
+        completed_at,
+        error_message,
+        created_at,
+        ROW_NUMBER() OVER (PARTITION BY recording_id ORDER BY created_at DESC) as rn
+      FROM ai_processing_jobs 
+      WHERE recording_id IN (${jobPlaceholders}) AND user_id = ? AND job_type = 'transcription'
+    `, [...validRecordingIds, userId]);
+
+    // Filter to get only the latest job for each recording
+    const latestJobs = jobsResult.rows.filter(job => job.rn === 1);
+
+    // Get completed transcriptions
+    const completedRecordingIds = latestJobs
+      .filter(job => job.status === 'completed')
+      .map(job => job.recording_id);
+
+    let transcriptions = [];
+    if (completedRecordingIds.length > 0) {
+      const transcriptionPlaceholders = completedRecordingIds.map(() => '?').join(',');
+      const transcriptionsResult = await query(`
+        SELECT 
+          recording_id,
+          transcription_text,
+          language_detected,
+          confidence_score,
+          processing_duration,
+          created_at
+        FROM transcriptions 
+        WHERE recording_id IN (${transcriptionPlaceholders}) AND user_id = ?
+      `, [...completedRecordingIds, userId]);
+      
+      transcriptions = transcriptionsResult.rows;
+    }
+
+    // Build response object
+    const statuses = {};
+    
+    // Map original recording IDs to internal IDs
+    const recordingIdMap = {};
+    recordingsResult.rows.forEach(r => {
+      recordingIdMap[r.id] = r.recording_id || r.id;
+    });
+
+    recordingIds.forEach(originalId => {
+      // Find the internal ID for this recording
+      const recordingRow = recordingsResult.rows.find(r => 
+        r.id.toString() === originalId.toString() || r.recording_id === originalId
+      );
+      
+      if (!recordingRow) {
+        statuses[originalId] = {
+          transcriptionStatus: 'not_found',
+          job: null,
+          transcription: null
+        };
+        return;
+      }
+
+      const internalId = recordingRow.id;
+      const job = latestJobs.find(j => j.recording_id === internalId);
+      const transcription = transcriptions.find(t => t.recording_id === internalId);
+
+      let transcriptionStatus = 'not_started';
+      let jobDetails = null;
+
+      if (job) {
+        transcriptionStatus = job.status;
+        jobDetails = {
+          status: job.status,
+          aiProvider: job.ai_provider,
+          startedAt: job.started_at,
+          completedAt: job.completed_at,
+          errorMessage: job.error_message,
+          createdAt: job.created_at
+        };
+      }
+
+      statuses[originalId] = {
+        transcriptionStatus,
+        job: jobDetails,
+        transcription: transcription ? {
+          text: transcription.transcription_text,
+          language: transcription.language_detected,
+          confidenceScore: transcription.confidence_score,
+          processingDuration: transcription.processing_duration,
+          createdAt: transcription.created_at
+        } : null
+      };
+    });
+
+    res.json({
+      success: true,
+      statuses
+    });
+  } catch (error) {
+    console.error('Error fetching bulk transcription status:', error);
+    res.status(500).json({
+      error: 'שגיאה בטעינת סטטוס התמלול',
+      code: 'BULK_TRANSCRIPTION_STATUS_ERROR'
+    });
+  }
+});
+
+/**
  * Get transcription status for a recording
  */
 router.get('/:id/transcription-status', authenticate, async (req, res) => {
@@ -1071,6 +1234,89 @@ router.get('/:id/transcription/history', authenticate, async (req, res) => {
 });
 
 /**
+ * Update recording tags and metadata
+ */
+router.put('/:id/tags-metadata', authenticate, async (req, res) => {
+  try {
+    const recordingId = req.params.id;
+    const userId = req.user.id;
+    const { tags, metadata } = req.body;
+
+    const recording = await getRecordingById(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    const { run } = require('../config/database-sqlite');
+
+    // Prepare update data
+    const updates = [];
+    const params = [];
+
+    if (tags !== undefined) {
+      updates.push('tags = ?');
+      params.push(JSON.stringify(tags));
+    }
+
+    if (metadata !== undefined) {
+      // Merge with existing metadata
+      const currentMetadata = recording.metadata || {};
+      const updatedMetadata = { ...currentMetadata, ...metadata };
+      updates.push('metadata = ?');
+      params.push(JSON.stringify(updatedMetadata));
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        error: 'לא סופקו נתונים לעדכון',
+        code: 'NO_UPDATE_DATA'
+      });
+    }
+
+    updates.push('updated_at = datetime(\'now\')');
+    params.push(recordingId, userId);
+
+    const sql = `
+      UPDATE recordings 
+      SET ${updates.join(', ')}
+      WHERE (id = ? OR recording_id = ?) AND user_id = ?
+    `;
+
+    const result = await run(sql, params);
+
+    if (result.changes === 0) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה או לא ניתן לעדכן',
+        code: 'UPDATE_FAILED'
+      });
+    }
+
+    // Get updated recording
+    const updatedRecording = await getRecordingById(recordingId, userId);
+
+    res.json({
+      success: true,
+      message: 'תגיות ומטא-דאטה עודכנו בהצלחה',
+      recording: {
+        id: updatedRecording.id,
+        tags: updatedRecording.tags || [],
+        metadata: updatedRecording.metadata || {},
+        updatedAt: updatedRecording.updated_at
+      }
+    });
+  } catch (error) {
+    console.error('Error updating recording tags/metadata:', error);
+    res.status(500).json({
+      error: 'שגיאה בעדכון תגיות ומטא-דאטה',
+      code: 'UPDATE_ERROR'
+    });
+  }
+});
+
+/**
  * Delete recording
  */
 router.delete('/:id', authenticate, async (req, res) => {
@@ -1120,7 +1366,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 });
 
 // Database helper functions
-async function saveRecordingToDatabase({ userId, recordingId, filename, filePath, fileSize, metadata, mediaType = 'audio' }) {
+async function saveRecordingToDatabase({ userId, recordingId, filename, filePath, fileSize, metadata, mediaType = 'audio', tags = [] }) {
   const { query, run } = require('../config/database-sqlite');
   
   // Check which columns exist in the recordings table
@@ -1176,6 +1422,12 @@ async function saveRecordingToDatabase({ userId, recordingId, filename, filePath
     videoValues.push(JSON.stringify({}));
   }
   
+  // Add tags column if it exists
+  if (existingColumns.includes('tags')) {
+    videoColumns.push('tags');
+    videoValues.push(JSON.stringify(tags));
+  }
+  
   const allColumns = baseColumns.concat(videoColumns);
   const allValues = baseValues.concat(videoValues);
   const placeholders = allValues.map((val, index) => 
@@ -1221,7 +1473,7 @@ async function getUserRecordings({ userId, page, limit, search, sortBy, sortOrde
   
   // Build SELECT clause based on existing columns
   const baseColumns = ['id', 'recording_id', 'filename', 'file_size', 'metadata', 'created_at', 'updated_at'];
-  const videoColumns = ['media_type', 'processing_status', 'thumbnail_path', 'video_metadata'];
+  const videoColumns = ['media_type', 'processing_status', 'thumbnail_path', 'video_metadata', 'tags'];
   
   const selectColumns = baseColumns.concat(
     videoColumns.filter(col => existingColumns.includes(col))
@@ -1278,7 +1530,8 @@ async function getUserRecordings({ userId, page, limit, search, sortBy, sortOrde
       processing_status: r.processing_status || 'completed',
       thumbnail_path: r.thumbnail_path || null,
       metadata: JSON.parse(r.metadata || '{}'),
-      video_metadata: r.video_metadata ? JSON.parse(r.video_metadata) : {}
+      video_metadata: r.video_metadata ? JSON.parse(r.video_metadata) : {},
+      tags: r.tags ? JSON.parse(r.tags) : []
     })),
     page,
     limit,

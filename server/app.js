@@ -69,9 +69,14 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Serve uploaded files as static content
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/recordings', require('./routes/recordings'));
+app.use('/api/documents', require('./routes/documents'));
+app.use('/api/images', require('./routes/images'));
 app.use('/api/ai-content', require('./routes/ai-content'));
 app.use('/api/content-sharing', require('./routes/content-sharing'));
 app.use('/api/principal', require('./routes/principal'));

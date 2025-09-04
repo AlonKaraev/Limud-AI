@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 
 const ModalOverlay = styled.div`
@@ -171,32 +171,73 @@ const DownloadButton = styled.button`
 `;
 
 const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
+  // Use refs to track cleanup state and prevent memory leaks
+  const blobUrlsRef = useRef(new Set());
+  const isClosingRef = useRef(false);
+  const [loading, setLoading] = useState(false);
+
+  // Optimized cleanup function
+  const cleanupBlobUrls = useCallback(() => {
+    blobUrlsRef.current.forEach(url => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.warn('Error revoking blob URL:', error);
+      }
+    });
+    blobUrlsRef.current.clear();
+  }, []);
+
+  // Handle modal close with proper cleanup
+  const handleClose = useCallback(() => {
+    if (isClosingRef.current) return;
+    
+    isClosingRef.current = true;
+    cleanupBlobUrls();
+    
+    // Small delay to ensure cleanup completes before state updates
+    setTimeout(() => {
+      onClose();
+      isClosingRef.current = false;
+    }, 50);
+  }, [onClose, cleanupBlobUrls]);
+
   // Handle escape key press
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape') {
-        onClose();
+      if (e.key === 'Escape' && isOpen && !isClosingRef.current) {
+        handleClose();
       }
     };
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
-  // Handle overlay click
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
+  // Cleanup on unmount or modal close
+  useEffect(() => {
+    if (!isOpen) {
+      cleanupBlobUrls();
     }
-  };
+
+    return () => {
+      cleanupBlobUrls();
+    };
+  }, [isOpen, cleanupBlobUrls]);
+
+  // Handle overlay click with debouncing
+  const handleOverlayClick = useCallback((e) => {
+    if (e.target === e.currentTarget && !isClosingRef.current) {
+      handleClose();
+    }
+  }, [handleClose]);
 
   if (!isOpen || !mediaItem) return null;
 
@@ -226,7 +267,10 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
     return filename.split('.').pop().toUpperCase();
   };
 
-  const createBlobUrl = (base64Data) => {
+  // Optimized blob URL creation with proper cleanup tracking
+  const createBlobUrl = useCallback((base64Data) => {
+    if (isClosingRef.current) return null;
+    
     try {
       const byteCharacters = atob(base64Data.split(',')[1]);
       const byteNumbers = new Array(byteCharacters.length);
@@ -234,23 +278,29 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
       const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: mediaItem.type });
-      return URL.createObjectURL(blob);
+      const blob = new Blob([byteArray], { type: mediaItem?.type });
+      const url = URL.createObjectURL(blob);
+      
+      // Track the blob URL for cleanup
+      blobUrlsRef.current.add(url);
+      
+      return url;
     } catch (error) {
       console.error('Error creating blob URL:', error);
       return null;
     }
-  };
+  }, [mediaItem?.type]);
 
-  const downloadFile = () => {
+  // Optimized download function
+  const downloadFile = useCallback(() => {
+    if (isClosingRef.current) return;
+    
     let url;
-    let filename = mediaItem.name;
+    let filename = mediaItem?.name || 'download';
 
-    if (mediaItem.base64Data) {
-      // For locally saved files
+    if (mediaItem?.base64Data) {
       url = createBlobUrl(mediaItem.base64Data);
-    } else if (mediaItem.url) {
-      // For selected files
+    } else if (mediaItem?.url) {
       url = mediaItem.url;
     } else {
       console.error('No download URL available');
@@ -261,16 +311,20 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
       const link = document.createElement('a');
       link.href = url;
       link.download = filename;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
       // Clean up blob URL if we created it
-      if (mediaItem.base64Data) {
-        URL.revokeObjectURL(url);
+      if (mediaItem?.base64Data && blobUrlsRef.current.has(url)) {
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          blobUrlsRef.current.delete(url);
+        }, 1000);
       }
     }
-  };
+  }, [mediaItem, createBlobUrl]);
 
   const renderMediaContent = () => {
     let mediaUrl;
@@ -365,7 +419,7 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
       <ModalContent>
         <ModalHeader>
           <ModalTitle>{getModalTitle()}</ModalTitle>
-          <CloseButton onClick={onClose}>
+          <CloseButton onClick={handleClose}>
             ✕ סגור
           </CloseButton>
         </ModalHeader>

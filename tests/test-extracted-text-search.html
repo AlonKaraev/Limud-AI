@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת חיפוש בטקסט מחולץ - Limud AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        .test-section {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 0.5rem;
+        }
+
+        .test-case {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .test-case h3 {
+            color: #495057;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .test-steps {
+            list-style: none;
+            padding: 0;
+        }
+
+        .test-steps li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f1f3f4;
+            position: relative;
+            padding-right: 2rem;
+        }
+
+        .test-steps li:before {
+            content: "✓";
+            position: absolute;
+            right: 0;
+            top: 0.5rem;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .test-steps li:last-child {
+            border-bottom: none;
+        }
+
+        .expected-result {
+            background: #e8f5e8;
+            border: 1px solid #c3e6c3;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .expected-result strong {
+            color: #2e7d32;
+        }
+
+        .implementation-notes {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .implementation-notes h3 {
+            color: #856404;
+            margin-bottom: 0.5rem;
+        }
+
+        .implementation-notes ul {
+            margin-right: 1rem;
+        }
+
+        .implementation-notes li {
+            margin-bottom: 0.5rem;
+            color: #856404;
+        }
+
+        .api-endpoints {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .api-endpoints h3 {
+            color: #0c5460;
+            margin-bottom: 0.5rem;
+        }
+
+        .api-endpoints code {
+            background: #f8f9fa;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #495057;
+        }
+
+        .search-demo {
+            background: #f0f8ff;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .search-demo h3 {
+            color: #2e7d32;
+            margin-bottom: 1rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            direction: rtl;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .mock-results {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .mock-document {
+            border-bottom: 1px solid #eee;
+            padding: 0.75rem 0;
+        }
+
+        .mock-document:last-child {
+            border-bottom: none;
+        }
+
+        .mock-document h4 {
+            color: #333;
+            margin-bottom: 0.25rem;
+        }
+
+        .mock-document .highlight {
+            background: #ffeb3b;
+            padding: 0.1rem 0.2rem;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+
+        .mock-document .meta {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 בדיקת חיפוש בטקסט מחולץ</h1>
+            <p>מדריך בדיקה מקיף לפונקציונליות חיפוש בתוכן מחולץ ממסמכים ותמונות</p>
+        </div>
+
+        <div class="content">
+            <div class="implementation-notes">
+                <h3>📋 הערות יישום</h3>
+                <ul>
+                    <li><strong>FilterControls.js</strong> - עודכן לכלול חיפוש בטקסט מחולץ ותמלולים</li>
+                    <li><strong>DocumentsManager.js</strong> - עודכן לטעון טקסט מחולץ בעת טעינת מסמכים</li>
+                    <li><strong>חיפוש משופר</strong> - כולל חיפוש בשם קובץ, תיאור, מילות מפתח, וטקסט מחולץ</li>
+                    <li><strong>תמיכה בתמונות</strong> - חיפוש בטקסט שחולץ מתמונות באמצעות OCR</li>
+                </ul>
+            </div>
+
+            <div class="api-endpoints">
+                <h3>🔗 נקודות קצה API רלוונטיות</h3>
+                <p><code>GET /api/documents</code> - טעינת רשימת מסמכים</p>
+                <p><code>GET /api/documents/:id/text</code> - קבלת טקסט מחולץ למסמך</p>
+                <p><code>GET /api/images/:id/text</code> - קבלת טקסט מחולץ מתמונה</p>
+                <p><code>POST /api/documents/:id/extract</code> - הפעלת חילוץ טקסט ידני</p>
+            </div>
+
+            <div class="search-demo">
+                <h3>🎯 דמו חיפוש אינטראקטיבי</h3>
+                <input type="text" class="search-input" placeholder="הקלד כאן כדי לחפש במסמכים..." id="searchInput">
+                <div class="mock-results" id="mockResults">
+                    <div class="mock-document">
+                        <h4>📄 מסמך מתמטיקה - כיתה ח.pdf</h4>
+                        <p>...משוואות ריבועיות הן משוואות מהצורה ax² + bx + c = 0...</p>
+                        <div class="meta">
+                            גודל: 2.3MB • הועלה: 15/03/2024 • 
+                            <span class="status-indicator status-completed">טקסט חולץ</span>
+                        </div>
+                    </div>
+                    <div class="mock-document">
+                        <h4>🖼️ תרשים_גיאומטריה.jpg</h4>
+                        <p>...משולש ישר זווית עם צלעות a, b, c כאשר c היא התחתית...</p>
+                        <div class="meta">
+                            גודל: 1.8MB • הועלה: 12/03/2024 • 
+                            <span class="status-indicator status-completed">OCR הושלם</span>
+                        </div>
+                    </div>
+                    <div class="mock-document">
+                        <h4>📄 היסטוריה_מלחמת_העולם.docx</h4>
+                        <p>...המלחמה החלה ב-1939 והסתיימה ב-1945...</p>
+                        <div class="meta">
+                            גודל: 4.1MB • הועלה: 10/03/2024 • 
+                            <span class="status-indicator status-pending">מחלץ טקסט...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h2>🧪 בדיקה 1: חיפוש בטקסט מחולץ ממסמכים</h2>
+                <div class="test-case">
+                    <h3>מטרה: לוודא שחיפוש עובד בטקסט שחולץ ממסמכי PDF, DOC, ו-TXT</h3>
+                    <ul class="test-steps">
+                        <li>העלה מסמך PDF עם תוכן טקסט (לדוגמה: מאמר או מצגת)</li>
+                        <li>המתן עד שסטטוס החילוץ יהיה "הושלם"</li>
+                        <li>בחלון החיפוש, הקלד מילה שמופיעה בתוכן המסמך</li>
+                        <li>ודא שהמסמך מופיע ברשימת התוצאות</li>
+                        <li>נסה מילים שונות מהטקסט המחולץ</li>
+                    </ul>
+                    <div class="expected-result">
+                        <strong>תוצאה צפויה:</strong> המסמך מופיע בתוצאות החיפוש כאשר מחפשים מילים מהטקסט המחולץ. החיפוש עובד גם עבור מילים בעברית ובאנגלית.
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h2>🖼️ בדיקה 2: חיפוש בטקסט מחולץ מתמונות</h2>
+                <div class="test-case">
+                    <h3>מטרה: לוודא שחיפוש עובד בטקסט שחולץ מתמונות באמצעות OCR</h3>
+                    <ul class="test-steps">
+                        <li>העלה תמונה המכילה טקסט (צילום מסך, תמונה של דף, וכו')</li>
+                        <li>המתן עד שסטטוס OCR יהיה "הושלם"</li>
+                        <li>לחץ על "צפה בטקסט" כדי לראות את הטקסט שחולץ</li>
+                        <li>בחלון החיפוש, הקלד מילה מהטקסט שחולץ מהתמונה</li>
+                        <li>ודא שהתמונה מופיעה ברשימת התוצאות</li>
+                    </ul>
+                    <div class="expected-result">
+                        <strong>תוצאה צפויה:</strong> התמונה מופיעה בתוצאות החיפוש כאשר מחפשים מילים מהטקסט שחולץ באמצעות OCR. החיפוש עובד גם עבור טקסט בעברית ובאנגלית.
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h2>🔍 בדיקה 3: הדגשת תוצאות חיפוש</h2>
+                <div class="test-case">
+                    <h3>מטרה: לוודא שמילות החיפוש מודגשות בתוצאות</h3>
+                    <ul class="test-steps">
+                        <li>בצע חיפוש עבור מילה ספציפית</li>
+                        <li>בדוק שהמילה מודגשת בתצוגה המקדימה של המסמכים</li>
+                        <li>לחץ על "צפה בטקסט" למסמך עם תוצאות</li>
+                        <li>ודא שהמילה מודגשת גם בחלון הטקסט המלא</li>
+                        <li>נסה חיפושים עם מספר מילים</li>
+                    </ul>
+                    <div class="expected-result">
+                        <strong>תוצאה צפויה:</strong> מילות החיפוש מודגשות בצהוב או בצבע בולט ברשימת התוצאות ובחלון הטקסט המלא. ההדגשה עובדת גם עבור חיפושים מרובי מילים.
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h2>📊 בדיקה 4: חיפוש משולב (מסמכים + תמונות)</h2>
+                <div class="test-case">
+                    <h3>מטרה: לוודא שחיפוש עובד על פני מסמכים ותמונות יחד</h3>
+                    <ul class="test-steps">
+                        <li>העלה מסמך PDF ותמונה המכילים מילה זהה</li>
+                        <li>המתן עד שחילוץ הטקסט יושלם עבור שניהם</li>
+                        <li>חפש את המילה המשותפת</li>
+                        <li>ודא ששני הפריטים מופיעים בתוצאות</li>
+                        <li>בדוק שהתוצאות ממוינות לפי רלוונטיות</li>
+                    </ul>
+                    <div class="expected-result">
+                        <strong>תוצאה צפויה:</strong> גם המסמך וגם התמונה מופיעים בתוצאות החיפוש. התוצאות ממוינות לפי רלוונטיות (מספר התאמות, דיוק OCR, וכו').
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h2>⚡ בדיקה 5: ביצועי חיפוש</h2>
+                <div class="test-case">
+                    <h3>מטרה: לוודא שהחיפוש מהיר ויעיל גם עם מסמכים רבים</h3>
+                    <ul class="test-steps">
+                        <li>העלה 10-15 מסמכים ותמונות שונים</li>
+                        <li>המתן עד שחילוץ הטקסט יושלם עבור כולם</li>
+                        <li>בצע חיפושים שונים ומדוד זמן תגובה</li>
+                        <li>ודא שהחיפוש מתחיל תוך 300ms מהקלדה</li>
+                        <li>בדוק שהתוצאות מתעדכנות בזמן אמת</li>
+                    </ul>
+                    <div class="expected-result">
+                        <strong>תוצאה צפויה:</strong> החיפוש מהיר ומגיב תוך פחות מ-300ms. התוצאות מתעדכנות בזמן אמת כשמקלידים. אין עיכובים או תקיעות בממשק.
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h2>🌐 בדיקה 6: תמיכה רב-לשונית</h2>
+                <div class="test-case">
+                    <h3>מטרה: לוודא שחיפוש עובד בעברית ובאנגלית</h3>
+                    <ul class="test-steps">
+                        <li>העלה מסמכים בעברית ובאנגלית</li>
+                        <li>העלה תמונות עם טקסט בשתי השפות</li>
+                        <li>בצע חיפושים בעברית ובאנגלית</li>
+                        <li>ודא שהחיפוש עובד בשתי השפות</li>
+                        <li>בדוק חיפוש מעורב (מילים בשתי השפות)</li>
+                    </ul>
+                    <div class="expected-result">
+                        <strong>תוצאה צפויה:</strong> החיפוש עובד בצורה מושלמת בעברית ובאנגלית. תמיכה בחיפוש מעורב. זיהוי נכון של כיוון הטקסט (RTL/LTR).
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h2>🚫 בדיקה 7: טיפול בשגיאות</h2>
+                <div class="test-case">
+                    <h3>מטרה: לוודא טיפול נכון בשגיאות וחיפושים ללא תוצאות</h3>
+                    <ul class="test-steps">
+                        <li>חפש מילה שלא קיימת באף מסמך</li>
+                        <li>ודא שמוצגת הודעה "לא נמצאו תוצאות"</li>
+                        <li>בצע חיפוש במסמך שחילוץ הטקסט נכשל עבורו</li>
+                        <li>ודא שהמסמך לא מופיע בתוצאות</li>
+                        <li>בדוק חיפוש עם תווים מיוחדים</li>
+                    </ul>
+                    <div class="expected-result">
+                        <strong>תוצאה צפויה:</strong> הודעות שגיאה ברורות ומועילות. חיפושים ללא תוצאות מטופלים בצורה נאותה. אין קריסות או שגיאות JavaScript.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>📝 מדריך בדיקה זה נוצר עבור Limud AI - מערכת ניהול תוכן חינוכי</p>
+            <p>🔧 לבעיות טכניות או שאלות, פנה לצוות הפיתוח</p>
+        </div>
+    </div>
+
+    <script>
+        // Demo search functionality
+        const searchInput = document.getElementById('searchInput');
+        const mockResults = document.getElementById('mockResults');
+        
+        const mockDocuments = [
+            {
+                title: "📄 מסמך מתמטיקה - כיתה ח.pdf",
+                content: "משוואות ריבועיות הן משוואות מהצורה ax² + bx + c = 0",
+                meta: "גודל: 2.3MB • הועלה: 15/03/2024",
+                status: "completed",
+                keywords: ["משוואות", "ריבועיות", "מתמטיקה", "כיתה", "ax²", "bx", "c"]
+            },
+            {
+                title: "🖼️ תרשים_גיאומטריה.jpg",
+                content: "משולש ישר זווית עם צלעות a, b, c כאשר c היא התחתית",
+                meta: "גודל: 1.8MB • הועלה: 12/03/2024",
+                status: "completed",
+                keywords: ["משולש", "ישר", "זווית", "צלעות", "גיאומטריה", "תחתית"]
+            },
+            {
+                title: "📄 היסטוריה_מלחמת_העולם.docx",
+                content: "המלחמה החלה ב-1939 והסתיימה ב-1945",
+                meta: "גודל: 4.1MB • הועלה: 10/03/2024",
+                status: "pending",
+                keywords: ["מלחמה", "היסטוריה", "1939", "1945", "עולם"]
+            }
+        ];
+
+        function highlightText(text, searchTerm) {
+            if (!searchTerm) return text;
+            const regex = new RegExp(`(${searchTerm})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        function filterDocuments(searchTerm) {
+            if (!searchTerm) return mockDocuments;
+            
+            return mockDocuments.filter(doc => {
+                return doc.keywords.some(keyword => 
+                    keyword.toLowerCase().includes(searchTerm.toLowerCase())
+                ) || doc.title.toLowerCase().includes(searchTerm.toLowerCase());
+            });
+        }
+
+        function renderResults(documents, searchTerm) {
+            if (documents.length === 0) {
+                mockResults.innerHTML = '<div style="text-align: center; padding: 2rem; color: #666;">לא נמצאו תוצאות עבור החיפוש</div>';
+                return;
+            }
+
+            mockResults.innerHTML = documents.map(doc => `
+                <div class="mock-document">
+                    <h4>${highlightText(doc.title, searchTerm)}</h4>
+                    <p>...${highlightText(doc.content, searchTerm)}...</p>
+                    <div class="meta">
+                        ${doc.meta} • 
+                        <span class="status-indicator status-${doc.status}">
+                            ${doc.status === 'completed' ? 'טקסט חולץ' : 'מחלץ טקסט...'}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.trim();
+            const filteredDocs = filterDocuments(searchTerm);
+            renderResults(filteredDocs, searchTerm);
+        });
+
+        // Initialize with all documents
+        renderResults(mockDocuments, '');
+    </script>
+</body>
+</html>

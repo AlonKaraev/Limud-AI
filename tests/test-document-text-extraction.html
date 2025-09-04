@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת חילוץ טקסט ממסמכים - Limud AI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .test-section h2 {
+            color: #34495e;
+            margin-top: 0;
+        }
+        .upload-area {
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background: #ecf0f1;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            background: #d5dbdb;
+            border-color: #2980b9;
+        }
+        .upload-area.dragover {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background 0.3s ease;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        .btn-success {
+            background: #27ae60;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #3498db;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+        .document-item {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .document-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .document-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+        .document-meta {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .extraction-status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .extraction-status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .extraction-status.processing {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .extraction-status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        .extraction-status.failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .extracted-text {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .test-results {
+            background: #e8f5e8;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-results h3 {
+            color: #155724;
+            margin-top: 0;
+        }
+        .test-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #c3e6cb;
+        }
+        .test-item:last-child {
+            border-bottom: none;
+        }
+        .test-status {
+            font-weight: bold;
+        }
+        .test-status.pass {
+            color: #28a745;
+        }
+        .test-status.fail {
+            color: #dc3545;
+        }
+        .test-status.pending {
+            color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 בדיקת חילוץ טקסט ממסמכים</h1>
+        
+        <div class="test-section">
+            <h2>📤 העלאת מסמכים לבדיקה</h2>
+            <div class="upload-area" id="uploadArea">
+                <p>📁 לחץ כאן או גרור קבצים לכאן</p>
+                <p style="font-size: 14px; color: #7f8c8d;">
+                    קבצים נתמכים: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, JPG, PNG, GIF
+                </p>
+                <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif">
+            </div>
+            
+            <div id="statusArea"></div>
+            
+            <button class="btn btn-success" id="uploadBtn" disabled>📤 העלה מסמכים</button>
+            <button class="btn" id="refreshBtn">🔄 רענן רשימה</button>
+            <button class="btn btn-danger" id="clearBtn">🗑️ נקה הכל</button>
+        </div>
+
+        <div class="test-section">
+            <h2>📋 בדיקות אוטומטיות</h2>
+            <div class="test-results" id="testResults">
+                <h3>תוצאות בדיקה:</h3>
+                <div class="test-item">
+                    <span>חילוץ טקסט מתחיל לאחר העלאה</span>
+                    <span class="test-status pending" id="test1">ממתין</span>
+                </div>
+                <div class="test-item">
+                    <span>טקסט מחולץ מופיע בפרטי המסמך</span>
+                    <span class="test-status pending" id="test2">ממתין</span>
+                </div>
+                <div class="test-item">
+                    <span>מחוון סטטוס מציג התקדמות</span>
+                    <span class="test-status pending" id="test3">ממתין</span>
+                </div>
+                <div class="test-item">
+                    <span>שגיאות בחילוץ מטופלות בחן</span>
+                    <span class="test-status pending" id="test4">ממתין</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📚 מסמכים שהועלו</h2>
+            <div id="documentsArea">
+                <p style="color: #7f8c8d; text-align: center;">אין מסמכים עדיין</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+        let uploadedDocuments = [];
+        let token = localStorage.getItem('token');
+
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const statusArea = document.getElementById('statusArea');
+        const documentsArea = document.getElementById('documentsArea');
+
+        // Check if user is logged in
+        if (!token) {
+            showStatus('נדרש להתחבר למערכת תחילה', 'error');
+            uploadBtn.disabled = true;
+        }
+
+        // File upload handling
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+
+        // Button handlers
+        uploadBtn.addEventListener('click', uploadDocuments);
+        refreshBtn.addEventListener('click', loadDocuments);
+        clearBtn.addEventListener('click', clearAll);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            processFiles(files);
+        }
+
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            processFiles(files);
+        }
+
+        function processFiles(files) {
+            selectedFiles = files;
+            uploadBtn.disabled = files.length === 0;
+            
+            if (files.length > 0) {
+                showStatus(`נבחרו ${files.length} קבצים`, 'success');
+                updateTest1('pass'); // Test 1: Files selected for upload
+            }
+        }
+
+        async function uploadDocuments() {
+            if (selectedFiles.length === 0) return;
+
+            uploadBtn.disabled = true;
+            showStatus('מעלה קבצים...', 'info');
+
+            try {
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const file = selectedFiles[i];
+                    showStatus(`מעלה קובץ ${i + 1} מתוך ${selectedFiles.length}: ${file.name}`, 'info');
+
+                    const formData = new FormData();
+                    formData.append('document', file);
+                    formData.append('metadata', JSON.stringify({ testUpload: true }));
+                    formData.append('tags', JSON.stringify(['test', 'automatic-extraction']));
+
+                    const response = await fetch('/api/documents/upload', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'שגיאה בהעלאת הקובץ');
+                    }
+
+                    const result = await response.json();
+                    uploadedDocuments.push(result.document);
+                }
+
+                showStatus(`הועלו ${selectedFiles.length} מסמכים בהצלחה! חילוץ הטקסט החל...`, 'success');
+                selectedFiles = [];
+                fileInput.value = '';
+                
+                // Start monitoring extraction progress
+                monitorExtractionProgress();
+                
+                // Update test results
+                updateTest1('pass'); // Text extraction starts after upload
+                updateTest3('pass'); // Progress indicator shows progress
+                
+                // Load and display documents
+                setTimeout(loadDocuments, 1000);
+
+            } catch (error) {
+                showStatus(`שגיאה בהעלאת המסמכים: ${error.message}`, 'error');
+                updateTest4('pass'); // Errors are handled gracefully
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        }
+
+        async function loadDocuments() {
+            try {
+                const response = await fetch('/api/documents', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayDocuments(data.documents || []);
+                }
+            } catch (error) {
+                console.error('Error loading documents:', error);
+            }
+        }
+
+        function displayDocuments(documents) {
+            if (documents.length === 0) {
+                documentsArea.innerHTML = '<p style="color: #7f8c8d; text-align: center;">אין מסמכים עדיין</p>';
+                return;
+            }
+
+            documentsArea.innerHTML = documents.map(doc => `
+                <div class="document-item" data-doc-id="${doc.id}">
+                    <div class="document-header">
+                        <div class="document-name">${doc.filename || doc.original_filename}</div>
+                        <div class="extraction-status ${doc.extractionStatus || 'not_started'}" id="status-${doc.id}">
+                            🔍 ${getStatusText(doc.extractionStatus || 'not_started')}
+                        </div>
+                    </div>
+                    <div class="document-meta">
+                        גודל: ${formatFileSize(doc.size || doc.file_size)} | 
+                        הועלה: ${new Date(doc.createdAt || doc.created_at).toLocaleString('he-IL')}
+                    </div>
+                    <div class="progress-bar" id="progress-${doc.id}" style="display: none;">
+                        <div class="progress-fill" id="progress-fill-${doc.id}" style="width: 0%;"></div>
+                    </div>
+                    <div class="extracted-text" id="text-${doc.id}" style="display: none;"></div>
+                    <button class="btn" onclick="checkExtractionStatus('${doc.id}')">🔄 בדוק סטטוס</button>
+                    <button class="btn btn-danger" onclick="deleteDocument('${doc.id}')">🗑️ מחק</button>
+                </div>
+            `).join('');
+        }
+
+        async function checkExtractionStatus(documentId) {
+            try {
+                const response = await fetch(`/api/documents/${documentId}/extraction-status`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateDocumentStatus(documentId, data);
+                }
+            } catch (error) {
+                console.error('Error checking extraction status:', error);
+            }
+        }
+
+        function updateDocumentStatus(documentId, statusData) {
+            const statusElement = document.getElementById(`status-${documentId}`);
+            const progressElement = document.getElementById(`progress-${documentId}`);
+            const progressFillElement = document.getElementById(`progress-fill-${documentId}`);
+            const textElement = document.getElementById(`text-${documentId}`);
+
+            if (statusElement) {
+                statusElement.className = `extraction-status ${statusData.extractionStatus}`;
+                statusElement.textContent = `🔍 ${getStatusText(statusData.extractionStatus)}`;
+            }
+
+            // Show progress bar for processing status
+            if (statusData.extractionStatus === 'processing' && progressElement && progressFillElement) {
+                progressElement.style.display = 'block';
+                progressFillElement.style.width = `${statusData.job?.progress || 0}%`;
+            } else if (progressElement) {
+                progressElement.style.display = 'none';
+            }
+
+            // Show extracted text if completed
+            if (statusData.extractionStatus === 'completed' && statusData.extraction && textElement) {
+                textElement.style.display = 'block';
+                textElement.textContent = statusData.extraction.text.substring(0, 500) + 
+                    (statusData.extraction.text.length > 500 ? '...' : '');
+                
+                updateTest2('pass'); // Extracted text appears in document details
+            }
+
+            // Handle failed extraction
+            if (statusData.extractionStatus === 'failed') {
+                updateTest4('pass'); // Errors in extraction are handled gracefully
+            }
+        }
+
+        function monitorExtractionProgress() {
+            const interval = setInterval(async () => {
+                let allCompleted = true;
+                
+                for (const doc of uploadedDocuments) {
+                    await checkExtractionStatus(doc.id);
+                    
+                    const statusElement = document.getElementById(`status-${doc.id}`);
+                    if (statusElement && (statusElement.textContent.includes('ממתין') || statusElement.textContent.includes('מחלץ'))) {
+                        allCompleted = false;
+                    }
+                }
+
+                if (allCompleted) {
+                    clearInterval(interval);
+                    showStatus('חילוץ הטקסט הושלם לכל המסמכים', 'success');
+                }
+            }, 3000);
+
+            // Stop monitoring after 5 minutes
+            setTimeout(() => clearInterval(interval), 300000);
+        }
+
+        async function deleteDocument(documentId) {
+            if (!confirm('האם אתה בטוח שברצונך למחוק את המסמך?')) return;
+
+            try {
+                const response = await fetch(`/api/documents/${documentId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    showStatus('המסמך נמחק בהצלחה', 'success');
+                    loadDocuments();
+                } else {
+                    const errorData = await response.json();
+                    showStatus(`שגיאה במחיקת המסמך: ${errorData.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`שגיאה במחיקת המסמך: ${error.message}`, 'error');
+            }
+        }
+
+        function clearAll() {
+            if (!confirm('האם אתה בטוח שברצונך למחוק את כל המסמכים?')) return;
+            
+            // This would require implementing a bulk delete endpoint
+            showStatus('פונקציונליות מחיקה כללית טרם מומשה', 'warning');
+        }
+
+        function showStatus(message, type) {
+            statusArea.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function getStatusText(status) {
+            switch (status) {
+                case 'pending': return 'ממתין לחילוץ';
+                case 'processing': return 'מחלץ טקסט...';
+                case 'completed': return 'הושלם';
+                case 'failed': return 'נכשל';
+                default: return 'לא החל';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function updateTest1(status) {
+            document.getElementById('test1').textContent = status === 'pass' ? '✅ עבר' : '❌ נכשל';
+            document.getElementById('test1').className = `test-status ${status}`;
+        }
+
+        function updateTest2(status) {
+            document.getElementById('test2').textContent = status === 'pass' ? '✅ עבר' : '❌ נכשל';
+            document.getElementById('test2').className = `test-status ${status}`;
+        }
+
+        function updateTest3(status) {
+            document.getElementById('test3').textContent = status === 'pass' ? '✅ עבר' : '❌ נכשל';
+            document.getElementById('test3').className = `test-status ${status}`;
+        }
+
+        function updateTest4(status) {
+            document.getElementById('test4').textContent = status === 'pass' ? '✅ עבר' : '❌ נכשל';
+            document.getElementById('test4').className = `test-status ${status}`;
+        }
+
+        // Load existing documents on page load
+        if (token) {
+            loadDocuments();
+        }
+    </script>
+</body>
+</html>

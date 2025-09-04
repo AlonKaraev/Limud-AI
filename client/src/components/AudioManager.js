@@ -2,10 +2,14 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import CompressionControls from './CompressionControls';
 import ProgressBar from './ProgressBar';
-import TranscriptionStatus from './TranscriptionStatus';
+import BulkTranscriptionStatusManager from './BulkTranscriptionStatusManager';
 import MediaViewModal from './MediaViewModal';
 import TranscriptionModal from './TranscriptionModal';
 import TranscriptionSearch from './TranscriptionSearch';
+import TagInput from './TagInput';
+import MetadataForm from './MetadataForm';
+import FilterControls from './FilterControls';
+import EditMediaModal from './EditMediaModal';
 import { compressFile, supportsCompression, getCompressionRatio, shouldCompress } from '../utils/mediaCompression';
 
 const Container = styled.div`
@@ -280,6 +284,60 @@ const AudioManager = ({ t }) => {
   const [selectedMediaItem, setSelectedMediaItem] = useState(null);
   const [transcriptionModalOpen, setTranscriptionModalOpen] = useState(false);
   const [selectedRecordingForTranscription, setSelectedRecordingForTranscription] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedMediaItemForEdit, setSelectedMediaItemForEdit] = useState(null);
+  const [globalTags, setGlobalTags] = useState([]);
+  
+  // Filtering state
+  const [filteredUploadedRecordings, setFilteredUploadedRecordings] = useState([]);
+  const [filteredSavedAudioFiles, setFilteredSavedAudioFiles] = useState([]);
+
+  // Initialize filtered arrays when data changes
+  useEffect(() => {
+    setFilteredUploadedRecordings(uploadedRecordings);
+  }, [uploadedRecordings]);
+
+  useEffect(() => {
+    setFilteredSavedAudioFiles(savedAudioFiles);
+  }, [savedAudioFiles]);
+
+  // Collect all available tags from all audio files
+  useEffect(() => {
+    const allTags = new Set();
+    
+    // Tags from uploaded recordings
+    uploadedRecordings.forEach(recording => {
+      if (recording.tags && Array.isArray(recording.tags)) {
+        recording.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    
+    // Tags from saved audio files
+    savedAudioFiles.forEach(audioFile => {
+      if (audioFile.tags && Array.isArray(audioFile.tags)) {
+        audioFile.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    
+    // Tags from selected files
+    selectedFiles.forEach(fileData => {
+      if (fileData.tags && Array.isArray(fileData.tags)) {
+        fileData.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    
+    setGlobalTags(Array.from(allTags).sort());
+  }, [uploadedRecordings, savedAudioFiles, selectedFiles]);
+
+  // Handle filter changes for uploaded recordings
+  const handleUploadedRecordingsFilterChange = (filteredItems) => {
+    setFilteredUploadedRecordings(filteredItems);
+  };
+
+  // Handle filter changes for saved audio files
+  const handleSavedAudioFilesFilterChange = (filteredItems) => {
+    setFilteredSavedAudioFiles(filteredItems);
+  };
 
   // Load saved audio files from localStorage on component mount
   useEffect(() => {
@@ -322,25 +380,31 @@ const AudioManager = ({ t }) => {
 
         const data = await response.json();
         if (data.success && data.recordings) {
-          // Transform server recordings to match the expected format
-          const transformedRecordings = data.recordings.map(recording => ({
-            id: recording.id,
-            filename: recording.filename,
-            originalFileName: recording.filename,
-            size: recording.file_size,
-            mediaType: recording.media_type || 'audio',
-            createdAt: recording.created_at,
-            transcriptionStatus: 'completed', // Assume completed for existing recordings
-            processingStatus: recording.processing_status || 'completed'
-          }));
+          // Filter only audio recordings and transform to expected format
+          const audioRecordings = data.recordings
+            .filter(recording => recording.media_type === 'audio')
+            .map(recording => ({
+              id: recording.id,
+              filename: recording.filename,
+              originalFileName: recording.metadata?.originalFileName || recording.filename,
+              size: recording.file_size,
+              mediaType: recording.media_type || 'audio',
+              createdAt: recording.created_at,
+              transcriptionStatus: 'completed', // Assume completed for existing recordings
+              processingStatus: recording.processing_status || 'completed',
+              tags: recording.tags || []
+            }));
           
-          setUploadedRecordings(transformedRecordings);
-          console.log(`Loaded ${transformedRecordings.length} recordings from server`);
+          setUploadedRecordings(audioRecordings);
+          console.log(`Loaded ${audioRecordings.length} audio recordings from server`);
+        } else {
+          console.log('No recordings found or invalid response format');
+          setUploadedRecordings([]);
         }
       } catch (error) {
         console.error('Error loading uploaded recordings from server:', error);
-        // Don't show error to user as this is a background operation
-        // and the component should still work with local files
+        // Set empty array to show that loading was attempted
+        setUploadedRecordings([]);
       }
     };
 
@@ -614,11 +678,21 @@ const AudioManager = ({ t }) => {
           const formData = new FormData();
           formData.append('media', fileToUpload);
           formData.append('recordingId', `audio_${Date.now()}_${index}`);
+          formData.append('tags', JSON.stringify(fileData.tags || []));
           formData.append('metadata', JSON.stringify({
-            originalName: fileData.name,
+            originalName: fileData.metadata?.fileName || fileData.name,
             duration: fileData.duration,
             uploadedAt: new Date().toISOString(),
-            compressed: compressionEnabled && supportsCompression(fileData.type)
+            compressed: compressionEnabled && supportsCompression(fileData.type),
+            domain: fileData.metadata?.domain || '',
+            subject: fileData.metadata?.subject || '',
+            topic: fileData.metadata?.topic || '',
+            gradeLevel: fileData.metadata?.gradeLevel || '',
+            description: fileData.metadata?.description || '',
+            keywords: fileData.metadata?.keywords || '',
+            language: fileData.metadata?.language || 'עברית',
+            difficulty: fileData.metadata?.difficulty || 'בינוני',
+            author: fileData.metadata?.author || ''
           }));
 
           const response = await fetch('/api/recordings/upload', {
@@ -927,6 +1001,75 @@ const AudioManager = ({ t }) => {
     setSelectedRecordingForTranscription(null);
   };
 
+  // Handle edit media item
+  const handleEditMedia = (mediaItem) => {
+    setSelectedMediaItemForEdit(mediaItem);
+    setEditModalOpen(true);
+  };
+
+  // Handle close edit modal
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    setSelectedMediaItemForEdit(null);
+  };
+
+  // Handle save edited media
+  const handleSaveEditedMedia = async (updatedMediaItem) => {
+    try {
+      // Check if this is a server file (has id) or local file
+      if (updatedMediaItem.id && typeof updatedMediaItem.id === 'number') {
+        // Server file - update via API
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('לא נמצא טוקן אימות. אנא התחבר מחדש.');
+        }
+
+        const response = await fetch(`/api/recordings/${updatedMediaItem.id}/tags-metadata`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            tags: updatedMediaItem.tags || [],
+            metadata: updatedMediaItem.metadata || {}
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'שגיאה בעדכון התגיות והמטא-דאטה');
+        }
+
+        // Update local state for uploaded recordings
+        setUploadedRecordings(prev => prev.map(recording => 
+          recording.id === updatedMediaItem.id 
+            ? { ...recording, tags: updatedMediaItem.tags, metadata: updatedMediaItem.metadata }
+            : recording
+        ));
+
+        setSuccess('התגיות והמטא-דאטה עודכנו בהצלחה בשרת');
+      } else {
+        // Local file - update in localStorage
+        const updatedSavedFiles = savedAudioFiles.map(audioFile => 
+          audioFile.id === updatedMediaItem.id 
+            ? { ...audioFile, tags: updatedMediaItem.tags, metadata: updatedMediaItem.metadata }
+            : audioFile
+        );
+        
+        setSavedAudioFiles(updatedSavedFiles);
+        saveAudioFilesToStorage(updatedSavedFiles);
+        setSuccess('התגיות והמטא-דאטה עודכנו בהצלחה במקומי');
+      }
+
+      setError('');
+      handleCloseEditModal();
+    } catch (error) {
+      console.error('Error saving edited media:', error);
+      setError(`שגיאה בשמירת השינויים: ${error.message}`);
+    }
+  };
+
   return (
     <Container>
       <Header>
@@ -1018,6 +1161,32 @@ const AudioManager = ({ t }) => {
                     animated={fileProgress[fileData.id].status === 'compressing' || fileProgress[fileData.id].status === 'saving'}
                   />
                 )}
+                <MetadataForm
+                  fileData={fileData}
+                  onChange={(metadata) => {
+                    setSelectedFiles(prev => prev.map(f => 
+                      f.id === fileData.id ? { ...f, metadata } : f
+                    ));
+                  }}
+                  disabled={isCompressing || isUploading}
+                  mediaType="audio"
+                />
+                <div style={{ marginTop: '0.5rem' }}>
+                  <TagInput
+                    tags={fileData.tags || []}
+                    onChange={(newTags) => {
+                      setSelectedFiles(prev => prev.map(f => 
+                        f.id === fileData.id ? { ...f, tags: newTags } : f
+                      ));
+                      // Update global tags list
+                      const allTags = new Set(globalTags);
+                      newTags.forEach(tag => allTags.add(tag));
+                      setGlobalTags(Array.from(allTags));
+                    }}
+                    placeholder="הוסף תגיות לקובץ האודיו..."
+                    disabled={isCompressing || isUploading}
+                  />
+                </div>
               </FileInfo>
               <ButtonGroup>
                 <ViewButton onClick={() => handleViewMedia(fileData)} disabled={isCompressing}>
@@ -1038,21 +1207,31 @@ const AudioManager = ({ t }) => {
         </div>
       )}
 
-      {/* Search functionality for uploaded recordings with transcriptions */}
+      {/* Filter controls for uploaded recordings */}
       {uploadedRecordings.length > 0 && (
-        <TranscriptionSearch
+        <FilterControls
           mediaItems={uploadedRecordings}
+          onFilterChange={handleUploadedRecordingsFilterChange}
+          availableTags={globalTags}
+          mediaType="audio"
+        />
+      )}
+
+      {/* Search functionality for uploaded recordings with transcriptions */}
+      {filteredUploadedRecordings.length > 0 && (
+        <TranscriptionSearch
+          mediaItems={filteredUploadedRecordings}
           mediaType="audio"
           onItemClick={handleViewTranscription}
         />
       )}
 
-      {uploadedRecordings.length > 0 && (
+      {filteredUploadedRecordings.length > 0 && (
         <SavedAudioSection>
           <SavedAudioTitle>
-            📤 קבצי אודיו שהועלו לשרת ({uploadedRecordings.length})
+            📤 קבצי אודיו שהועלו לשרת ({filteredUploadedRecordings.length})
           </SavedAudioTitle>
-          {uploadedRecordings.map(recording => (
+          {filteredUploadedRecordings.map(recording => (
             <SavedAudioItem key={recording.id}>
               <FileIcon>
                 {recording.mediaType === 'video' ? '🎥' : '🎵'}
@@ -1064,12 +1243,11 @@ const AudioManager = ({ t }) => {
                   <span>סוג: {recording.mediaType === 'video' ? 'וידאו' : 'אודיו'}</span>
                   <span>הועלה: {new Date(recording.createdAt).toLocaleDateString('he-IL')}</span>
                 </SavedAudioMeta>
-                <TranscriptionStatus 
-                  recordingId={recording.id}
-                  onTranscriptionComplete={handleTranscriptionComplete}
-                />
               </SavedAudioInfo>
               <ButtonGroup>
+                <ViewButton onClick={() => handleEditMedia(recording)}>
+                  ✏️ ערוך
+                </ViewButton>
                 <ViewButton onClick={() => handleViewTranscription(recording)}>
                   📝 צפה בתמלול
                 </ViewButton>
@@ -1079,15 +1257,29 @@ const AudioManager = ({ t }) => {
               </ButtonGroup>
             </SavedAudioItem>
           ))}
+          <BulkTranscriptionStatusManager
+            recordings={filteredUploadedRecordings}
+            onTranscriptionComplete={handleTranscriptionComplete}
+          />
         </SavedAudioSection>
       )}
 
+      {/* Filter controls for saved audio files */}
       {savedAudioFiles.length > 0 && (
+        <FilterControls
+          mediaItems={savedAudioFiles}
+          onFilterChange={handleSavedAudioFilesFilterChange}
+          availableTags={globalTags}
+          mediaType="audio"
+        />
+      )}
+
+      {filteredSavedAudioFiles.length > 0 && (
         <SavedAudioSection>
           <SavedAudioTitle>
-            🎵 קבצי אודיו שמורים מקומית ({savedAudioFiles.length})
+            🎵 קבצי אודיו שמורים מקומית ({filteredSavedAudioFiles.length})
           </SavedAudioTitle>
-          {savedAudioFiles.map(audioFile => {
+          {filteredSavedAudioFiles.map(audioFile => {
             const blobUrl = createBlobUrl(audioFile.base64Data);
             return (
               <SavedAudioItem key={audioFile.id}>
@@ -1100,6 +1292,22 @@ const AudioManager = ({ t }) => {
                     <span>{formatFileSize(audioFile.size)}</span>
                     {audioFile.duration && <span>משך: {formatDuration(audioFile.duration)}</span>}
                     <span>נשמר: {new Date(audioFile.savedAt).toLocaleDateString('he-IL')}</span>
+                    {audioFile.tags && audioFile.tags.length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                        {audioFile.tags.map((tag, index) => (
+                          <span key={index} style={{
+                            background: 'var(--color-primary)',
+                            color: 'var(--color-textOnPrimary)',
+                            padding: '0.125rem 0.375rem',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '0.7rem',
+                            fontWeight: '500'
+                          }}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </SavedAudioMeta>
                   {blobUrl && (
                     <AudioPreview>
@@ -1111,6 +1319,9 @@ const AudioManager = ({ t }) => {
                   )}
                 </SavedAudioInfo>
                 <ButtonGroup>
+                  <ViewButton onClick={() => handleEditMedia(audioFile)}>
+                    ✏️ ערוך
+                  </ViewButton>
                   <ViewButton onClick={() => handleViewMedia(audioFile)}>
                     👁️ צפה
                   </ViewButton>
@@ -1137,6 +1348,15 @@ const AudioManager = ({ t }) => {
         recordingId={selectedRecordingForTranscription?.id}
         mediaName={selectedRecordingForTranscription?.originalFileName || selectedRecordingForTranscription?.filename}
         mediaType={selectedRecordingForTranscription?.mediaType || 'audio'}
+      />
+
+      <EditMediaModal
+        isOpen={editModalOpen}
+        onClose={handleCloseEditModal}
+        mediaItem={selectedMediaItemForEdit}
+        onSave={handleSaveEditedMedia}
+        availableTags={globalTags}
+        mediaType="audio"
       />
     </Container>
   );

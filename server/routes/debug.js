@@ -2,11 +2,128 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const apiRateLimiter = require('../utils/APIRateLimiter');
+const { query, run } = require('../config/database-sqlite');
 
 /**
  * Debug and monitoring routes
  * These endpoints provide system status and debugging information
  */
+
+/**
+ * Get database status and basic connectivity
+ */
+router.get('/db-status', authenticate, async (req, res) => {
+  try {
+    // Test basic database connectivity
+    const testResult = await query('SELECT 1 as test');
+    
+    // Get database info
+    const tablesResult = await query(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' 
+      ORDER BY name
+    `);
+    
+    const tables = tablesResult.rows.map(row => row.name);
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: true,
+        type: 'SQLite',
+        tables: tables,
+        tableCount: tables.length
+      },
+      testQuery: testResult.rows[0]
+    });
+  } catch (error) {
+    console.error('Database status check failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Database connection failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * Check documents table specifically
+ */
+router.get('/documents-table', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Check if documents table exists
+    const tableExistsResult = await query(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name='documents'
+    `);
+    
+    if (tableExistsResult.rows.length === 0) {
+      return res.json({
+        success: false,
+        error: 'Documents table does not exist',
+        tableExists: false,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Get table schema
+    const schemaResult = await query('PRAGMA table_info(documents)');
+    
+    // Get total document count
+    const totalCountResult = await query('SELECT COUNT(*) as total FROM documents');
+    
+    // Get user's document count
+    const userCountResult = await query('SELECT COUNT(*) as total FROM documents WHERE user_id = ?', [userId]);
+    
+    // Get sample documents for current user
+    const sampleDocsResult = await query(`
+      SELECT id, user_id, document_id, filename, original_filename, 
+             file_size, file_type, mime_type, upload_status, created_at
+      FROM documents 
+      WHERE user_id = ? 
+      ORDER BY created_at DESC 
+      LIMIT 5
+    `, [userId]);
+    
+    // Get all users with documents
+    const usersWithDocsResult = await query(`
+      SELECT user_id, COUNT(*) as doc_count 
+      FROM documents 
+      GROUP BY user_id
+    `);
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      tableExists: true,
+      schema: schemaResult.rows,
+      counts: {
+        total: totalCountResult.rows[0].total,
+        forCurrentUser: userCountResult.rows[0].total
+      },
+      currentUserId: userId,
+      usersWithDocuments: usersWithDocsResult.rows,
+      sampleDocuments: sampleDocsResult.rows.map(doc => ({
+        ...doc,
+        metadata: doc.metadata ? JSON.parse(doc.metadata) : {},
+        tags: doc.tags ? JSON.parse(doc.tags) : []
+      }))
+    });
+    
+  } catch (error) {
+    console.error('Documents table check failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Documents table check failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 /**
  * Get API rate limiter status

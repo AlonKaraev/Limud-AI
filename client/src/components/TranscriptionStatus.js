@@ -157,8 +157,8 @@ const TranscriptionStatus = ({ recordingId, onTranscriptionComplete }) => {
     // Initial poll
     pollStatus();
 
-    // Set up polling interval - poll more frequently for active transcriptions
-    const pollInterval = (status === 'pending' || status === 'processing') ? 3000 : 10000;
+    // Set up polling interval - poll every 5 seconds
+    const pollInterval = 5000;
     const interval = setInterval(pollStatus, pollInterval);
 
     return () => clearInterval(interval);

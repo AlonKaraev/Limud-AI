@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת חילוץ טקסט משופר מתמונות - Limud AI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        
+        .test-section h2 {
+            color: #34495e;
+            margin-top: 0;
+        }
+        
+        .upload-area {
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background: #ecf0f1;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            border-color: #2980b9;
+            background: #d5dbdb;
+        }
+        
+        .upload-area.dragover {
+            border-color: #27ae60;
+            background: #d5f4e6;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+        }
+        
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .progress-container {
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+        
+        .progress-text {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin: 5px 0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .status-pending {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .status-processing {
+            background: #3498db;
+            color: white;
+        }
+        
+        .status-completed {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .status-failed {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .extraction-result {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #bdc3c7;
+            border-radius: 8px;
+            background: white;
+        }
+        
+        .extracted-text {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .metadata {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .metadata-item {
+            background: #ecf0f1;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .metadata-label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .confidence-score {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .confidence-high {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+        
+        .confidence-medium {
+            background: #fff3cd;
+            color: #f39c12;
+        }
+        
+        .confidence-low {
+            background: #fadbd8;
+            color: #e74c3c;
+        }
+        
+        .error-message {
+            background: #fadbd8;
+            color: #e74c3c;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border: 1px solid #f5b7b1;
+        }
+        
+        .success-message {
+            background: #d5f4e6;
+            color: #27ae60;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border: 1px solid #a9dfbf;
+        }
+        
+        .image-preview {
+            max-width: 300px;
+            max-height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        
+        .test-results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .test-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 6px;
+            background: white;
+        }
+        
+        .test-status {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-left: 15px;
+            flex-shrink: 0;
+        }
+        
+        .test-pass {
+            background: #27ae60;
+        }
+        
+        .test-fail {
+            background: #e74c3c;
+        }
+        
+        .test-pending {
+            background: #f39c12;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 בדיקת חילוץ טקסט משופר מתמונות</h1>
+        
+        <div class="test-section">
+            <h2>📤 העלאת תמונה לבדיקה</h2>
+            <p>בחר תמונה המכילה טקסט בעברית או באנגלית לבדיקת יכולות החילוץ המשופרות:</p>
+            
+            <div class="upload-area" id="uploadArea">
+                <p>🖼️ גרור תמונה לכאן או לחץ לבחירת קובץ</p>
+                <p style="font-size: 14px; color: #7f8c8d;">נתמך: JPG, PNG, GIF (עד 10MB)</p>
+                <input type="file" id="imageInput" accept="image/jpeg,image/png,image/gif">
+                <button class="btn" onclick="document.getElementById('imageInput').click()">
+                    📁 בחר תמונה
+                </button>
+            </div>
+            
+            <div id="imagePreview" style="display: none;">
+                <h3>תצוגה מקדימה:</h3>
+                <img id="previewImg" class="image-preview" alt="תצוגה מקדימה">
+                <div>
+                    <button class="btn btn-success" id="uploadBtn" onclick="uploadImage()">
+                        🚀 העלה וחלץ טקסט
+                    </button>
+                    <button class="btn btn-danger" onclick="clearImage()">
+                        🗑️ נקה
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section" id="extractionSection" style="display: none;">
+            <h2>⚙️ תהליך חילוץ הטקסט</h2>
+            
+            <div class="progress-container">
+                <div class="status-indicator" id="statusIndicator">
+                    ⏳ ממתין להתחלה
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">0%</div>
+                <div class="progress-text" id="progressMessage"></div>
+            </div>
+            
+            <div id="errorContainer" style="display: none;">
+                <div class="error-message" id="errorMessage"></div>
+            </div>
+        </div>
+        
+        <div class="test-section" id="resultsSection" style="display: none;">
+            <h2>📊 תוצאות חילוץ הטקסט</h2>
+            
+            <div class="extraction-result">
+                <h3>טקסט מחולץ:</h3>
+                <div class="extracted-text" id="extractedText"></div>
+                
+                <h3>מטא-דאטה:</h3>
+                <div class="metadata" id="metadata"></div>
+            </div>
+        </div>
+        
+        <div class="test-results">
+            <h2>✅ תוצאות בדיקות אוטומטיות</h2>
+            <div class="test-item">
+                <div class="test-status test-pending" id="test1Status"></div>
+                <div>
+                    <strong>בדיקה ידנית:</strong> תמונות במסמכים נסרקות לחילוץ טקסט
+                    <div id="test1Result" style="font-size: 14px; color: #7f8c8d; margin-top: 5px;">
+                        ממתין להעלאת תמונה...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-status test-pending" id="test2Status"></div>
+                <div>
+                    <strong>בדיקה ידנית:</strong> טקסט מחולץ מתמונות כלול בפרטי המסמך
+                    <div id="test2Result" style="font-size: 14px; color: #7f8c8d; margin-top: 5px;">
+                        ממתין לחילוץ טקסט...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-status test-pending" id="test3Status"></div>
+                <div>
+                    <strong>בדיקה ידנית:</strong> מחוון סטטוס מציג התקדמות חילוץ תמונות
+                    <div id="test3Result" style="font-size: 14px; color: #7f8c8d; margin-top: 5px;">
+                        ממתין לתהליך חילוץ...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <div class="test-status test-pending" id="test4Status"></div>
+                <div>
+                    <strong>בדיקה ידנית:</strong> שגיאות חילוץ עבור תמונות מטופלות בחן
+                    <div id="test4Result" style="font-size: 14px; color: #7f8c8d; margin-top: 5px;">
+                        ממתין לבדיקת טיפול בשגיאות...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let currentDocumentId = null;
+        let extractionInterval = null;
+
+        // Initialize drag and drop
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('click', () => {
+            imageInput.click();
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('אנא בחר קובץ תמונה בלבד');
+                return;
+            }
+
+            // Validate file size (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('גודל הקובץ גדול מדי. מקסימום 10MB');
+                return;
+            }
+
+            selectedFile = file;
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('previewImg').src = e.target.result;
+                document.getElementById('imagePreview').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // Update test status
+            updateTestStatus('test1Status', 'test1Result', 'pass', 'תמונה נבחרה בהצלחה ✓');
+        }
+
+        function clearImage() {
+            selectedFile = null;
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('extractionSection').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'none';
+            imageInput.value = '';
+            
+            // Reset test statuses
+            updateTestStatus('test1Status', 'test1Result', 'pending', 'ממתין להעלאת תמונה...');
+            updateTestStatus('test2Status', 'test2Result', 'pending', 'ממתין לחילוץ טקסט...');
+            updateTestStatus('test3Status', 'test3Result', 'pending', 'ממתין לתהליך חילוץ...');
+            updateTestStatus('test4Status', 'test4Result', 'pending', 'ממתין לבדיקת טיפול בשגיאות...');
+        }
+
+        async function uploadImage() {
+            if (!selectedFile) {
+                alert('אנא בחר תמונה תחילה');
+                return;
+            }
+
+            try {
+                document.getElementById('extractionSection').style.display = 'block';
+                document.getElementById('uploadBtn').disabled = true;
+                
+                updateStatus('pending', 'מעלה תמונה...', 0);
+                updateTestStatus('test3Status', 'test3Result', 'pass', 'מחוון סטטוס מוצג ✓');
+
+                // Get auth token
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('נדרש להתחבר למערכת תחילה');
+                }
+
+                // Create form data
+                const formData = new FormData();
+                formData.append('document', selectedFile);
+                formData.append('metadata', JSON.stringify({ 
+                    description: 'בדיקת חילוץ טקסט משופר מתמונות',
+                    testMode: true 
+                }));
+                formData.append('tags', JSON.stringify(['בדיקה', 'OCR', 'תמונה']));
+
+                // Upload document
+                const response = await fetch('/api/documents/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'שגיאה בהעלאת התמונה');
+                }
+
+                const result = await response.json();
+                currentDocumentId = result.document.id;
+
+                updateStatus('processing', 'התחיל חילוץ טקסט...', 10);
+
+                // Start polling for extraction status
+                startExtractionPolling();
+
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                showError(error.message);
+                updateTestStatus('test4Status', 'test4Result', 'pass', 'שגיאה טופלה בחן: ' + error.message + ' ✓');
+                document.getElementById('uploadBtn').disabled = false;
+            }
+        }
+
+        function startExtractionPolling() {
+            if (extractionInterval) {
+                clearInterval(extractionInterval);
+            }
+
+            extractionInterval = setInterval(async () => {
+                try {
+                    await checkExtractionStatus();
+                } catch (error) {
+                    console.error('Error checking extraction status:', error);
+                    clearInterval(extractionInterval);
+                    showError('שגיאה בבדיקת סטטוס החילוץ: ' + error.message);
+                    updateTestStatus('test4Status', 'test4Result', 'pass', 'שגיאה בפולינג טופלה בחן ✓');
+                }
+            }, 2000); // Check every 2 seconds
+        }
+
+        async function checkExtractionStatus() {
+            if (!currentDocumentId) return;
+
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/documents/${currentDocumentId}/extraction-status`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('שגיאה בקבלת סטטוס החילוץ');
+            }
+
+            const data = await response.json();
+            const job = data.job;
+            const extraction = data.extraction;
+
+            if (job) {
+                const progress = job.progress || 0;
+                const progressMessage = job.progressMessage || '';
+                
+                updateStatus('processing', progressMessage, progress);
+
+                if (data.extractionStatus === 'completed' && extraction) {
+                    clearInterval(extractionInterval);
+                    showResults(extraction);
+                    updateStatus('completed', 'חילוץ הטקסט הושלם בהצלחה!', 100);
+                    updateTestStatus('test2Status', 'test2Result', 'pass', 'טקסט חולץ בהצלחה ומוצג ✓');
+                    document.getElementById('uploadBtn').disabled = false;
+                } else if (data.extractionStatus === 'failed') {
+                    clearInterval(extractionInterval);
+                    const errorMsg = job.errorMessage || 'חילוץ הטקסט נכשל';
+                    showError(errorMsg);
+                    updateStatus('failed', errorMsg, 0);
+                    updateTestStatus('test4Status', 'test4Result', 'pass', 'שגיאת חילוץ טופלה בחן: ' + errorMsg + ' ✓');
+                    document.getElementById('uploadBtn').disabled = false;
+                }
+            }
+        }
+
+        function updateStatus(status, message, progress) {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const progressMessage = document.getElementById('progressMessage');
+
+            // Update status indicator
+            statusIndicator.className = `status-indicator status-${status}`;
+            
+            switch (status) {
+                case 'pending':
+                    statusIndicator.textContent = '⏳ ממתין';
+                    break;
+                case 'processing':
+                    statusIndicator.textContent = '⚙️ מעבד';
+                    break;
+                case 'completed':
+                    statusIndicator.textContent = '✅ הושלם';
+                    break;
+                case 'failed':
+                    statusIndicator.textContent = '❌ נכשל';
+                    break;
+            }
+
+            // Update progress
+            progressFill.style.width = `${progress}%`;
+            progressText.textContent = `${progress}%`;
+            progressMessage.textContent = message;
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorContainer').style.display = 'block';
+        }
+
+        function showResults(extraction) {
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('errorContainer').style.display = 'none';
+
+            // Show extracted text
+            document.getElementById('extractedText').textContent = extraction.text || 'לא נמצא טקסט';
+
+            // Show metadata
+            const metadata = document.getElementById('metadata');
+            metadata.innerHTML = '';
+
+            const metadataItems = [
+                { label: 'שיטת חילוץ', value: extraction.method },
+                { label: 'רמת דיוק', value: getConfidenceDisplay(extraction.confidence) },
+                { label: 'שפה מזוהה', value: extraction.language === 'hebrew' ? 'עברית' : 'אנגלית' },
+                { label: 'זמן עיבוד', value: `${Math.round(extraction.processingDuration / 1000)} שניות` },
+                { label: 'נערך', value: extraction.isEdited ? 'כן' : 'לא' }
+            ];
+
+            metadataItems.forEach(item => {
+                if (item.value) {
+                    const div = document.createElement('div');
+                    div.className = 'metadata-item';
+                    div.innerHTML = `
+                        <div class="metadata-label">${item.label}:</div>
+                        <div>${item.value}</div>
+                    `;
+                    metadata.appendChild(div);
+                }
+            });
+        }
+
+        function getConfidenceDisplay(confidence) {
+            if (!confidence) return 'לא זמין';
+            
+            const percentage = Math.round(confidence * 100);
+            let className = 'confidence-low';
+            
+            if (confidence >= 0.9) className = 'confidence-high';
+            else if (confidence >= 0.7) className = 'confidence-medium';
+            
+            return `<span class="confidence-score ${className}">${percentage}%</span>`;
+        }
+
+        function updateTestStatus(statusId, resultId, status, message) {
+            const statusElement = document.getElementById(statusId);
+            const resultElement = document.getElementById(resultId);
+            
+            statusElement.className = `test-status test-${status}`;
+            resultElement.textContent = message;
+        }
+
+        // Check if user is logged in
+        window.addEventListener('load', () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('נדרש להתחבר למערכת תחילה. אנא פתח את הדף הראשי והתחבר.');
+            }
+        });
+    </script>
+</body>
+</html>

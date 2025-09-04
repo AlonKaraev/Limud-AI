@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Audio & Video Listing - Limud AI</title>
+    <style>
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        
+        .test-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .recordings-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        
+        .recording-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .recording-item.audio {
+            border-left-color: #28a745;
+        }
+        
+        .recording-item.video {
+            border-left-color: #dc3545;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵🎬 בדיקת רשימת קבצי אודיו ווידאו</h1>
+            <p>בדיקה לוודא שקבצי האודיו והווידאו מוצגים כראוי ברכיבים</p>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🔐 בדיקת אימות</div>
+            <div id="auth-status" class="test-result loading">בודק סטטוס אימות...</div>
+            <button onclick="checkAuth()">בדוק אימות</button>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">📊 בדיקת מסד נתונים</div>
+            <div id="db-status" class="test-result loading">בודק חיבור למסד נתונים...</div>
+            <button onclick="checkDatabase()">בדוק מסד נתונים</button>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🎵 בדיקת קבצי אודיו</div>
+            <div id="audio-status" class="test-result loading">טוען קבצי אודיו...</div>
+            <div id="audio-list" class="recordings-list" style="display: none;"></div>
+            <button onclick="loadAudioFiles()">טען קבצי אודיו</button>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🎬 בדיקת קבצי ווידאו</div>
+            <div id="video-status" class="test-result loading">טוען קבצי ווידאו...</div>
+            <div id="video-list" class="recordings-list" style="display: none;"></div>
+            <button onclick="loadVideoFiles()">טען קבצי ווידאו</button>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">📋 סיכום</div>
+            <div id="summary" class="test-result info">לחץ על הכפתורים למעלה כדי להתחיל את הבדיקות</div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = null;
+        let testResults = {
+            auth: false,
+            database: false,
+            audio: false,
+            video: false
+        };
+
+        // Check authentication status
+        async function checkAuth() {
+            const authStatus = document.getElementById('auth-status');
+            authStatus.className = 'test-result loading';
+            authStatus.textContent = 'בודק אימות...';
+
+            try {
+                // Try to get token from localStorage
+                authToken = localStorage.getItem('token');
+                
+                if (!authToken) {
+                    authStatus.className = 'test-result error';
+                    authStatus.textContent = '❌ לא נמצא טוקן אימות. אנא התחבר למערכת תחילה.';
+                    testResults.auth = false;
+                    updateSummary();
+                    return;
+                }
+
+                // Test the token by making a simple API call
+                const response = await fetch('/api/recordings', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    authStatus.className = 'test-result success';
+                    authStatus.textContent = '✅ אימות תקין - טוקן פעיל';
+                    testResults.auth = true;
+                } else if (response.status === 401) {
+                    authStatus.className = 'test-result error';
+                    authStatus.textContent = '❌ טוקן אימות לא תקף. אנא התחבר מחדש.';
+                    testResults.auth = false;
+                } else {
+                    authStatus.className = 'test-result error';
+                    authStatus.textContent = `❌ שגיאת שרת: ${response.status}`;
+                    testResults.auth = false;
+                }
+            } catch (error) {
+                authStatus.className = 'test-result error';
+                authStatus.textContent = `❌ שגיאה בבדיקת אימות: ${error.message}`;
+                testResults.auth = false;
+            }
+            
+            updateSummary();
+        }
+
+        // Check database connection and data
+        async function checkDatabase() {
+            const dbStatus = document.getElementById('db-status');
+            dbStatus.className = 'test-result loading';
+            dbStatus.textContent = 'בודק מסד נתונים...';
+
+            try {
+                if (!authToken) {
+                    dbStatus.className = 'test-result error';
+                    dbStatus.textContent = '❌ נדרש אימות תחילה';
+                    testResults.database = false;
+                    updateSummary();
+                    return;
+                }
+
+                const response = await fetch('/api/recordings', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    const totalRecordings = data.recordings ? data.recordings.length : 0;
+                    const audioCount = data.recordings ? data.recordings.filter(r => r.media_type === 'audio').length : 0;
+                    const videoCount = data.recordings ? data.recordings.filter(r => r.media_type === 'video').length : 0;
+                    
+                    dbStatus.className = 'test-result success';
+                    dbStatus.innerHTML = `
+                        ✅ חיבור למסד נתונים תקין<br>
+                        📊 סה"כ הקלטות: ${totalRecordings}<br>
+                        🎵 קבצי אודיו: ${audioCount}<br>
+                        🎬 קבצי ווידאו: ${videoCount}
+                    `;
+                    testResults.database = true;
+                } else {
+                    dbStatus.className = 'test-result error';
+                    dbStatus.textContent = '❌ תגובה לא תקינה מהשרת';
+                    testResults.database = false;
+                }
+            } catch (error) {
+                dbStatus.className = 'test-result error';
+                dbStatus.textContent = `❌ שגיאה בחיבור למסד נתונים: ${error.message}`;
+                testResults.database = false;
+            }
+            
+            updateSummary();
+        }
+
+        // Load audio files
+        async function loadAudioFiles() {
+            const audioStatus = document.getElementById('audio-status');
+            const audioList = document.getElementById('audio-list');
+            
+            audioStatus.className = 'test-result loading';
+            audioStatus.textContent = 'טוען קבצי אודיו...';
+            audioList.style.display = 'none';
+
+            try {
+                if (!authToken) {
+                    audioStatus.className = 'test-result error';
+                    audioStatus.textContent = '❌ נדרש אימות תחילה';
+                    testResults.audio = false;
+                    updateSummary();
+                    return;
+                }
+
+                const response = await fetch('/api/recordings', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.success && data.recordings) {
+                    const audioRecordings = data.recordings.filter(r => r.media_type === 'audio');
+                    
+                    if (audioRecordings.length > 0) {
+                        audioStatus.className = 'test-result success';
+                        audioStatus.textContent = `✅ נמצאו ${audioRecordings.length} קבצי אודיו`;
+                        
+                        // Display audio files
+                        audioList.innerHTML = audioRecordings.map(recording => `
+                            <div class="recording-item audio">
+                                <strong>🎵 ${recording.filename}</strong><br>
+                                <small>
+                                    גודל: ${formatFileSize(recording.file_size)} | 
+                                    נוצר: ${new Date(recording.created_at).toLocaleDateString('he-IL')} |
+                                    סטטוס: ${recording.processing_status || 'הושלם'}
+                                </small>
+                            </div>
+                        `).join('');
+                        audioList.style.display = 'block';
+                        testResults.audio = true;
+                    } else {
+                        audioStatus.className = 'test-result info';
+                        audioStatus.textContent = 'ℹ️ לא נמצאו קבצי אודיו במערכת';
+                        testResults.audio = true; // Not an error, just no data
+                    }
+                } else {
+                    audioStatus.className = 'test-result error';
+                    audioStatus.textContent = '❌ תגובה לא תקינה מהשרת';
+                    testResults.audio = false;
+                }
+            } catch (error) {
+                audioStatus.className = 'test-result error';
+                audioStatus.textContent = `❌ שגיאה בטעינת קבצי אודיו: ${error.message}`;
+                testResults.audio = false;
+            }
+            
+            updateSummary();
+        }
+
+        // Load video files
+        async function loadVideoFiles() {
+            const videoStatus = document.getElementById('video-status');
+            const videoList = document.getElementById('video-list');
+            
+            videoStatus.className = 'test-result loading';
+            videoStatus.textContent = 'טוען קבצי ווידאו...';
+            videoList.style.display = 'none';
+
+            try {
+                if (!authToken) {
+                    videoStatus.className = 'test-result error';
+                    videoStatus.textContent = '❌ נדרש אימות תחילה';
+                    testResults.video = false;
+                    updateSummary();
+                    return;
+                }
+
+                const response = await fetch('/api/recordings', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.success && data.recordings) {
+                    const videoRecordings = data.recordings.filter(r => r.media_type === 'video');
+                    
+                    if (videoRecordings.length > 0) {
+                        videoStatus.className = 'test-result success';
+                        videoStatus.textContent = `✅ נמצאו ${videoRecordings.length} קבצי ווידאו`;
+                        
+                        // Display video files
+                        videoList.innerHTML = videoRecordings.map(recording => `
+                            <div class="recording-item video">
+                                <strong>🎬 ${recording.filename}</strong><br>
+                                <small>
+                                    גודל: ${formatFileSize(recording.file_size)} | 
+                                    נוצר: ${new Date(recording.created_at).toLocaleDateString('he-IL')} |
+                                    סטטוס: ${recording.processing_status || 'הושלם'}
+                                </small>
+                            </div>
+                        `).join('');
+                        videoList.style.display = 'block';
+                        testResults.video = true;
+                    } else {
+                        videoStatus.className = 'test-result info';
+                        videoStatus.textContent = 'ℹ️ לא נמצאו קבצי ווידאו במערכת';
+                        testResults.video = true; // Not an error, just no data
+                    }
+                } else {
+                    videoStatus.className = 'test-result error';
+                    videoStatus.textContent = '❌ תגובה לא תקינה מהשרת';
+                    testResults.video = false;
+                }
+            } catch (error) {
+                videoStatus.className = 'test-result error';
+                videoStatus.textContent = `❌ שגיאה בטעינת קבצי ווידאו: ${error.message}`;
+                testResults.video = false;
+            }
+            
+            updateSummary();
+        }
+
+        // Update summary
+        function updateSummary() {
+            const summary = document.getElementById('summary');
+            const passedTests = Object.values(testResults).filter(result => result === true).length;
+            const totalTests = Object.keys(testResults).length;
+            
+            if (passedTests === totalTests) {
+                summary.className = 'test-result success';
+                summary.innerHTML = `
+                    ✅ כל הבדיקות עברו בהצלחה! (${passedTests}/${totalTests})<br>
+                    הרכיבים אמורים להציג את קבצי האודיו והווידאו כראוי.
+                `;
+            } else if (passedTests > 0) {
+                summary.className = 'test-result info';
+                summary.innerHTML = `
+                    ⚠️ חלק מהבדיקות עברו (${passedTests}/${totalTests})<br>
+                    יש לבדוק את הבדיקות שנכשלו ולתקן את הבעיות.
+                `;
+            } else {
+                summary.className = 'test-result error';
+                summary.innerHTML = `
+                    ❌ כל הבדיקות נכשלו (${passedTests}/${totalTests})<br>
+                    יש בעיה בסיסית שמונעת מהמערכת לעבוד כראוי.
+                `;
+            }
+        }
+
+        // Utility function to format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Auto-run tests on page load
+        window.addEventListener('load', async () => {
+            await checkAuth();
+            if (testResults.auth) {
+                await checkDatabase();
+                await loadAudioFiles();
+                await loadVideoFiles();
+            }
+        });
+    </script>
+</body>
+</html>

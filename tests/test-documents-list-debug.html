@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documents List Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .debug-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .debug-content {
+            font-family: monospace;
+            background: #fff;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            color: #d32f2f;
+            background-color: #ffebee;
+            border-color: #f8bbd9;
+        }
+        .success {
+            color: #388e3c;
+            background-color: #e8f5e8;
+            border-color: #c8e6c9;
+        }
+        .warning {
+            color: #f57c00;
+            background-color: #fff3e0;
+            border-color: #ffcc02;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .login-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f0f8ff;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Documents List Debug Test</h1>
+        <p>This test will help debug why documents are not showing in the list.</p>
+
+        <!-- Login Section -->
+        <div class="login-section">
+            <h3>Login (Required for API calls)</h3>
+            <input type="email" id="email" placeholder="Email" value="test@example.com">
+            <input type="password" id="password" placeholder="Password" value="password123">
+            <button onclick="login()">Login</button>
+            <button onclick="logout()">Logout</button>
+            <div id="loginStatus"></div>
+        </div>
+
+        <!-- Test Controls -->
+        <div>
+            <button onclick="testDatabaseConnection()">1. Test Database Connection</button>
+            <button onclick="checkDocumentsTable()">2. Check Documents Table</button>
+            <button onclick="testDocumentsAPI()">3. Test Documents API</button>
+            <button onclick="testWithDifferentParams()">4. Test with Different Parameters</button>
+            <button onclick="runAllTests()">Run All Tests</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+
+        <!-- Results -->
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('token');
+        
+        function updateLoginStatus() {
+            const status = document.getElementById('loginStatus');
+            if (authToken) {
+                status.innerHTML = '<span style="color: green;">✓ Logged in</span>';
+            } else {
+                status.innerHTML = '<span style="color: red;">✗ Not logged in</span>';
+            }
+        }
+
+        function addResult(title, content, type = 'info') {
+            const results = document.getElementById('results');
+            const section = document.createElement('div');
+            section.className = `debug-section ${type}`;
+            
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'debug-title';
+            titleDiv.textContent = title;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'debug-content';
+            contentDiv.textContent = typeof content === 'object' ? JSON.stringify(content, null, 2) : content;
+            
+            section.appendChild(titleDiv);
+            section.appendChild(contentDiv);
+            results.appendChild(section);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.token) {
+                    authToken = data.token;
+                    localStorage.setItem('token', authToken);
+                    addResult('Login Success', `Logged in as: ${data.user.email}`, 'success');
+                } else {
+                    addResult('Login Failed', data.error || 'Unknown error', 'error');
+                }
+            } catch (error) {
+                addResult('Login Error', error.message, 'error');
+            }
+            
+            updateLoginStatus();
+        }
+
+        function logout() {
+            authToken = null;
+            localStorage.removeItem('token');
+            addResult('Logout', 'Logged out successfully', 'success');
+            updateLoginStatus();
+        }
+
+        async function testDatabaseConnection() {
+            try {
+                const response = await fetch('/api/debug/db-status', {
+                    headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult('Database Connection Test', data, 'success');
+                } else {
+                    addResult('Database Connection Failed', data, 'error');
+                }
+            } catch (error) {
+                addResult('Database Connection Error', error.message, 'error');
+            }
+        }
+
+        async function checkDocumentsTable() {
+            if (!authToken) {
+                addResult('Documents Table Check', 'Please login first', 'warning');
+                return;
+            }
+
+            try {
+                // First, let's check if the documents table exists and has data
+                const response = await fetch('/api/debug/documents-table', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult('Documents Table Check', data, 'success');
+                } else {
+                    addResult('Documents Table Check Failed', data, 'error');
+                }
+            } catch (error) {
+                addResult('Documents Table Check Error', error.message, 'error');
+            }
+        }
+
+        async function testDocumentsAPI() {
+            if (!authToken) {
+                addResult('Documents API Test', 'Please login first', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/documents', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                addResult('Documents API Response Status', `${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                addResult('Documents API Response Data', data, response.ok ? 'success' : 'error');
+                
+                if (data.documents) {
+                    addResult('Documents Count', `Found ${data.documents.length} documents`, data.documents.length > 0 ? 'success' : 'warning');
+                    
+                    if (data.documents.length > 0) {
+                        addResult('Sample Document', data.documents[0], 'info');
+                    }
+                }
+                
+            } catch (error) {
+                addResult('Documents API Error', error.message, 'error');
+            }
+        }
+
+        async function testWithDifferentParams() {
+            if (!authToken) {
+                addResult('Parameter Test', 'Please login first', 'warning');
+                return;
+            }
+
+            const testParams = [
+                {},
+                { page: 1, limit: 10 },
+                { page: 1, limit: 50 },
+                { sortBy: 'created_at', sortOrder: 'DESC' },
+                { sortBy: 'original_filename', sortOrder: 'ASC' }
+            ];
+
+            for (let i = 0; i < testParams.length; i++) {
+                const params = testParams[i];
+                const queryString = new URLSearchParams(params).toString();
+                const url = `/api/documents${queryString ? '?' + queryString : ''}`;
+                
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    addResult(
+                        `Test ${i + 1}: ${JSON.stringify(params)}`, 
+                        {
+                            status: response.status,
+                            documentsCount: data.documents ? data.documents.length : 0,
+                            pagination: data.pagination,
+                            success: data.success
+                        }, 
+                        response.ok ? 'success' : 'error'
+                    );
+                    
+                } catch (error) {
+                    addResult(`Test ${i + 1} Error`, error.message, 'error');
+                }
+            }
+        }
+
+        async function runAllTests() {
+            clearResults();
+            addResult('Starting All Tests', 'Running comprehensive document list debug tests...', 'info');
+            
+            await testDatabaseConnection();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await checkDocumentsTable();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testDocumentsAPI();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testWithDifferentParams();
+            
+            addResult('All Tests Complete', 'Check the results above for any issues', 'info');
+        }
+
+        // Initialize
+        updateLoginStatus();
+        
+        // Add some helpful information
+        addResult('Debug Information', {
+            currentURL: window.location.href,
+            userAgent: navigator.userAgent,
+            timestamp: new Date().toISOString(),
+            hasToken: !!authToken
+        }, 'info');
+    </script>
+</body>
+</html>

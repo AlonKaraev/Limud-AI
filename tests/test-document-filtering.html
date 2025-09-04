@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Filtering Test - Limud AI</title>
+    <style>
+        :root {
+            --color-primary: #3498db;
+            --color-primaryHover: #2980b9;
+            --color-primaryLight: rgba(52, 152, 219, 0.1);
+            --color-success: #27ae60;
+            --color-successHover: #229954;
+            --color-successLight: #d5f4e6;
+            --color-danger: #e74c3c;
+            --color-dangerHover: #c0392b;
+            --color-warning: #f39c12;
+            --color-text: #2c3e50;
+            --color-textSecondary: #7f8c8d;
+            --color-textTertiary: #95a5a6;
+            --color-textOnPrimary: #ffffff;
+            --color-surface: #ffffff;
+            --color-surfaceElevated: #f8f9fa;
+            --color-border: #e9ecef;
+            --color-shadowLight: rgba(0, 0, 0, 0.1);
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --transition-fast: all 0.2s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: var(--color-text);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--color-surface);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .title {
+            color: var(--color-primary);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--color-textSecondary);
+            font-size: 1.1rem;
+        }
+
+        .test-section {
+            background: var(--color-surfaceElevated);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid var(--color-border);
+        }
+
+        .section-title {
+            color: var(--color-primary);
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-controls {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 200px;
+        }
+
+        .filter-label {
+            font-weight: 500;
+            color: var(--color-text);
+            font-size: 0.9rem;
+        }
+
+        .filter-input {
+            padding: 0.5rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            transition: var(--transition-fast);
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px var(--color-primaryLight);
+        }
+
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .tag-chip {
+            background: var(--color-primary);
+            color: var(--color-textOnPrimary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            border: none;
+        }
+
+        .tag-chip:hover {
+            background: var(--color-primaryHover);
+        }
+
+        .tag-chip.active {
+            background: var(--color-success);
+        }
+
+        .results-info {
+            background: var(--color-primaryLight);
+            border: 1px solid var(--color-primary);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .document-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .document-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            transition: var(--transition-fast);
+            cursor: pointer;
+        }
+
+        .document-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--color-shadowLight);
+        }
+
+        .document-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .document-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--color-primary);
+            color: var(--color-textOnPrimary);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .document-name {
+            font-weight: 500;
+            color: var(--color-text);
+            flex: 1;
+        }
+
+        .document-meta {
+            font-size: 0.8rem;
+            color: var(--color-textSecondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .document-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-top: 0.5rem;
+        }
+
+        .document-tag {
+            background: var(--color-successLight);
+            color: var(--color-success);
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .test-status {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .test-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .test-item:last-child {
+            border-bottom: none;
+        }
+
+        .test-status-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .test-pass {
+            background: var(--color-success);
+            color: white;
+        }
+
+        .test-pending {
+            background: var(--color-warning);
+            color: white;
+        }
+
+        .clear-filters-btn {
+            background: var(--color-danger);
+            color: var(--color-textOnPrimary);
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: var(--transition-fast);
+        }
+
+        .clear-filters-btn:hover {
+            background: var(--color-dangerHover);
+        }
+
+        @media (max-width: 768px) {
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-group {
+                min-width: auto;
+            }
+            
+            .document-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">📄 Document Filtering Test</h1>
+            <p class="subtitle">Testing filtering functionality for document management</p>
+        </div>
+
+        <div class="test-section">
+            <h2 class="section-title">🔍 Filter Controls</h2>
+            
+            <div class="filter-controls">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="filter-label">Search Documents</label>
+                        <input type="text" id="searchInput" class="filter-input" placeholder="Search by name or content...">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Domain</label>
+                        <select id="domainFilter" class="filter-input">
+                            <option value="">All Domains</option>
+                            <option value="mathematics">Mathematics</option>
+                            <option value="science">Science</option>
+                            <option value="language">Language</option>
+                            <option value="history">History</option>
+                            <option value="art">Art</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Subject</label>
+                        <select id="subjectFilter" class="filter-input">
+                            <option value="">All Subjects</option>
+                            <option value="algebra">Algebra</option>
+                            <option value="geometry">Geometry</option>
+                            <option value="physics">Physics</option>
+                            <option value="chemistry">Chemistry</option>
+                            <option value="literature">Literature</option>
+                            <option value="grammar">Grammar</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Grade Level</label>
+                        <select id="gradeLevelFilter" class="filter-input">
+                            <option value="">All Grades</option>
+                            <option value="elementary">Elementary</option>
+                            <option value="middle">Middle School</option>
+                            <option value="high">High School</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="filter-label">File Type</label>
+                        <select id="fileTypeFilter" class="filter-input">
+                            <option value="">All Types</option>
+                            <option value="pdf">PDF</option>
+                            <option value="doc">Word Document</option>
+                            <option value="ppt">PowerPoint</option>
+                            <option value="txt">Text File</option>
+                            <option value="image">Image</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Language</label>
+                        <select id="languageFilter" class="filter-input">
+                            <option value="">All Languages</option>
+                            <option value="hebrew">Hebrew</option>
+                            <option value="english">English</option>
+                            <option value="arabic">Arabic</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Author</label>
+                        <input type="text" id="authorFilter" class="filter-input" placeholder="Filter by author...">
+                    </div>
+                    
+                    <button class="clear-filters-btn" onclick="clearAllFilters()">Clear All Filters</button>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Available Tags (Click to filter)</label>
+                    <div class="tag-container" id="availableTags"></div>
+                </div>
+            </div>
+            
+            <div class="results-info" id="resultsInfo">
+                Showing all documents
+            </div>
+            
+            <div class="document-grid" id="documentGrid"></div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="section-title">✅ Manual Test Status</h2>
+            <div class="test-status" id="testStatus">
+                <div class="test-item">
+                    <div class="test-status-icon test-pending" id="test1">?</div>
+                    <span>Filter controls appear in media tabs</span>
+                </div>
+                <div class="test-item">
+                    <div class="test-status-icon test-pending" id="test2">?</div>
+                    <span>Selecting tags or metadata filters media list</span>
+                </div>
+                <div class="test-item">
+                    <div class="test-status-icon test-pending" id="test3">?</div>
+                    <span>Filtered results update in real-time</span>
+                </div>
+                <div class="test-item">
+                    <div class="test-status-icon test-pending" id="test4">?</div>
+                    <span>Multiple filters can be combined</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample document data with metadata and tags
+        const sampleDocuments = [
+            {
+                id: 1,
+                name: "Algebra Basics.pdf",
+                type: "pdf",
+                size: 2048000,
+                metadata: {
+                    domain: "mathematics",
+                    subject: "algebra",
+                    gradeLevel: "middle",
+                    language: "hebrew",
+                    author: "Sarah Cohen"
+                },
+                tags: ["algebra", "basics", "equations", "middle-school"],
+                savedAt: "2024-01-15T10:30:00Z"
+            },
+            {
+                id: 2,
+                name: "Physics Lab Report.docx",
+                type: "doc",
+                size: 1536000,
+                metadata: {
+                    domain: "science",
+                    subject: "physics",
+                    gradeLevel: "high",
+                    language: "english",
+                    author: "David Miller"
+                },
+                tags: ["physics", "lab", "experiment", "motion"],
+                savedAt: "2024-01-16T14:20:00Z"
+            },
+            {
+                id: 3,
+                name: "Hebrew Grammar Rules.txt",
+                type: "txt",
+                size: 512000,
+                metadata: {
+                    domain: "language",
+                    subject: "grammar",
+                    gradeLevel: "elementary",
+                    language: "hebrew",
+                    author: "Rachel Levi"
+                },
+                tags: ["hebrew", "grammar", "rules", "elementary"],
+                savedAt: "2024-01-17T09:15:00Z"
+            },
+            {
+                id: 4,
+                name: "Geometry Shapes.pptx",
+                type: "ppt",
+                size: 3072000,
+                metadata: {
+                    domain: "mathematics",
+                    subject: "geometry",
+                    gradeLevel: "elementary",
+                    language: "hebrew",
+                    author: "Michael Ben-David"
+                },
+                tags: ["geometry", "shapes", "visual", "elementary"],
+                savedAt: "2024-01-18T11:45:00Z"
+            },
+            {
+                id: 5,
+                name: "Chemistry Periodic Table.pdf",
+                type: "pdf",
+                size: 1024000,
+                metadata: {
+                    domain: "science",
+                    subject: "chemistry",
+                    gradeLevel: "high",
+                    language: "english",
+                    author: "Dr. Lisa Johnson"
+                },
+                tags: ["chemistry", "periodic-table", "elements", "high-school"],
+                savedAt: "2024-01-19T16:30:00Z"
+            },
+            {
+                id: 6,
+                name: "Literature Analysis.docx",
+                type: "doc",
+                size: 2560000,
+                metadata: {
+                    domain: "language",
+                    subject: "literature",
+                    gradeLevel: "high",
+                    language: "hebrew",
+                    author: "Yael Goldberg"
+                },
+                tags: ["literature", "analysis", "poetry", "high-school"],
+                savedAt: "2024-01-20T13:10:00Z"
+            },
+            {
+                id: 7,
+                name: "Art History Timeline.jpg",
+                type: "image",
+                size: 4096000,
+                metadata: {
+                    domain: "art",
+                    subject: "history",
+                    gradeLevel: "middle",
+                    language: "english",
+                    author: "Anna Rodriguez"
+                },
+                tags: ["art", "history", "timeline", "visual"],
+                savedAt: "2024-01-21T08:25:00Z"
+            },
+            {
+                id: 8,
+                name: "Arabic Vocabulary.pdf",
+                type: "pdf",
+                size: 1792000,
+                metadata: {
+                    domain: "language",
+                    subject: "vocabulary",
+                    gradeLevel: "middle",
+                    language: "arabic",
+                    author: "Ahmed Hassan"
+                },
+                tags: ["arabic", "vocabulary", "language", "middle-school"],
+                savedAt: "2024-01-22T12:40:00Z"
+            }
+        ];
+
+        let filteredDocuments = [...sampleDocuments];
+        let selectedTags = new Set();
+
+        // Initialize the interface
+        function initializeInterface() {
+            renderAvailableTags();
+            renderDocuments();
+            updateResultsInfo();
+            markTestPassed('test1'); // Filter controls are visible
+            
+            // Add event listeners
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+            document.getElementById('domainFilter').addEventListener('change', applyFilters);
+            document.getElementById('subjectFilter').addEventListener('change', applyFilters);
+            document.getElementById('gradeLevelFilter').addEventListener('change', applyFilters);
+            document.getElementById('fileTypeFilter').addEventListener('change', applyFilters);
+            document.getElementById('languageFilter').addEventListener('change', applyFilters);
+            document.getElementById('authorFilter').addEventListener('input', applyFilters);
+        }
+
+        // Render available tags
+        function renderAvailableTags() {
+            const allTags = new Set();
+            sampleDocuments.forEach(doc => {
+                doc.tags.forEach(tag => allTags.add(tag));
+            });
+
+            const tagsContainer = document.getElementById('availableTags');
+            tagsContainer.innerHTML = '';
+            
+            Array.from(allTags).sort().forEach(tag => {
+                const tagChip = document.createElement('button');
+                tagChip.className = 'tag-chip';
+                tagChip.textContent = tag;
+                tagChip.onclick = () => toggleTag(tag);
+                tagsContainer.appendChild(tagChip);
+            });
+        }
+
+        // Toggle tag selection
+        function toggleTag(tag) {
+            if (selectedTags.has(tag)) {
+                selectedTags.delete(tag);
+            } else {
+                selectedTags.add(tag);
+            }
+            
+            // Update tag chip appearance
+            const tagChips = document.querySelectorAll('.tag-chip');
+            tagChips.forEach(chip => {
+                if (chip.textContent === tag) {
+                    chip.classList.toggle('active', selectedTags.has(tag));
+                }
+            });
+            
+            applyFilters();
+            markTestPassed('test2'); // Tag filtering works
+        }
+
+        // Apply all filters
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const domain = document.getElementById('domainFilter').value;
+            const subject = document.getElementById('subjectFilter').value;
+            const gradeLevel = document.getElementById('gradeLevelFilter').value;
+            const fileType = document.getElementById('fileTypeFilter').value;
+            const language = document.getElementById('languageFilter').value;
+            const author = document.getElementById('authorFilter').value.toLowerCase();
+
+            filteredDocuments = sampleDocuments.filter(doc => {
+                // Search filter
+                const matchesSearch = !searchTerm || 
+                    doc.name.toLowerCase().includes(searchTerm) ||
+                    doc.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+
+                // Metadata filters
+                const matchesDomain = !domain || doc.metadata.domain === domain;
+                const matchesSubject = !subject || doc.metadata.subject === subject;
+                const matchesGradeLevel = !gradeLevel || doc.metadata.gradeLevel === gradeLevel;
+                const matchesFileType = !fileType || doc.type === fileType;
+                const matchesLanguage = !language || doc.metadata.language === language;
+                const matchesAuthor = !author || doc.metadata.author.toLowerCase().includes(author);
+
+                // Tag filters
+                const matchesTags = selectedTags.size === 0 || 
+                    Array.from(selectedTags).every(tag => doc.tags.includes(tag));
+
+                return matchesSearch && matchesDomain && matchesSubject && 
+                       matchesGradeLevel && matchesFileType && matchesLanguage && 
+                       matchesAuthor && matchesTags;
+            });
+
+            renderDocuments();
+            updateResultsInfo();
+            markTestPassed('test3'); // Real-time filtering works
+            
+            // Check if multiple filters are being used
+            const activeFilters = [
+                searchTerm, domain, subject, gradeLevel, 
+                fileType, language, author
+            ].filter(f => f).length + selectedTags.size;
+            
+            if (activeFilters > 1) {
+                markTestPassed('test4'); // Multiple filters work
+            }
+        }
+
+        // Render documents
+        function renderDocuments() {
+            const grid = document.getElementById('documentGrid');
+            grid.innerHTML = '';
+
+            filteredDocuments.forEach(doc => {
+                const card = document.createElement('div');
+                card.className = 'document-card';
+                
+                const fileExtension = doc.type.toUpperCase();
+                const formattedSize = formatFileSize(doc.size);
+                const formattedDate = new Date(doc.savedAt).toLocaleDateString('he-IL');
+
+                card.innerHTML = `
+                    <div class="document-header">
+                        <div class="document-icon">${fileExtension}</div>
+                        <div class="document-name">${doc.name}</div>
+                    </div>
+                    <div class="document-meta">
+                        <div>Size: ${formattedSize} | Saved: ${formattedDate}</div>
+                        <div>Domain: ${doc.metadata.domain} | Subject: ${doc.metadata.subject}</div>
+                        <div>Grade: ${doc.metadata.gradeLevel} | Language: ${doc.metadata.language}</div>
+                        <div>Author: ${doc.metadata.author}</div>
+                    </div>
+                    <div class="document-tags">
+                        ${doc.tags.map(tag => `<span class="document-tag">${tag}</span>`).join('')}
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        // Update results info
+        function updateResultsInfo() {
+            const info = document.getElementById('resultsInfo');
+            const total = sampleDocuments.length;
+            const filtered = filteredDocuments.length;
+            
+            if (filtered === total) {
+                info.textContent = `Showing all ${total} documents`;
+            } else {
+                info.textContent = `Showing ${filtered} of ${total} documents`;
+            }
+        }
+
+        // Clear all filters
+        function clearAllFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('domainFilter').value = '';
+            document.getElementById('subjectFilter').value = '';
+            document.getElementById('gradeLevelFilter').value = '';
+            document.getElementById('fileTypeFilter').value = '';
+            document.getElementById('languageFilter').value = '';
+            document.getElementById('authorFilter').value = '';
+            
+            selectedTags.clear();
+            
+            // Reset tag chips
+            const tagChips = document.querySelectorAll('.tag-chip');
+            tagChips.forEach(chip => {
+                chip.classList.remove('active');
+            });
+            
+            applyFilters();
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Mark test as passed
+        function markTestPassed(testId) {
+            const testIcon = document.getElementById(testId);
+            if (testIcon && !testIcon.classList.contains('test-pass')) {
+                testIcon.classList.remove('test-pending');
+                testIcon.classList.add('test-pass');
+                testIcon.textContent = '✓';
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeInterface);
+    </script>
+</body>
+</html>

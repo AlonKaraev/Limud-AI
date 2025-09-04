@@ -10,6 +10,7 @@ import SummariesManager from './SummariesManager';
 import DocumentsManager from './DocumentsManager';
 import AudioManager from './AudioManager';
 import VideoManager from './VideoManager';
+import ImagesManager from './ImagesManager';
 
 const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingRecording, setIsProcessingRecording }) => {
   // Main tab state - 4 main tabs as requested
@@ -727,6 +728,12 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
           🎬 ווידאו
         </button>
         <button
+          className={`sub-tab ${activeMediaSubTab === 'images' ? 'active' : ''}`}
+          onClick={() => setActiveMediaSubTab('images')}
+        >
+          🖼️ תמונות
+        </button>
+        <button
           className={`sub-tab ${activeMediaSubTab === 'documents' ? 'active' : ''}`}
           onClick={() => setActiveMediaSubTab('documents')}
         >
@@ -737,6 +744,7 @@ const TeacherDashboard = ({ user, t, onLogout, fileStorageService, isProcessingR
       <div className="sub-tab-content">
         {activeMediaSubTab === 'audio' && <AudioManager t={t} />}
         {activeMediaSubTab === 'video' && <VideoManager t={t} />}
+        {activeMediaSubTab === 'images' && <ImagesManager t={t} />}
         {activeMediaSubTab === 'documents' && <DocumentsManager t={t} />}
       </div>
     </div>

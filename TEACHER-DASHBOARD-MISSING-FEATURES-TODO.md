@@ -237,49 +237,62 @@
   
   ### **4.4 Tagging & Metadata System**
 
-  - [ ] **Implement tagging system for media items**
+  - [X] **Implement tagging system for media items**
     - Manual Test: Tag input appears in audio, video, and document upload forms
     - Manual Test: Multiple tags can be added to each media item
     - Manual Test: Tags are displayed on media item cards
     - Manual Test: Tags persist after page refresh
 
-  - [ ] **Add metadata fields to upload forms**
+  - [X] **Add metadata fields to upload forms**
     - Manual Test: Upload forms include editable file name field
     - Manual Test: Upload forms include fields for domain, subject, topic, and field
     - Manual Test: Metadata is saved and displayed with media items
     - Manual Test: Metadata persists after page refresh
 
-  - [ ] **Enable filtering by tags and metadata**
+  - [X] **Enable filtering by tags and metadata**
     - Manual Test: Filter controls appear in media tabs
     - Manual Test: Selecting tags or metadata filters media list
     - Manual Test: Filtered results update in real-time
     - Manual Test: Multiple filters can be combined
 
-  - [ ] **Allow editing tags and metadata after upload**
+  - [X] **Allow editing tags and metadata after upload**    
     - Manual Test: Edit button appears on media items
     - Manual Test: Editing tags and metadata updates stored values
     - Manual Test: Changes persist after refresh
 
-### **4.1 AI Content Generation Based on Media**
-- [ ] **Add **
-  - Manual Test: Dropdown shows available lessons
-  - Manual Test: Multiple lessons can be selected
-  - Manual Test: Selection state persists during form interaction
-  
-- [ ] **Add guidance text input for tests**
-  - Manual Test: Guidance textarea appears in test form
-  - Manual Test: Guidance text is included in AI request
-  - Manual Test: Generated tests reflect guidance instructions
-  
-- [ ] **Implement AI test generation API call**
-  - Manual Test: Form submits successfully to AI service
-  - Manual Test: Loading state shows during generation
-  - Manual Test: Generated questions populate in preview
+    ### **4.1 Document Text Extraction**
+    - [X] **Add automatic text extraction for uploaded documents**
+      - Manual Test: Text extraction starts after document upload
+      - Manual Test: Extracted text appears in document details
+      - Manual Test: Extraction status indicator shows progress
+      - Manual Test: Errors in extraction are handled gracefully
+
+    - [X] **Enable extraction of text from images within documents**
+      - Manual Test: Images in documents are scanned for text
+      - Manual Test: Extracted image text is included in document details
+      - Manual Test: Status indicator shows image extraction progress
+      - Manual Test: Extraction errors for images are handled gracefully
+
+    - [X] **Add "View Extracted Text" button for documents**
+      - Manual Test: Button appears on documents with extracted text
+      - Manual Test: Clicking button opens modal displaying extracted text
+      - Manual Test: Modal can be closed without affecting document
+      - Manual Test: Button is disabled or hidden if no text is available
+
+    - [ ] **Allow manual editing of extracted text**
+      - Manual Test: Edit button appears on extracted text
+      - Manual Test: Changes are saved and persist after refresh
+      - Manual Test: Edited text is clearly marked
+
+    - [X] **Enable search within extracted document text**
+      - Manual Test: Search input filters documents by extracted text content
+      - Manual Test: Search results highlight matching text
+      - Manual Test: Search works for both document and image-extracted text
 
 ### **4.2 AI Summary Generation**
-- [ ] **Add lesson selection for AI summaries**
-  - Manual Test: Dropdown shows available lessons
-  - Manual Test: Multiple lessons can be selected
+- [ ] **Add media selection for AI summaries**
+  - Manual Test: Dropdown shows available media - audio, video and documents
+  - Manual Test: Multiple media can be selected (multiple sources - audio, media or documents)
   - Manual Test: Selection affects summary content source
   
 - [ ] **Add guidance text input for summaries**
@@ -309,7 +322,7 @@
 - [ ] **Add status indicators throughout interface**
   - Manual Test: Processing status shows appropriate colors
   - Manual Test: Icons match status states
-  - Manual Test: Status updates in real-time
+  - Manual Test: Status updates in real-time 
   
 - [ ] **Implement skeleton loading states**
   - Manual Test: Loading skeletons show before content loads

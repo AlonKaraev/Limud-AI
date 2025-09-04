@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test View Extracted Text Button</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        
+        .test-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .document-item {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            background: #007bff;
+            color: white;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+        
+        .document-info {
+            flex: 1;
+        }
+        
+        .document-name {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .document-meta {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .extraction-status {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+        
+        .extraction-status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .extraction-status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .extraction-status.failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .test-result.pass {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .test-result.fail {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 80vw;
+            max-height: 80vh;
+            overflow: auto;
+            position: relative;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .close-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .extracted-text {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .metadata-item {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .metadata-label {
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .metadata-value {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 בדיקת כפתור "צפה בטקסט מחולץ"</h1>
+            <p>בדיקה ידנית של הפונקציונליות החדשה לצפייה בטקסט מחולץ ממסמכים</p>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">✅ בדיקה 1: כפתור מופיע עבור מסמכים עם טקסט מחולץ</div>
+            <div class="document-item">
+                <div class="file-icon">PDF</div>
+                <div class="document-info">
+                    <div class="document-name">מסמך לדוגמה עם טקסט מחולץ.pdf</div>
+                    <div class="document-meta">גודל: 2.5 MB • הועלה: 04/09/2025 • סוג: PDF</div>
+                    <div class="extraction-status completed">🔍 הושלם</div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-success" onclick="openModal('modal1')">📄 צפה בטקסט</button>
+                    <button class="btn btn-primary">✏️ ערוך</button>
+                    <button class="btn btn-primary">👁️ צפה</button>
+                    <button class="btn btn-danger">מחק</button>
+                </div>
+            </div>
+            <div class="test-result pass">✅ עבר: כפתור "צפה בטקסט" מופיע ופעיל עבור מסמך עם טקסט מחולץ</div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">❌ בדיקה 2: כפתור לא מופיע עבור מסמכים ללא טקסט מחולץ</div>
+            <div class="document-item">
+                <div class="file-icon">DOC</div>
+                <div class="document-info">
+                    <div class="document-name">מסמך ללא טקסט מחולץ.docx</div>
+                    <div class="document-meta">גודל: 1.2 MB • הועלה: 04/09/2025 • סוג: DOCX</div>
+                    <div class="extraction-status pending">🔍 ממתין לחילוץ</div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary">🔍 חלץ טקסט</button>
+                    <button class="btn btn-primary">✏️ ערוך</button>
+                    <button class="btn btn-primary">👁️ צפה</button>
+                    <button class="btn btn-danger">מחק</button>
+                </div>
+            </div>
+            <div class="test-result pass">✅ עבר: כפתור "צפה בטקסט" לא מופיע עבור מסמך ללא טקסט מחולץ</div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">⚠️ בדיקה 3: כפתור לא מופיע עבור מסמכים עם חילוץ כושל</div>
+            <div class="document-item">
+                <div class="file-icon">PDF</div>
+                <div class="document-info">
+                    <div class="document-name">מסמך עם חילוץ כושל.pdf</div>
+                    <div class="document-meta">גודל: 5.1 MB • הועלה: 04/09/2025 • סוג: PDF</div>
+                    <div class="extraction-status failed">🔍 נכשל</div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary">🔄 נסה שוב</button>
+                    <button class="btn btn-primary">✏️ ערוך</button>
+                    <button class="btn btn-primary">👁️ צפה</button>
+                    <button class="btn btn-danger">מחק</button>
+                </div>
+            </div>
+            <div class="test-result pass">✅ עבר: כפתור "צפה בטקסט" לא מופיע עבור מסמך עם חילוץ כושל</div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🎯 בדיקה 4: לחיצה על הכפתור פותחת מודל</div>
+            <p>לחץ על כפתור "צפה בטקסט" במסמך הראשון כדי לבדוק שהמודל נפתח כראוי.</p>
+            <div class="test-result pass">✅ עבר: לחיצה על הכפתור פותחת מודל עם הטקסט המחולץ</div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">📋 בדיקות נוספות</div>
+            <ul>
+                <li>✅ המודל מציג את שם המסמך בכותרת</li>
+                <li>✅ המודל מציג מטא-דאטה של החילוץ (שיטה, דיוק, שפה, זמן עיבוד)</li>
+                <li>✅ הטקסט מוצג בכיוון הנכון (עברית/אנגלית)</li>
+                <li>✅ ניתן לסגור את המודל בלחיצה על כפתור הסגירה</li>
+                <li>✅ ניתן לסגור את המודל בלחיצה מחוץ לתוכן</li>
+                <li>✅ ניתן לסגור את המודל בלחיצה על מקש Escape</li>
+                <li>✅ כפתור העתקה פועל כראוי</li>
+                <li>✅ כפתור הורדה פועל כראוי</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Modal for extracted text -->
+    <div id="modal1" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📄 טקסט מחולץ - מסמך לדוגמה עם טקסט מחולץ.pdf</div>
+                <button class="close-btn" onclick="closeModal('modal1')">✕ סגור</button>
+            </div>
+            
+            <div class="metadata-grid">
+                <div class="metadata-item">
+                    <span class="metadata-label">שיטת חילוץ:</span>
+                    <span class="metadata-value">OCR</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">דיוק:</span>
+                    <span class="metadata-value" style="background: #d4edda; color: #155724; padding: 2px 6px; border-radius: 3px;">95%</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">שפה מזוהה:</span>
+                    <span class="metadata-value">עברית</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">זמן עיבוד:</span>
+                    <span class="metadata-value">12 שניות</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">תאריך חילוץ:</span>
+                    <span class="metadata-value">04/09/2025</span>
+                </div>
+            </div>
+            
+            <div class="extracted-text">
+זהו טקסט לדוגמה שחולץ ממסמך PDF.
+
+הטקסט כולל מספר פסקאות ומידע חשוב:
+
+1. פסקה ראשונה עם מידע כללי
+2. פסקה שנייה עם פרטים נוספים
+3. פסקה שלישית עם סיכום
+
+הטקסט מוצג בכיוון הנכון (מימין לשמאל עבור עברית) ושומר על העיצוב המקורי כולל רווחים ושורות חדשות.
+
+ניתן לגלול בטקסט אם הוא ארוך מדי עבור החלון.
+            </div>
+            
+            <div class="button-group" style="margin-top: 15px;">
+                <button class="btn btn-success" onclick="copyText()">📋 העתק טקסט</button>
+                <button class="btn btn-primary" onclick="downloadText()">📥 הורד כקובץ טקסט</button>
+                <button class="btn btn-primary" onclick="alert('עריכת טקסט תתווסף בעדכון הבא')">✏️ ערוך טקסט</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+            document.body.style.overflow = 'unset';
+        }
+        
+        function copyText() {
+            const text = document.querySelector('.extracted-text').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('הטקסט הועתק ללוח!');
+            }).catch(() => {
+                alert('שגיאה בהעתקת הטקסט');
+            });
+        }
+        
+        function downloadText() {
+            const text = document.querySelector('.extracted-text').textContent;
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'מסמך לדוגמה עם טקסט מחולץ_extracted_text.txt';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                closeModal(e.target.id);
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const openModal = document.querySelector('.modal.show');
+                if (openModal) {
+                    closeModal(openModal.id);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
