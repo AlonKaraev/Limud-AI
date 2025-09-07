@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת מסנני מדיה מורחבים - Limud AI</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Google Fonts for Hebrew -->
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* CSS Variables for consistent theming */
+        :root {
+            --color-primary: #3498db;
+            --color-primaryLight: #ebf3fd;
+            --color-primaryHover: #2980b9;
+            --color-primaryDark: #5dade2;
+            --color-error: #e74c3c;
+            --color-errorHover: #c0392b;
+            --color-success: #27ae60;
+            --color-warning: #f39c12;
+            --color-info: #17a2b8;
+            
+            --color-text: #2c3e50;
+            --color-textSecondary: #7f8c8d;
+            --color-textOnPrimary: #ffffff;
+            --color-textDark: #ffffff;
+            --color-textSecondaryDark: #a0aec0;
+            
+            --color-surface: #ffffff;
+            --color-surfaceDark: #34495e;
+            --color-background: #f8f9fa;
+            --color-backgroundLight: #f8f9fa;
+            --color-border: #e9ecef;
+            --color-borderLight: #f1f3f4;
+            --color-borderDark: #4a5568;
+            
+            --color-shadowLight: rgba(0, 0, 0, 0.1);
+            --color-shadowMedium: rgba(0, 0, 0, 0.15);
+            --color-shadowDark: rgba(0, 0, 0, 0.2);
+            
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.2s ease;
+            --transition-slow: 0.3s ease;
+            
+            --z-dropdown: 100;
+            --z-modal: 1050;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Heebo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.6;
+            direction: rtl;
+        }
+
+        /* Button Styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: 1px solid transparent;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: var(--color-textOnPrimary);
+            border-color: var(--color-primary);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--color-primaryHover);
+            border-color: var(--color-primaryHover);
+        }
+
+        .btn-error {
+            background: var(--color-error);
+            color: var(--color-textOnPrimary);
+            border-color: var(--color-error);
+        }
+
+        .btn-error:hover:not(:disabled) {
+            background: var(--color-errorHover);
+            border-color: var(--color-errorHover);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: var(--color-primary);
+            color: var(--color-textOnPrimary);
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-spinner-small {
+            width: 16px;
+            height: 16px;
+            border-width: 2px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Test Container */
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primaryHover));
+            color: white;
+            border-radius: var(--radius-lg);
+        }
+
+        .test-header h1 {
+            margin: 0 0 1rem 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .test-header p {
+            margin: 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .test-section {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px var(--color-shadowLight);
+        }
+
+        .test-section h2 {
+            margin: 0 0 1.5rem 0;
+            color: var(--color-text);
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: rgba(39, 174, 96, 0.1);
+            color: var(--color-success);
+            border: 1px solid rgba(39, 174, 96, 0.3);
+        }
+
+        .status-info {
+            background: rgba(52, 152, 219, 0.1);
+            color: var(--color-primary);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .test-container {
+                padding: 1rem;
+            }
+            
+            .test-header h1 {
+                font-size: 2rem;
+            }
+            
+            .test-section {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef } = React;
+
+        // ExpandedMediaFilters Component
+        const ExpandedMediaFilters = ({ 
+            isVisible = false,
+            mediaType = 'all',
+            onFiltersChange,
+            availableTags = [],
+            onCreateTag,
+            initialFilters = {}
+        }) => {
+            const [filters, setFilters] = useState({
+                dateRange: {
+                    from: '',
+                    to: '',
+                    preset: ''
+                },
+                mediaTypes: {
+                    audio: true,
+                    video: true,
+                    documents: true,
+                    images: true
+                },
+                fileFormats: [],
+                tags: [],
+                processingStatus: 'all',
+                sizeRange: {
+                    min: 0,
+                    max: 1000
+                },
+                durationRange: {
+                    min: 0,
+                    max: 180
+                },
+                ...initialFilters
+            });
+
+            const [showTagDropdown, setShowTagDropdown] = useState(false);
+            const [newTagName, setNewTagName] = useState('');
+            const [showNewTagInput, setShowNewTagInput] = useState(false);
+
+            // Date presets
+            const datePresets = [
+                { value: 'today', label: 'היום' },
+                { value: 'week', label: 'השבוע' },
+                { value: 'month', label: 'החודש' },
+                { value: 'year', label: 'השנה' }
+            ];
+
+            // File format options based on media type
+            const getFileFormats = () => {
+                const formats = {
+                    audio: ['MP3', 'WAV', 'M4A', 'AAC', 'OGG'],
+                    video: ['MP4', 'AVI', 'MOV', 'WMV', 'FLV', 'WEBM'],
+                    documents: ['PDF', 'DOC', 'DOCX', 'TXT', 'RTF'],
+                    images: ['JPG', 'JPEG', 'PNG', 'GIF', 'BMP', 'WEBP']
+                };
+
+                if (mediaType === 'all') {
+                    return Object.values(formats).flat();
+                }
+                return formats[mediaType] || [];
+            };
+
+            // Processing status options
+            const processingStatuses = [
+                { value: 'all', label: 'הכל', icon: '📋' },
+                { value: 'processing', label: 'מעבד', icon: '⏳' },
+                { value: 'completed', label: 'הושלם', icon: '✅' },
+                { value: 'failed', label: 'נכשל', icon: '❌' },
+                { value: 'pending', label: 'ממתין', icon: '⏸️' }
+            ];
+
+            // Size presets
+            const sizePresets = [
+                { value: 'small', label: 'קטן (<10MB)', min: 0, max: 10 },
+                { value: 'medium', label: 'בינוני (10-100MB)', min: 10, max: 100 },
+                { value: 'large', label: 'גדול (>100MB)', min: 100, max: 1000 }
+            ];
+
+            // Duration presets (for audio/video)
+            const durationPresets = [
+                { value: 'short', label: 'קצר (<5 דק\')', min: 0, max: 5 },
+                { value: 'medium', label: 'בינוני (5-30 דק\')', min: 5, max: 30 },
+                { value: 'long', label: 'ארוך (>30 דק\')', min: 30, max: 180 }
+            ];
+
+            // Update filters and notify parent
+            const updateFilters = (newFilters) => {
+                const updatedFilters = { ...filters, ...newFilters };
+                setFilters(updatedFilters);
+                if (onFiltersChange) {
+                    onFiltersChange(updatedFilters);
+                }
+            };
+
+            // Handle date preset selection
+            const handleDatePreset = (preset) => {
+                const now = new Date();
+                let from, to;
+
+                switch (preset) {
+                    case 'today':
+                        from = to = now.toISOString().split('T')[0];
+                        break;
+                    case 'week':
+                        from = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0];
+                        to = new Date().toISOString().split('T')[0];
+                        break;
+                    case 'month':
+                        from = new Date(now.setMonth(now.getMonth() - 1)).toISOString().split('T')[0];
+                        to = new Date().toISOString().split('T')[0];
+                        break;
+                    case 'year':
+                        from = new Date(now.setFullYear(now.getFullYear() - 1)).toISOString().split('T')[0];
+                        to = new Date().toISOString().split('T')[0];
+                        break;
+                    default:
+                        from = to = '';
+                }
+
+                updateFilters({
+                    dateRange: { from, to, preset }
+                });
+            };
+
+            // Clear all filters
+            const handleClearAllFilters = () => {
+                const clearedFilters = {
+                    dateRange: { from: '', to: '', preset: '' },
+                    mediaTypes: { audio: true, video: true, documents: true, images: true },
+                    fileFormats: [],
+                    tags: [],
+                    processingStatus: 'all',
+                    sizeRange: { min: 0, max: 1000 },
+                    durationRange: { min: 0, max: 180 }
+                };
+                setFilters(clearedFilters);
+                if (onFiltersChange) {
+                    onFiltersChange(clearedFilters);
+                }
+            };
+
+            if (!isVisible) return null;
+
+            return (
+                <div style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderTop: 'none',
+                    borderRadius: '0 0 var(--radius-md) var(--radius-md)',
+                    boxShadow: '0 4px 12px var(--color-shadowLight)',
+                    animation: 'expandFilters 0.3s ease-out',
+                    overflow: 'hidden'
+                }}>
+                    <div style={{ padding: '1.5rem' }}>
+                        {/* Date Range Filter */}
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ 
+                                fontWeight: '600', 
+                                fontSize: '0.9rem', 
+                                color: 'var(--color-text)',
+                                marginBottom: '0.75rem',
+                                display: 'block'
+                            }}>
+                                טווח תאריכים
+                            </label>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                                {datePresets.map(preset => (
+                                    <button
+                                        key={preset.value}
+                                        className={`btn btn-sm ${filters.dateRange.preset === preset.value ? 'btn-primary' : 'btn-outline'}`}
+                                        onClick={() => handleDatePreset(preset.value)}
+                                    >
+                                        {preset.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                <input
+                                    type="date"
+                                    value={filters.dateRange.from}
+                                    onChange={(e) => updateFilters({
+                                        dateRange: { ...filters.dateRange, from: e.target.value, preset: '' }
+                                    })}
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.75rem',
+                                        border: '2px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: '0.9rem'
+                                    }}
+                                />
+                                <span>עד</span>
+                                <input
+                                    type="date"
+                                    value={filters.dateRange.to}
+                                    onChange={(e) => updateFilters({
+                                        dateRange: { ...filters.dateRange, to: e.target.value, preset: '' }
+                                    })}
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.75rem',
+                                        border: '2px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: '0.9rem'
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Processing Status Filter */}
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ 
+                                fontWeight: '600', 
+                                fontSize: '0.9rem', 
+                                color: 'var(--color-text)',
+                                marginBottom: '0.75rem',
+                                display: 'block'
+                            }}>
+                                סטטוס עיבוד
+                            </label>
+                            <select
+                                value={filters.processingStatus}
+                                onChange={(e) => updateFilters({ processingStatus: e.target.value })}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem 1rem',
+                                    border: '2px solid var(--color-border)',
+                                    borderRadius: 'var(--radius-md)',
+                                    fontSize: '0.9rem',
+                                    fontFamily: 'inherit'
+                                }}
+                            >
+                                {processingStatuses.map(status => (
+                                    <option key={status.value} value={status.value}>
+                                        {status.icon} {status.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Size Filter */}
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label style={{ 
+                                fontWeight: '600', 
+                                fontSize: '0.9rem', 
+                                color: 'var(--color-text)',
+                                marginBottom: '0.75rem',
+                                display: 'block'
+                            }}>
+                                גודל קובץ (MB)
+                            </label>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                                {sizePresets.map(preset => (
+                                    <button
+                                        key={preset.value}
+                                        className={`btn btn-sm ${
+                                            filters.sizeRange.min === preset.min && 
+                                            filters.sizeRange.max === preset.max ? 'btn-primary' : 'btn-outline'
+                                        }`}
+                                        onClick={() => updateFilters({
+                                            sizeRange: { min: preset.min, max: preset.max }
+                                        })}
+                                    >
+                                        {preset.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="1000"
+                                    value={filters.sizeRange.min}
+                                    onChange={(e) => updateFilters({
+                                        sizeRange: { ...filters.sizeRange, min: parseInt(e.target.value) || 0 }
+                                    })}
+                                    placeholder="מינימום"
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.5rem',
+                                        border: '2px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        fontSize: '0.9rem',
+                                        textAlign: 'center'
+                                    }}
+                                />
+                                <span>-</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="1000"
+                                    value={filters.sizeRange.max}
+                                    onChange={(e) => updateFilters({
+                                        sizeRange: { ...filters.sizeRange, max: parseInt(e.target.value) || 1000 }
+                                    })}
+                                    placeholder="מקסימום"
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.5rem',
+                                        border: '2px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        fontSize: '0.9rem',
+                                        textAlign: 'center'
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Filter Actions */}
+                        <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            paddingTop: '1rem',
+                            borderTop: '1px solid var(--color-border)'
+                        }}>
+                            <button
+                                className="btn btn-outline"
+                                onClick={handleClearAllFilters}
+                            >
+                                נקה כל המסננים
+                            </button>
+                            <div style={{ 
+                                fontSize: '0.9rem',
+                                color: 'var(--color-textSecondary)',
+                                fontWeight: '500'
+                            }}>
+                                {(() => {
+                                    let count = 0;
+                                    if (filters.dateRange.from || filters.dateRange.to) count++;
+                                    if (filters.processingStatus !== 'all') count++;
+                                    if (filters.sizeRange.min > 0 || filters.sizeRange.max < 1000) count++;
+                                    return count > 0 ? `${count} מסננים פעילים` : 'אין מסננים פעילים';
+                                })()}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // MediaFilteringHeader Component
+        const MediaFilteringHeader = ({ 
+            mediaType = 'all', 
+            onUpload, 
+            onRecord, 
+            onSearch, 
+            isExpanded = false, 
+            onToggleExpanded,
+            onFiltersChange,
+            availableTags = [],
+            onCreateTag,
+            initialFilters = {}
+        }) => {
+            const [isUploading, setIsUploading] = useState(false);
+            const [uploadProgress, setUploadProgress] = useState(0);
+            const fileInputRef = useRef(null);
+
+            const handleUpload = async (files) => {
+                setIsUploading(true);
+                setUploadProgress(0);
+
+                try {
+                    const progressInterval = setInterval(() => {
+                        setUploadProgress(prev => {
+                            if (prev >= 90) {
+                                clearInterval(progressInterval);
+                                return prev;
+                            }
+                            return prev + 10;
+                        });
+                    }, 200);
+
+                    if (onUpload) {
+                        await onUpload(files);
+                    }
+
+                    setUploadProgress(100);
+                    setTimeout(() => {
+                        setIsUploading(false);
+                        setUploadProgress(0);
+                    }, 500);
+
+                } catch (error) {
+                    console.error('Upload failed:', error);
+                    setIsUploading(false);
+                    setUploadProgress(0);
+                }
+            };
+
+            const handleUploadClick = () => {
+                fileInputRef.current?.click();
+            };
+
+            const handleFileInputChange = (e) => {
+                const files = e.target.files;
+                if (files && files.length > 0) {
+                    handleUpload(Array.from(files));
+                }
+                e.target.value = '';
+            };
+
+            return (
+                <>
+                    <div style={{
+                        background: 'var(--color-surface)',
+                        borderRadius: 'var(--radius-md)',
+                        boxShadow: '0 2px 8px var(--color-shadowLight)',
+                        marginBottom: '1.5rem',
+                        border: '1px solid var(--color-border)'
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1rem',
+                            padding: '1rem 1.5rem',
+                            flexWrap: 'wrap'
+                        }}>
+                            {/* Upload Button */}
+                            <div style={{ position: 'relative', flexShrink: 0 }}>
+                                <button
+                                    className={`btn btn-primary ${isUploading ? 'uploading' : ''}`}
+                                    onClick={handleUploadClick}
+                                    disabled={isUploading}
+                                    style={{ minWidth: '140px' }}
+                                >
+                                    <span>
+                                        {isUploading ? (
+                                            <div className="loading-spinner loading-spinner-small"></div>
+                                        ) : (
+                                            '📁'
+                                        )}
+                                    </span>
+                                    <span>
+                                        {isUploading ? `מעלה... ${uploadProgress}%` : 'העלה קבצים'}
+                                    </span>
+                                </button>
+
+                                {isUploading && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        bottom: 0,
+                                        left: 0,
+                                        right: 0,
+                                        height: '3px',
+                                        background: 'rgba(255, 255, 255, 0.3)',
+                                        borderRadius: '0 0 var(--radius-md) var(--radius-md)',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{
+                                            height: '100%',
+                                            background: 'var(--color-success)',
+                                            transition: 'width 0.2s ease',
+                                            width: `${uploadProgress}%`
+                                        }}></div>
+                                    </div>
+                                )}
+
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    multiple
+                                    onChange={handleFileInputChange}
+                                    style={{
+                                        position: 'absolute',
+                                        opacity: 0,
+                                        pointerEvents: 'none',
+                                        width: 0,
+                                        height: 0
+                                    }}
+                                />
+                            </div>
+
+                            {/* Record Button - Only for Audio/Video */}
+                            {(mediaType === 'audio' || mediaType === 'video') && (
+                                <button
+                                    className="btn btn-error"
+                                    onClick={onRecord}
+                                    style={{ minWidth: '120px' }}
+                                >
+                                    <span>🔴</span>
+                                    <span>הקלט</span>
+                                </button>
+                            )}
+
+                            {/* Search Bar */}
+                            <div style={{ 
+                                flex: 1, 
+                                minWidth: '200px', 
+                                maxWidth: '500px',
+                                position: 'relative'
+                            }}>
+                                <input
+                                    type="text"
+                                    placeholder="חפש בשם, תגיות, תיאור או תמלול..."
+                                    onChange={(e) => onSearch && onSearch(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem 3rem 0.75rem 1rem',
+                                        border: '2px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: '1rem',
+                                        direction: 'rtl'
+                                    }}
+                                />
+                                <span style={{
+                                    position: 'absolute',
+                                    left: '1rem',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    fontSize: '1.2rem',
+                                    color: 'var(--color-textSecondary)',
+                                    pointerEvents: 'none'
+                                }}>
+                                    🔍
+                                </span>
+                            </div>
+
+                            {/* Expand Button */}
+                            <button
+                                className={`btn btn-outline ${isExpanded ? 'expanded' : ''}`}
+                                onClick={onToggleExpanded}
+                                style={{
+                                    minWidth: '44px',
+                                    minHeight: '44px',
+                                    padding: '0.5rem',
+                                    borderRadius: '50%',
+                                    background: isExpanded ? 'var(--color-primary)' : 'transparent',
+                                    color: isExpanded ? 'var(--color-textOnPrimary)' : 'var(--color-primary)',
+                                    borderColor: 'var(--color-primary)'
+                                }}
+                            >
+                                <span style={{
+                                    fontSize: '1.5rem',
+                                    fontWeight: 'bold',
+                                    transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                    transition: 'transform 0.3s ease',
+                                    display: 'inline-block'
+                                }}>
+                                    ⌄
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Expanded Media Filters */}
+                    <ExpandedMediaFilters
+                        isVisible={isExpanded}
+                        mediaType={mediaType}
+                        onFiltersChange={onFiltersChange}
+                        availableTags={availableTags}
+                        onCreateTag={onCreateTag}
+                        initialFilters={initialFilters}
+                    />
+                </>
+            );
+        };
+
+        // Main Test Component
+        const ExpandedMediaFiltersTest = () => {
+            const [isExpanded, setIsExpanded] = useState(false);
+            const [currentMediaType, setCurrentMediaType] = useState('all');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [filters, setFilters] = useState({});
+
+            const mockTags = [
+                { id: 1, name: 'חשוב', color: '#e74c3c' },
+                { id: 2, name: 'לימודים', color: '#3498db' },
+                { id: 3, name: 'פרויקט', color: '#2ecc71' },
+                { id: 4, name: 'ישיבה', color: '#f39c12' },
+                { id: 5, name: 'הרצאה', color: '#9b59b6' }
+            ];
+
+            const [availableTags, setAvailableTags] = useState(mockTags);
+
+            // Handler functions
+            const handleToggleExpanded = () => {
+                setIsExpanded(!isExpanded);
+            };
+
+            const handleUpload = async (files) => {
+                console.log('Upload files:', files);
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        console.log('Upload completed');
+                        resolve();
+                    }, 2000);
+                });
+            };
+
+            const handleRecord = () => {
+                console.log('Start recording for media type:', currentMediaType);
+            };
+
+            const handleSearch = (query) => {
+                setSearchQuery(query);
+                console.log('Search query:', query);
+            };
+
+            const handleFiltersChange = (newFilters) => {
+                setFilters(newFilters);
+                console.log('Filters changed:', newFilters);
+            };
+
+            const handleCreateTag = async (tagName) => {
+                console.log('Creating new tag:', tagName);
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        const newTag = {
+                            id: availableTags.length + 1,
+                            name: tagName,
+                            color: '#' + Math.floor(Math.random()*16777215).toString(16)
+                        };
+                        setAvailableTags(prev => [...prev, newTag]);
+                        resolve(newTag);
+                    }, 500);
+                });
+            };
+
+            return (
+                <div className="test-container">
+                    <div className="test-header">
+                        <h1>בדיקת מסנני מדיה מורחבים</h1>
+                        <p>רכיב מסנני מדיה מתקדם עם תמיכה בחיפוש, תגיות, וסינון לפי תאריכים</p>
+                    </div>
+
+                    <div className="test-section">
+                        <h2>בחירת סוג מדיה</h2>
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {['all', 'audio', 'video', 'documents', 'images'].map(type => (
+                                <button
+                                    key={type}
+                                    onClick={() => setCurrentMediaType(type)}
+                                    className={`btn ${currentMediaType === type ? 'btn-primary' : 'btn-outline'}`}
+                                >
+                                    {type === 'all' && '🎯 כל המדיה'}
+                                    {type === 'audio' && '🎵 אודיו'}
+                                    {type === 'video' && '🎬 וידאו'}
+                                    {type === 'documents' && '📄 מסמכים'}
+                                    {type === 'images' && '🖼️ תמונות'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="test-section">
+                        <h2>רכיב מסנני המדיה</h2>
+                        <MediaFilteringHeader
+                            mediaType={currentMediaType}
+                            onUpload={handleUpload}
+                            onRecord={handleRecord}
+                            onSearch={handleSearch}
+                            isExpanded={isExpanded}
+                            onToggleExpanded={handleToggleExpanded}
+                            onFiltersChange={handleFiltersChange}
+                            availableTags={availableTags}
+                            onCreateTag={handleCreateTag}
+                            initialFilters={{}}
+                        />
+                    </div>
+
+                    <div className="test-section">
+                        <h2>מצב נוכחי</h2>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+                            <div>
+                                <strong>סוג מדיה:</strong> {currentMediaType}
+                            </div>
+                            <div>
+                                <strong>מסננים מורחבים:</strong> 
+                                <span className={`status-indicator ${isExpanded ? 'status-success' : 'status-info'}`}>
+                                    {isExpanded ? '🔽 פתוח' : '▶️ סגור'}
+                                </span>
+                            </div>
+                            <div>
+                                <strong>שאילתת חיפוש:</strong> {searchQuery || 'ללא חיפוש'}
+                            </div>
+                            <div>
+                                <strong>מספר מסננים פעילים:</strong> {Object.keys(filters).length}
+                            </div>
+                        </div>
+                        
+                        {Object.keys(filters).length > 0 && (
+                            <div style={{ marginTop: '1rem' }}>
+                                <strong>מסננים פעילים:</strong>
+                                <pre style={{ 
+                                    background: '#f8f9fa',
+                                    padding: '1rem',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8rem',
+                                    overflow: 'auto',
+                                    marginTop: '0.5rem'
+                                }}>
+                                    {JSON.stringify(filters, null, 2)}
+                                </pre>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="test-section">
+                        <h2>הוראות בדיקה</h2>
+                        <ul style={{ lineHeight: '1.8' }}>
+                            <li>בחר סוג מדיה שונה כדי לראות איך המסננים משתנים</li>
+                            <li>לחץ על כפתור ההרחבה (⌄) כדי לפתוח/לסגור את המסננים המורחבים</li>
+                            <li>נסה להקליד בשדה החיפוש כדי לראות את השאילתה</li>
+                            <li>בחר תאריכים וסטטוס עיבוד במסננים המורחבים</li>
+                            <li>שנה את טווח הגודל באמצעות הכפתורים או השדות</li>
+                            <li>שים לב לספירת המסננים הפעילים ולתצוגת המצב</li>
+                            <li>בדוק את הרספונסיביות על ידי שינוי גודל החלון</li>
+                        </ul>
+                    </div>
+                </div>
+            );
+        };
+
+        // Render the app
+        ReactDOM.render(<ExpandedMediaFiltersTest />, document.getElementById('root'));
+    </script>
+</body>
+</html>

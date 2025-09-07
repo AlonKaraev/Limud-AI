@@ -4,16 +4,23 @@ import styled from 'styled-components';
 const VideoPlayerContainer = styled.div`
   position: relative;
   width: 100%;
-  max-width: 800px;
+  max-width: ${props => props.isPopup ? '100%' : '800px'};
+  height: ${props => props.isPopup ? '100%' : 'auto'};
   background: #000;
-  border-radius: var(--radius-md);
+  border-radius: ${props => props.isPopup ? '0' : 'var(--radius-md)'};
   overflow: hidden;
-  box-shadow: 0 4px 12px var(--color-shadowMedium);
+  box-shadow: ${props => props.isPopup ? 'none' : '0 4px 12px var(--color-shadowMedium)'};
+  display: ${props => props.isPopup ? 'flex' : 'block'};
+  align-items: ${props => props.isPopup ? 'center' : 'initial'};
+  justify-content: ${props => props.isPopup ? 'center' : 'initial'};
+  min-height: ${props => props.isPopup ? '300px' : 'auto'};
 `;
 
 const VideoElement = styled.video`
   width: 100%;
-  height: auto;
+  height: ${props => props.isPopup ? '100%' : 'auto'};
+  max-height: ${props => props.isPopup ? 'calc(90vh - 120px)' : 'none'};
+  object-fit: ${props => props.isPopup ? 'contain' : 'cover'};
   display: block;
   outline: none;
 `;
@@ -272,7 +279,8 @@ const VideoPlayer = ({
   metadata = {}, 
   onClose,
   autoPlay = false,
-  showInfo = true 
+  showInfo = true,
+  isPopup = false
 }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -444,6 +452,7 @@ const VideoPlayer = ({
   return (
     <VideoPlayerContainer 
       ref={containerRef}
+      isPopup={isPopup}
       onMouseMove={() => setShowControls(true)}
       onMouseLeave={() => isPlaying && setShowControls(false)}
     >
@@ -451,6 +460,7 @@ const VideoPlayer = ({
         <VideoElement
           ref={videoRef}
           src={videoUrl}
+          isPopup={isPopup}
           onLoadedMetadata={handleLoadedMetadata}
           onTimeUpdate={handleTimeUpdate}
           onPlay={handlePlay}

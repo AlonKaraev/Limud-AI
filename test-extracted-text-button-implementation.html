@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת כפתור צפייה בטקסט מחולץ/תמלול</title>
+    <style>
+        :root {
+            --color-primary: #3498db;
+            --color-surface: #ffffff;
+            --color-border: #e9ecef;
+            --color-text: #2c3e50;
+            --color-textSecondary: #7f8c8d;
+            --color-surfaceElevated: #f8f9fa;
+            --color-success: #27ae60;
+            --color-danger: #e74c3c;
+            --color-warning: #f39c12;
+            --color-info: #3498db;
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition-fast: 0.2s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: var(--color-surfaceElevated);
+            color: var(--color-text);
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .media-item {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            transition: all var(--transition-fast);
+        }
+
+        .media-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .media-type {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .media-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .media-info {
+            font-size: 0.9rem;
+            color: var(--color-textSecondary);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .preview-button {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .preview-button:hover {
+            background: #2980b9;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 2rem;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: auto;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--color-border);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .close-button {
+            background: var(--color-danger);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: var(--transition-fast);
+        }
+
+        .close-button:hover {
+            background: #c0392b;
+        }
+
+        .text-content {
+            background: var(--color-surfaceElevated);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 1.5rem;
+            margin: 1rem 0;
+            min-height: 200px;
+            font-size: 1rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .metadata {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .metadata h4 {
+            margin: 0 0 0.75rem 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .metadata-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: var(--color-surfaceElevated);
+            border-radius: var(--radius-sm);
+        }
+
+        .metadata-label {
+            font-weight: 500;
+            color: var(--color-textSecondary);
+            font-size: 0.9rem;
+        }
+
+        .metadata-value {
+            color: var(--color-text);
+            font-size: 0.9rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .action-button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .copy-button {
+            background: var(--color-success);
+            color: white;
+        }
+
+        .copy-button:hover {
+            background: #229954;
+        }
+
+        .download-button {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .download-button:hover {
+            background: #2980b9;
+        }
+
+        .implementation-info {
+            background: var(--color-info);
+            color: white;
+            padding: 1.5rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 2rem;
+        }
+
+        .implementation-info h3 {
+            margin: 0 0 1rem 0;
+        }
+
+        .implementation-info ul {
+            margin: 0;
+            padding-right: 1.5rem;
+        }
+
+        .implementation-info li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 בדיקת כפתור "צפה בטקסט מחולץ או תמלול"</h1>
+            <p>מימוש הכפתור עבור סוגי מדיה שונים במערכת Limud AI</p>
+        </div>
+
+        <div class="implementation-info">
+            <h3>📋 פרטי המימוש:</h3>
+            <ul>
+                <li><strong>ExtractedTextModal.js:</strong> הורחב לתמיכה בתמלול של קבצי אודיו/וידאו</li>
+                <li><strong>MediaGrid.js:</strong> שולב עם ExtractedTextModal לפתיחת המודל בלחיצה על כפתור הצפייה</li>
+                <li><strong>API Endpoints:</strong> נקודות קצה שונות לפי סוג המדיה (documents, images, recordings)</li>
+                <li><strong>UI/UX:</strong> כותרות וטקסטים דינמיים בהתאם לסוג המדיה</li>
+            </ul>
+        </div>
+
+        <div class="test-grid">
+            <div class="media-item">
+                <div class="media-type">📄</div>
+                <div class="media-title">מסמך PDF לדוגמה</div>
+                <div class="media-info">PDF • 2.3 MB • עברית</div>
+                <button class="preview-button" onclick="showModal('document', 'מסמך PDF לדוגמה')">
+                    📝 צפה בטקסט מחולץ
+                </button>
+            </div>
+
+            <div class="media-item">
+                <div class="media-type">🖼️</div>
+                <div class="media-title">תמונת לוח לדוגמה</div>
+                <div class="media-info">JPG • 1.8 MB • OCR זמין</div>
+                <button class="preview-button" onclick="showModal('image', 'תמונת לוח לדוגמה')">
+                    📝 צפה בטקסט מחולץ
+                </button>
+            </div>
+
+            <div class="media-item">
+                <div class="media-type">🎵</div>
+                <div class="media-title">הקלטת שיעור אודיו</div>
+                <div class="media-info">MP3 • 45:32 • עברית</div>
+                <button class="preview-button" onclick="showModal('audio', 'הקלטת שיעור אודיו')">
+                    📝 צפה בתמלול
+                </button>
+            </div>
+
+            <div class="media-item">
+                <div class="media-type">🎥</div>
+                <div class="media-title">סרטון הרצאה</div>
+                <div class="media-info">MP4 • 1:23:15 • עברית/אנגלית</div>
+                <button class="preview-button" onclick="showModal('video', 'סרטון הרצאה')">
+                    📝 צפה בתמלול
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal" onclick="closeModal(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title">
+                    📄 טקסט מחולץ - שם הקובץ
+                </h2>
+                <button class="close-button" onclick="closeModal()">
+                    ✕ סגור
+                </button>
+            </div>
+
+            <div class="metadata">
+                <h4 id="metadata-title">פרטי החילוץ</h4>
+                <div class="metadata-grid">
+                    <div class="metadata-item">
+                        <span class="metadata-label">שיטת חילוץ:</span>
+                        <span class="metadata-value" id="extraction-method">OCR + PDF Text</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">דיוק:</span>
+                        <span class="metadata-value">94%</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">שפה מזוהה:</span>
+                        <span class="metadata-value">עברית</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">זמן עיבוד:</span>
+                        <span class="metadata-value" id="processing-time">12 שניות</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">תאריך חילוץ:</span>
+                        <span class="metadata-value">06/09/2025</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">מספר מילים:</span>
+                        <span class="metadata-value" id="word-count">342</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-content" id="text-content">
+                זה הוא טקסט לדוגמה שמדגים את פונקציונליות החילוץ והתמלול.
+
+עבור מסמכים: הטקסט מחולץ באמצעות OCR וחילוץ טקסט ישיר מהקובץ.
+
+עבור תמונות: הטקסט מחולץ באמצעות טכנולוגיית OCR מתקדמת.
+
+עבור אודיו ווידאו: הטקסט נוצר באמצעות תמלול אוטומטי.
+
+המערכת תומכת בשפות עברית ואנגלית ומספקת מידע מפורט על איכות החילוץ.
+            </div>
+
+            <div class="action-buttons">
+                <button class="action-button copy-button" onclick="copyToClipboard()">
+                    📋 העתק טקסט
+                </button>
+                <button class="action-button download-button" onclick="downloadText()">
+                    📥 הורד כקובץ טקסט
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showModal(mediaType, fileName) {
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modal-title');
+            const metadataTitle = document.getElementById('metadata-title');
+            const extractionMethod = document.getElementById('extraction-method');
+            const processingTime = document.getElementById('processing-time');
+            const wordCount = document.getElementById('word-count');
+            const textContent = document.getElementById('text-content');
+
+            // Update modal content based on media type
+            if (mediaType === 'audio' || mediaType === 'video') {
+                modalTitle.innerHTML = `🎵 תמלול - ${fileName}`;
+                metadataTitle.textContent = 'פרטי התמלול';
+                extractionMethod.textContent = 'תמלול אוטומטי';
+                processingTime.textContent = '2:34 דקות';
+                wordCount.textContent = '1,247';
+                textContent.textContent = `זהו תמלול לדוגמה עבור קובץ ${mediaType === 'audio' ? 'אודיו' : 'וידאו'}.
+
+המערכת מבצעת תמלול אוטומטי באיכות גבוהה עם זיהוי דוברים מרובים.
+
+התמלול כולל סימני פיסוק אוטומטיים וזיהוי שפה.
+
+ניתן לערוך את התמלול באופן ידני לשיפור הדיוק.
+
+התוצאה הסופית מיועדת ליצירת תוכן לימודי ונגיש.`;
+            } else {
+                modalTitle.innerHTML = `📄 טקסט מחולץ - ${fileName}`;
+                metadataTitle.textContent = 'פרטי החילוץ';
+                extractionMethod.textContent = mediaType === 'image' ? 'OCR מתקדם' : 'OCR + PDF Text';
+                processingTime.textContent = '12 שניות';
+                wordCount.textContent = '342';
+                textContent.textContent = `זהו טקסט מחולץ לדוגמה עבור ${mediaType === 'image' ? 'תמונה' : 'מסמך'}.
+
+המערכת מבצעת חילוץ טקסט באיכות גבוהה עם תמיכה בשפות מרובות.
+
+עבור תמונות: שימוש בטכנולוגיית OCR מתקדמת לזיהוי טקסט בתמונות.
+
+עבור מסמכים: שילוב של חילוץ טקסט ישיר ו-OCR לתמונות במסמך.
+
+התוצאה מעובדת ומוכנה לשימוש בפלטפורמת הלמידה.`;
+            }
+
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            
+            const modal = document.getElementById('modal');
+            modal.classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+
+        function copyToClipboard() {
+            const textContent = document.getElementById('text-content').textContent;
+            navigator.clipboard.writeText(textContent).then(() => {
+                const button = document.querySelector('.copy-button');
+                const originalText = button.innerHTML;
+                button.innerHTML = '✅ הועתק!';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Error copying text: ', err);
+                alert('שגיאה בהעתקת הטקסט');
+            });
+        }
+
+        function downloadText() {
+            const textContent = document.getElementById('text-content').textContent;
+            const modalTitle = document.getElementById('modal-title').textContent;
+            const fileName = modalTitle.split(' - ')[1] || 'extracted_text';
+            
+            const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${fileName}_extracted_text.txt`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // Handle Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

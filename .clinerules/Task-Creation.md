@@ -1,0 +1,1 @@
+Break down tasks into well-defined components that either function independently or sequentially build on prior work. Include manual testing steps and expected user journey definitions in each task description.

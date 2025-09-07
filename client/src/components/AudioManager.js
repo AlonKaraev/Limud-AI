@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import MediaFilteringHeader from './MediaFilteringHeader';
 import CompressionControls from './CompressionControls';
 import ProgressBar from './ProgressBar';
 import BulkTranscriptionStatusManager from './BulkTranscriptionStatusManager';
 import MediaViewModal from './MediaViewModal';
 import TranscriptionModal from './TranscriptionModal';
-import TranscriptionSearch from './TranscriptionSearch';
 import TagInput from './TagInput';
 import MetadataForm from './MetadataForm';
-import FilterControls from './FilterControls';
 import EditMediaModal from './EditMediaModal';
+import MediaGrid from './MediaGrid';
 import { compressFile, supportsCompression, getCompressionRatio, shouldCompress } from '../utils/mediaCompression';
 
 const Container = styled.div`
@@ -288,18 +288,38 @@ const AudioManager = ({ t }) => {
   const [selectedMediaItemForEdit, setSelectedMediaItemForEdit] = useState(null);
   const [globalTags, setGlobalTags] = useState([]);
   
-  // Filtering state
-  const [filteredUploadedRecordings, setFilteredUploadedRecordings] = useState([]);
-  const [filteredSavedAudioFiles, setFilteredSavedAudioFiles] = useState([]);
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Initialize filtered arrays when data changes
-  useEffect(() => {
-    setFilteredUploadedRecordings(uploadedRecordings);
-  }, [uploadedRecordings]);
+  // Recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [recordingError, setRecordingError] = useState(null);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [mediaStream, setMediaStream] = useState(null);
+  const [recordedChunks, setRecordedChunks] = useState([]);
 
+  // Recording timer effect
   useEffect(() => {
-    setFilteredSavedAudioFiles(savedAudioFiles);
-  }, [savedAudioFiles]);
+    let interval = null;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingTime(prevTime => prevTime + 1);
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  // Cleanup media stream on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [mediaStream]);
 
   // Collect all available tags from all audio files
   useEffect(() => {
@@ -329,15 +349,6 @@ const AudioManager = ({ t }) => {
     setGlobalTags(Array.from(allTags).sort());
   }, [uploadedRecordings, savedAudioFiles, selectedFiles]);
 
-  // Handle filter changes for uploaded recordings
-  const handleUploadedRecordingsFilterChange = (filteredItems) => {
-    setFilteredUploadedRecordings(filteredItems);
-  };
-
-  // Handle filter changes for saved audio files
-  const handleSavedAudioFilesFilterChange = (filteredItems) => {
-    setFilteredSavedAudioFiles(filteredItems);
-  };
 
   // Load saved audio files from localStorage on component mount
   useEffect(() => {
@@ -435,14 +446,6 @@ const AudioManager = ({ t }) => {
       setFileProgress({});
       setCurrentProcessingFile(null);
 
-      // Mute all audio elements during processing (silent saving)
-      const audioElements = document.querySelectorAll('audio');
-      const originalVolumes = [];
-      audioElements.forEach((audio, index) => {
-        originalVolumes[index] = audio.volume;
-        audio.volume = 0;
-        audio.pause();
-      });
 
       const audioFilesToSave = [];
       
@@ -527,11 +530,14 @@ const AudioManager = ({ t }) => {
           const savedFile = {
             id: fileData.id,
             name: processedName,
+            title: fileData.metadata?.title || fileData.metadata?.fileName || processedName,
             size: processedSize,
             type: processedType,
             duration: fileData.duration || null,
             base64Data: base64Data,
             compressionInfo,
+            metadata: fileData.metadata || {},
+            tags: fileData.tags || [],
             savedAt: new Date().toISOString()
           };
 
@@ -580,12 +586,6 @@ const AudioManager = ({ t }) => {
         setError('לא הצליח לשמור אף קובץ אודיו');
       }
 
-      // Restore audio volumes (end silent saving)
-      audioElements.forEach((audio, index) => {
-        if (originalVolumes[index] !== undefined) {
-          audio.volume = originalVolumes[index];
-        }
-      });
 
     } catch (error) {
       console.error('Error saving audio files:', error);
@@ -797,6 +797,113 @@ const AudioManager = ({ t }) => {
     }
   };
 
+  // Recording functions
+  const startRecording = async () => {
+    try {
+      setRecordingError(null);
+      setError('');
+      
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      
+      setMediaStream(stream);
+      
+      // Create MediaRecorder
+      const recorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      const chunks = [];
+      
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+      
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        
+        // Convert to File object
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `recording-${timestamp}.webm`;
+        const file = new File([blob], filename, { type: 'audio/webm' });
+        
+        try {
+          // Get duration if possible
+          const duration = await getAudioDuration(file);
+          
+          // Add to selected files
+          const recordedFile = {
+            file,
+            id: Date.now() + Math.random(),
+            name: filename,
+            size: file.size,
+            type: file.type,
+            duration: duration,
+            url: URL.createObjectURL(file),
+            isRecorded: true
+          };
+          
+          setSelectedFiles(prev => [...prev, recordedFile]);
+          setSuccess(`הקלטה הושלמה בהצלחה! משך: ${formatDuration(duration || recordingTime)}`);
+          
+        } catch (error) {
+          console.error('Error processing recorded file:', error);
+          setError('שגיאה בעיבוד ההקלטה');
+        }
+        
+        // Cleanup
+        setRecordedChunks([]);
+        if (mediaStream) {
+          mediaStream.getTracks().forEach(track => track.stop());
+          setMediaStream(null);
+        }
+      };
+      
+      recorder.onerror = (event) => {
+        console.error('Recording error:', event.error);
+        setRecordingError('שגיאה בהקלטה: ' + event.error.message);
+        stopRecording();
+      };
+      
+      setMediaRecorder(recorder);
+      setRecordedChunks(chunks);
+      
+      // Start recording
+      recorder.start(1000); // Collect data every second
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      let errorMessage = 'שגיאה בהתחלת ההקלטה';
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'נדרשת הרשאה לגישה למיקרופון. אנא אפשר גישה ונסה שוב.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'לא נמצא מיקרופון. אנא וודא שמיקרופון מחובר ונסה שוב.';
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage = 'הקלטת אודיו אינה נתמכת בדפדפן זה.';
+      }
+      
+      setRecordingError(errorMessage);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    setIsRecording(false);
+  };
+
   // Handle transcription completion
   const handleTranscriptionComplete = (transcription) => {
     console.log('Transcription completed:', transcription);
@@ -960,26 +1067,20 @@ const AudioManager = ({ t }) => {
     return filename.split('.').pop().toUpperCase();
   };
 
-  // Create blob URL for saved audio files
-  const createBlobUrl = (base64Data) => {
-    try {
-      const byteCharacters = atob(base64Data.split(',')[1]);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'audio/mpeg' });
-      return URL.createObjectURL(blob);
-    } catch (error) {
-      console.error('Error creating blob URL:', error);
-      return null;
-    }
-  };
 
-  // Handle view media item
+  // Handle view media item - unified for both local and server-uploaded media
   const handleViewMedia = (mediaItem) => {
-    setSelectedMediaItem(mediaItem);
+    // For server-uploaded media, ensure we have a proper streaming URL
+    let processedMediaItem = { ...mediaItem };
+    
+    if (mediaItem.id && typeof mediaItem.id === 'number') {
+      // This is a server-uploaded recording
+      processedMediaItem.url = `/api/recordings/${mediaItem.id}/stream`;
+      // Ensure we have the right media type
+      processedMediaItem.mediaType = 'audio';
+    }
+    
+    setSelectedMediaItem(processedMediaItem);
     setViewModalOpen(true);
   };
 
@@ -1070,42 +1171,74 @@ const AudioManager = ({ t }) => {
     }
   };
 
+  // Filter audio files based on search query
+  const filterAudioFiles = (audioFiles, query) => {
+    if (!query || query.trim() === '') {
+      return audioFiles;
+    }
+
+    const searchTerm = query.toLowerCase().trim();
+    
+    return audioFiles.filter(audio => {
+      // Search in name/filename
+      const name = (audio.name || audio.filename || audio.originalFileName || '').toLowerCase();
+      if (name.includes(searchTerm)) return true;
+
+      // Search in tags
+      if (audio.tags && Array.isArray(audio.tags)) {
+        const tagsMatch = audio.tags.some(tag => 
+          tag.toLowerCase().includes(searchTerm)
+        );
+        if (tagsMatch) return true;
+      }
+
+      // Search in metadata
+      if (audio.metadata) {
+        const metadataFields = [
+          audio.metadata.originalName,
+          audio.metadata.subject,
+          audio.metadata.description,
+          audio.metadata.domain,
+          audio.metadata.topic,
+          audio.metadata.keywords,
+          audio.metadata.author
+        ];
+        
+        const metadataMatch = metadataFields.some(field => 
+          field && field.toLowerCase().includes(searchTerm)
+        );
+        if (metadataMatch) return true;
+      }
+
+      return false;
+    });
+  };
+
+  // Get filtered audio files for display
+  const getFilteredUploadedRecordings = () => {
+    return filterAudioFiles(uploadedRecordings, searchQuery);
+  };
+
+  const getFilteredSavedAudioFiles = () => {
+    return filterAudioFiles(savedAudioFiles, searchQuery);
+  };
+
   return (
     <Container>
-      <Header>
-        <Title>🎵 אודיו</Title>
-      </Header>
-
-      <UploadSection
-        className={dragOver ? 'dragover' : ''}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <UploadButton
-          onClick={() => document.getElementById('audio-file-input').click()}
-        >
-          🎵 בחר קבצי אודיו
-        </UploadButton>
-        
-        <FileInput
-          id="audio-file-input"
-          type="file"
-          multiple
-          accept=".mp3,.wav,.ogg,.aac,.m4a,audio/*"
-          onChange={(e) => handleFileSelect(e.target.files)}
-        />
-
-        <UploadText>
-          או גרור קבצי אודיו לכאן
-        </UploadText>
-
-        <SupportedFormats>
-          קבצי אודיו נתמכים: MP3, WAV, OGG, AAC, M4A
-          <br />
-          גודל מקסימלי: 50MB לכל קובץ
-        </SupportedFormats>
-      </UploadSection>
+      <MediaFilteringHeader
+        mediaType="audio"
+        onUpload={handleFileSelect}
+        onRecordStart={startRecording}
+        onRecordStop={stopRecording}
+        isRecording={isRecording}
+        recordingTime={recordingTime}
+        recordingError={recordingError}
+        onSearch={(query) => {
+          setSearchQuery(query);
+        }}
+        isExpanded={isHeaderExpanded}
+        onToggleExpanded={() => setIsHeaderExpanded(!isHeaderExpanded)}
+      />
 
       {error && (
         <ErrorMessage>
@@ -1207,131 +1340,63 @@ const AudioManager = ({ t }) => {
         </div>
       )}
 
-      {/* Filter controls for uploaded recordings */}
       {uploadedRecordings.length > 0 && (
-        <FilterControls
-          mediaItems={uploadedRecordings}
-          onFilterChange={handleUploadedRecordingsFilterChange}
-          availableTags={globalTags}
-          mediaType="audio"
-        />
-      )}
-
-      {/* Search functionality for uploaded recordings with transcriptions */}
-      {filteredUploadedRecordings.length > 0 && (
-        <TranscriptionSearch
-          mediaItems={filteredUploadedRecordings}
-          mediaType="audio"
-          onItemClick={handleViewTranscription}
-        />
-      )}
-
-      {filteredUploadedRecordings.length > 0 && (
         <SavedAudioSection>
           <SavedAudioTitle>
-            📤 קבצי אודיו שהועלו לשרת ({filteredUploadedRecordings.length})
+            📤 קבצי אודיו שהועלו לשרת ({getFilteredUploadedRecordings().length}{searchQuery ? ` מתוך ${uploadedRecordings.length}` : ''})
           </SavedAudioTitle>
-          {filteredUploadedRecordings.map(recording => (
-            <SavedAudioItem key={recording.id}>
-              <FileIcon>
-                {recording.mediaType === 'video' ? '🎥' : '🎵'}
-              </FileIcon>
-              <SavedAudioInfo>
-                <SavedAudioName>{recording.originalFileName || recording.filename}</SavedAudioName>
-                <SavedAudioMeta>
-                  <span>{formatFileSize(recording.size)}</span>
-                  <span>סוג: {recording.mediaType === 'video' ? 'וידאו' : 'אודיו'}</span>
-                  <span>הועלה: {new Date(recording.createdAt).toLocaleDateString('he-IL')}</span>
-                </SavedAudioMeta>
-              </SavedAudioInfo>
-              <ButtonGroup>
-                <ViewButton onClick={() => handleEditMedia(recording)}>
-                  ✏️ ערוך
-                </ViewButton>
-                <ViewButton onClick={() => handleViewTranscription(recording)}>
-                  📝 צפה בתמלול
-                </ViewButton>
-                <RemoveButton onClick={() => removeUploadedRecording(recording.id)}>
-                  מחק
-                </RemoveButton>
-              </ButtonGroup>
-            </SavedAudioItem>
-          ))}
+          <MediaGrid
+            mediaItems={getFilteredUploadedRecordings().map(recording => ({
+              ...recording,
+              name: recording.originalFileName || recording.filename,
+              mediaType: 'audio',
+              file_size: recording.size,
+              created_at: recording.createdAt
+            }))}
+            mediaType="audio"
+            loading={false}
+            onItemClick={handleViewMedia}
+            onItemEdit={handleEditMedia}
+            onItemDelete={removeUploadedRecording}
+            onItemPreview={handleViewMedia}
+            emptyStateConfig={{
+              icon: '🎵',
+              title: 'אין קבצי אודיו שהועלו',
+              description: 'העלה קבצי אודיו כדי לראות אותם כאן'
+            }}
+          />
           <BulkTranscriptionStatusManager
-            recordings={filteredUploadedRecordings}
+            recordings={uploadedRecordings}
             onTranscriptionComplete={handleTranscriptionComplete}
           />
         </SavedAudioSection>
       )}
 
-      {/* Filter controls for saved audio files */}
       {savedAudioFiles.length > 0 && (
-        <FilterControls
-          mediaItems={savedAudioFiles}
-          onFilterChange={handleSavedAudioFilesFilterChange}
-          availableTags={globalTags}
-          mediaType="audio"
-        />
-      )}
-
-      {filteredSavedAudioFiles.length > 0 && (
         <SavedAudioSection>
           <SavedAudioTitle>
-            🎵 קבצי אודיו שמורים מקומית ({filteredSavedAudioFiles.length})
+            🎵 קבצי אודיו שמורים מקומית ({getFilteredSavedAudioFiles().length}{searchQuery ? ` מתוך ${savedAudioFiles.length}` : ''})
           </SavedAudioTitle>
-          {filteredSavedAudioFiles.map(audioFile => {
-            const blobUrl = createBlobUrl(audioFile.base64Data);
-            return (
-              <SavedAudioItem key={audioFile.id}>
-                <FileIcon>
-                  🎵
-                </FileIcon>
-                <SavedAudioInfo>
-                  <SavedAudioName>{audioFile.name}</SavedAudioName>
-                  <SavedAudioMeta>
-                    <span>{formatFileSize(audioFile.size)}</span>
-                    {audioFile.duration && <span>משך: {formatDuration(audioFile.duration)}</span>}
-                    <span>נשמר: {new Date(audioFile.savedAt).toLocaleDateString('he-IL')}</span>
-                    {audioFile.tags && audioFile.tags.length > 0 && (
-                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                        {audioFile.tags.map((tag, index) => (
-                          <span key={index} style={{
-                            background: 'var(--color-primary)',
-                            color: 'var(--color-textOnPrimary)',
-                            padding: '0.125rem 0.375rem',
-                            borderRadius: 'var(--radius-sm)',
-                            fontSize: '0.7rem',
-                            fontWeight: '500'
-                          }}>
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </SavedAudioMeta>
-                  {blobUrl && (
-                    <AudioPreview>
-                      <AudioPlayer controls>
-                        <source src={blobUrl} type={audioFile.type} />
-                        הדפדפן שלך לא תומך בנגן האודיו.
-                      </AudioPlayer>
-                    </AudioPreview>
-                  )}
-                </SavedAudioInfo>
-                <ButtonGroup>
-                  <ViewButton onClick={() => handleEditMedia(audioFile)}>
-                    ✏️ ערוך
-                  </ViewButton>
-                  <ViewButton onClick={() => handleViewMedia(audioFile)}>
-                    👁️ צפה
-                  </ViewButton>
-                  <RemoveButton onClick={() => removeSavedAudioFile(audioFile.id)}>
-                    מחק
-                  </RemoveButton>
-                </ButtonGroup>
-              </SavedAudioItem>
-            );
-          })}
+          <MediaGrid
+            mediaItems={getFilteredSavedAudioFiles().map(audioFile => ({
+              ...audioFile,
+              mediaType: 'audio',
+              file_size: audioFile.size,
+              created_at: audioFile.savedAt,
+              duration: audioFile.duration
+            }))}
+            mediaType="audio"
+            loading={false}
+            onItemClick={handleViewMedia}
+            onItemEdit={handleEditMedia}
+            onItemDelete={removeSavedAudioFile}
+            onItemPreview={handleViewMedia}
+            emptyStateConfig={{
+              icon: '🎵',
+              title: 'אין קבצי אודיו שמורים',
+              description: 'שמור קבצי אודיו מקומית כדי לראות אותם כאן'
+            }}
+          />
         </SavedAudioSection>
       )}
 

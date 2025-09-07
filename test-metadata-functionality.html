@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת פונקציונליות מטא-דאטה</title>
+    <style>
+        :root {
+            --color-primary: #3498db;
+            --color-primaryHover: #2980b9;
+            --color-primaryLight: rgba(52, 152, 219, 0.1);
+            --color-success: #27ae60;
+            --color-successLight: rgba(39, 174, 96, 0.1);
+            --color-successBorder: rgba(39, 174, 96, 0.3);
+            --color-error: #e74c3c;
+            --color-errorLight: rgba(231, 76, 60, 0.1);
+            --color-errorBorder: rgba(231, 76, 60, 0.3);
+            --color-warning: #f39c12;
+            --color-warningLight: rgba(243, 156, 18, 0.1);
+            --color-warningBorder: rgba(243, 156, 18, 0.3);
+            --color-surface: #ffffff;
+            --color-surfaceElevated: #f8f9fa;
+            --color-text: #2c3e50;
+            --color-textSecondary: #7f8c8d;
+            --color-textOnPrimary: #ffffff;
+            --color-border: #e9ecef;
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition-fast: 0.2s ease;
+            --transition-slow: 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .header h1 {
+            color: var(--color-text);
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: var(--color-textSecondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .test-section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: var(--color-surfaceElevated);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
+        }
+
+        .test-section h2 {
+            color: var(--color-text);
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            color: var(--color-text);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            background: var(--color-surface);
+            color: var(--color-text);
+            font-size: 0.9rem;
+            transition: var(--transition-fast);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px var(--color-primaryLight);
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tag {
+            background: var(--color-primary);
+            color: var(--color-textOnPrimary);
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tag-remove {
+            background: none;
+            border: none;
+            color: var(--color-textOnPrimary);
+            cursor: pointer;
+            font-size: 0.7rem;
+            padding: 0;
+        }
+
+        .tag-remove:hover {
+            opacity: 0.7;
+        }
+
+        .button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .button.primary {
+            background: var(--color-primary);
+            color: var(--color-textOnPrimary);
+        }
+
+        .button.primary:hover {
+            background: var(--color-primaryHover);
+        }
+
+        .button.success {
+            background: var(--color-success);
+            color: var(--color-textOnPrimary);
+        }
+
+        .button.warning {
+            background: var(--color-warning);
+            color: var(--color-textOnPrimary);
+        }
+
+        .button:disabled {
+            background: var(--color-textSecondary);
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .result.success {
+            background: var(--color-successLight);
+            color: var(--color-success);
+            border: 1px solid var(--color-successBorder);
+        }
+
+        .result.error {
+            background: var(--color-errorLight);
+            color: var(--color-error);
+            border: 1px solid var(--color-errorBorder);
+        }
+
+        .result.info {
+            background: var(--color-primaryLight);
+            color: var(--color-primary);
+            border: 1px solid var(--color-border);
+        }
+
+        .file-input {
+            margin-bottom: 1rem;
+        }
+
+        .media-type-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .media-type-option {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .media-type-option:hover {
+            border-color: var(--color-primary);
+        }
+
+        .media-type-option.selected {
+            border-color: var(--color-primary);
+            background: var(--color-primaryLight);
+        }
+
+        .media-type-option .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .media-type-option .label {
+            font-weight: 500;
+            color: var(--color-text);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 0.5rem;
+        }
+
+        .status-indicator.success {
+            background: var(--color-success);
+        }
+
+        .status-indicator.error {
+            background: var(--color-error);
+        }
+
+        .status-indicator.warning {
+            background: var(--color-warning);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--color-border);
+            border-radius: 50%;
+            border-top-color: var(--color-primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 בדיקת פונקציונליות מטא-דאטה</h1>
+            <p>בדיקה מקיפה של יכולות שמירה ועריכה של מטא-דאטה עבור קבצי מדיה שונים</p>
+        </div>
+
+        <!-- Media Type Selection -->
+        <div class="test-section">
+            <h2>📁 בחירת סוג מדיה</h2>
+            <div class="media-type-selector">
+                <div class="media-type-option selected" data-type="audio">
+                    <div class="icon">🎵</div>
+                    <div class="label">אודיו</div>
+                </div>
+                <div class="media-type-option" data-type="video">
+                    <div class="icon">🎬</div>
+                    <div class="label">וידאו</div>
+                </div>
+                <div class="media-type-option" data-type="document">
+                    <div class="icon">📄</div>
+                    <div class="label">מסמך</div>
+                </div>
+                <div class="media-type-option" data-type="image">
+                    <div class="icon">🖼️</div>
+                    <div class="label">תמונה</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metadata Form -->
+        <div class="test-section">
+            <h2>📝 טופס מטא-דאטה</h2>
+            
+            <div class="grid">
+                <div>
+                    <div class="form-group">
+                        <label>שם הקובץ *</label>
+                        <input type="text" id="title" placeholder="הכנס שם לקובץ" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>תיאור</label>
+                        <textarea id="description" placeholder="תיאור קצר של התוכן"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>קטגוריה</label>
+                        <select id="category">
+                            <option value="">בחר קטגוריה</option>
+                            <option value="lesson">שיעור</option>
+                            <option value="exercise">תרגיל</option>
+                            <option value="exam">מבחן</option>
+                            <option value="presentation">מצגת</option>
+                            <option value="homework">שיעורי בית</option>
+                            <option value="project">פרויקט</option>
+                            <option value="other">אחר</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>שם השיעור</label>
+                        <input type="text" id="lessonName" placeholder="שם השיעור או הנושא">
+                    </div>
+                </div>
+
+                <div>
+                    <div class="form-group">
+                        <label>מקצוע</label>
+                        <select id="subject">
+                            <option value="">בחר מקצוע</option>
+                            <option value="mathematics">מתמטיקה</option>
+                            <option value="hebrew">עברית</option>
+                            <option value="english">אנגלית</option>
+                            <option value="science">מדעים</option>
+                            <option value="history">היסטוריה</option>
+                            <option value="geography">גיאוגרפיה</option>
+                            <option value="literature">ספרות</option>
+                            <option value="physics">פיזיקה</option>
+                            <option value="chemistry">כימיה</option>
+                            <option value="biology">ביולוגיה</option>
+                            <option value="art">אמנות</option>
+                            <option value="music">מוזיקה</option>
+                            <option value="pe">חינוך גופני</option>
+                            <option value="other">אחר</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>רמת כיתה</label>
+                        <select id="classLevel">
+                            <option value="">בחר רמת כיתה</option>
+                            <option value="kindergarten">גן</option>
+                            <option value="grade1">כיתה א'</option>
+                            <option value="grade2">כיתה ב'</option>
+                            <option value="grade3">כיתה ג'</option>
+                            <option value="grade4">כיתה ד'</option>
+                            <option value="grade5">כיתה ה'</option>
+                            <option value="grade6">כיתה ו'</option>
+                            <option value="grade7">כיתה ז'</option>
+                            <option value="grade8">כיתה ח'</option>
+                            <option value="grade9">כיתה ט'</option>
+                            <option value="grade10">כיתה י'</option>
+                            <option value="grade11">כיתה יא'</option>
+                            <option value="grade12">כיתה יב'</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>תכנית לימודים</label>
+                        <select id="curriculum">
+                            <option value="">בחר תכנית לימודים</option>
+                            <option value="israeli">תכנית לימודים ישראלית</option>
+                            <option value="international">תכנית בינלאומית</option>
+                            <option value="religious">תכנית דתית</option>
+                            <option value="special">חינוך מיוחד</option>
+                            <option value="other">אחר</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>שפה</label>
+                        <select id="language">
+                            <option value="he">עברית</option>
+                            <option value="en">אנגלית</option>
+                            <option value="ar">ערבית</option>
+                            <option value="fr">צרפתית</option>
+                            <option value="es">ספרדית</option>
+                            <option value="ru">רוסית</option>
+                            <option value="other">אחר</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>תגיות</label>
+                <div class="tags-container" id="tagsContainer"></div>
+                <input type="text" id="tagInput" placeholder="הוסף תגית והקש Enter">
+            </div>
+
+            <div class="form-group">
+                <label>הערות נוספות</label>
+                <textarea id="notes" placeholder="הערות או מידע נוסף"></textarea>
+            </div>
+        </div>
+
+        <!-- Test Actions -->
+        <div class="test-section">
+            <h2>🧪 פעולות בדיקה</h2>
+            
+            <button class="button primary" onclick="testMetadataCreation()">
+                <span class="loading" id="createLoading" style="display: none;"></span>
+                צור מטא-דאטה חדשה
+            </button>
+            
+            <button class="button success" onclick="testMetadataUpdate()">
+                <span class="loading" id="updateLoading" style="display: none;"></span>
+                עדכן מטא-דאטה קיימת
+            </button>
+            
+            <button class="button warning" onclick="testMetadataRetrieval()">
+                <span class="loading" id="retrieveLoading" style="display: none;"></span>
+                אחזר מטא-דאטה
+            </button>
+            
+            <button class="button" onclick="clearResults()">נקה תוצאות</button>
+            
+            <button class="button" onclick="fillSampleData()">מלא נתונים לדוגמה</button>
+
+            <div id="testResults" class="result info" style="display: none;"></div>
+        </div>
+
+        <!-- API Status -->
+        <div class="test-section">
+            <h2>🔗 סטטוס API</h2>
+            <div class="grid">
+                <div>
+                    <h3>נקודות קצה זמינות:</h3>
+                    <ul id="endpointsList">
+                        <li>POST /api/recordings/upload <span class="status-indicator" id="recordingsUpload"></span></li>
+                        <li>PUT /api/recordings/:id/metadata <span class="status-indicator" id="recordingsMetadata"></span></li>
+                        <li>PUT /api/images/:id/metadata <span class="status-indicator" id="imagesMetadata"></span></li>
+                        <li>PUT /api/documents/:id/metadata <span class="status-indicator" id="documentsMetadata"></span></li>
+                    </ul>
+                </div>
+                <div>
+                    <button class="button primary" onclick="checkAPIStatus()">בדוק סטטוס API</button>
+                    <div id="apiStatus" class="result info" style="display: none; margin-top: 1rem;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMediaType = 'audio';
+        let tags = [];
+        let testMediaId = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            fillSampleData();
+        });
+
+        function setupEventListeners() {
+            // Media type selection
+            document.querySelectorAll('.media-type-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.media-type-option').forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                    currentMediaType = this.dataset.type;
+                    updateFormForMediaType();
+                });
+            });
+
+            // Tag input
+            document.getElementById('tagInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && this.value.trim()) {
+                    e.preventDefault();
+                    addTag(this.value.trim());
+                    this.value = '';
+                }
+            });
+        }
+
+        function updateFormForMediaType() {
+            // Show/hide duration field for audio/video
+            const durationGroup = document.getElementById('durationGroup');
+            if (durationGroup) {
+                durationGroup.style.display = (currentMediaType === 'audio' || currentMediaType === 'video') ? 'block' : 'none';
+            }
+        }
+
+        function addTag(tagText) {
+            if (!tags.includes(tagText)) {
+                tags.push(tagText);
+                renderTags();
+            }
+        }
+
+        function removeTag(tagText) {
+            tags = tags.filter(tag => tag !== tagText);
+            renderTags();
+        }
+
+        function renderTags() {
+            const container = document.getElementById('tagsContainer');
+            container.innerHTML = tags.map(tag => `
+                <span class="tag">
+                    ${tag}
+                    <button class="tag-remove" onclick="removeTag('${tag}')">✕</button>
+                </span>
+            `).join('');
+        }
+
+        function getFormData() {
+            return {
+                title: document.getElementById('title').value,
+                metadata: {
+                    description: document.getElementById('description').value,
+                    subject: document.getElementById('subject').value,
+                    classLevel: document.getElementById('classLevel').value,
+                    curriculum: document.getElementById('curriculum').value,
+                    lessonName: document.getElementById('lessonName').value,
+                    category: document.getElementById('category').value,
+                    language: document.getElementById('language').value,
+                    notes: document.getElementById('notes').value,
+                    lastModified: new Date().toISOString()
+                },
+                tags: tags
+            };
+        }
+
+        function fillSampleData() {
+            document.getElementById('title').value = 'שיעור מתמטיקה - שברים';
+            document.getElementById('description').value = 'שיעור מקיף על שברים עבור כיתה ה';
+            document.getElementById('subject').value = 'mathematics';
+            document.getElementById('classLevel').value = 'grade5';
+            document.getElementById('curriculum').value = 'israeli';
+            document.getElementById('lessonName').value = 'הכרת שברים ופעולות בסיסיות';
+            document.getElementById('category').value = 'lesson';
+            document.getElementById('language').value = 'he';
+            document.getElementById('notes').value = 'שיעור זה כולל דוגמאות מעשיות ותרגילים';
+            
+            tags = ['מתמטיקה', 'שברים', 'כיתה ה', 'בסיסי'];
+            renderTags();
+        }
+
+        async function testMetadataCreation() {
+            const loading = document.getElementById('createLoading');
+            const results = document.getElementById('testResults');
+            
+            loading.style.display = 'inline-block';
+            results.style.display = 'block';
+            results.className = 'result info';
+            results.textContent = 'יוצר מטא-דאטה חדשה...';
+
+            try {
+                const formData = getFormData();
+                
+                // Simulate API call based on media type
+                let endpoint = '';
+                switch (currentMediaType) {
+                    case 'audio':
+                    case 'video':
+                        endpoint = '/api/recordings';
+                        break;
+                    case 'image':
+                        endpoint = '/api/images';
+                        break;
+                    case 'document':
+                        endpoint = '/api/documents';
+                        break;
+                }
+
+                // For testing purposes, simulate the API response
+                const mockResponse = {
+                    success: true,
+                    [currentMediaType]: {
+                        id: Math.floor(Math.random() * 1000),
+                        ...formData,
+                        mediaType: currentMediaType,
+                        createdAt: new Date().toISOString()
+                    }
+                };
+
+                testMediaId = mockResponse[currentMediaType].id;
+
+                results.className = 'result success';
+                results.textContent = `✅ מטא-דאטה נוצרה בהצלחה!\n\n` +
+                    `סוג מדיה: ${currentMediaType}\n` +
+                    `מזהה: ${testMediaId}\n` +
+                    `שם: ${formData.title}\n` +
+                    `תגיות: ${formData.tags.join(', ')}\n` +
+                    `מטא-דאטה: ${JSON.stringify(formData.metadata, null, 2)}`;
+
+            } catch (error) {
+                results.className = 'result error';
+                results.textContent = `❌ שגיאה ביצירת מטא-דאטה:\n${error.message}`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        async function testMetadataUpdate() {
+            const loading = document.getElementById('updateLoading');
+            const results = document.getElementById('testResults');
+            
+            if (!testMediaId) {
+                results.style.display = 'block';
+                results.className = 'result error';
+                results.textContent = '❌ אין מדיה לעדכון. צור תחילה מטא-דאטה חדשה.';
+                return;
+            }
+
+            loading.style.display = 'inline-block';
+            results.style.display = 'block';
+            results.className = 'result info';
+            results.textContent = 'מעדכן מטא-דאטה...';
+
+            try {
+                const formData = getFormData();
+                formData.title += ' (עודכן)';
+                formData.metadata.lastModified = new Date().toISOString();
+                formData.tags.push('עודכן');
+
+                // Simulate API call
+                let endpoint = '';
+                switch (currentMediaType) {
+                    case 'audio':
+                    case 'video':
+                        endpoint = `/api/recordings/${testMediaId}/metadata`;
+                        break;
+                    case 'image':
+                        endpoint = `/api/images/${testMediaId}/metadata`;
+                        break;
+                    case 'document':
+                        endpoint = `/api/documents/${testMediaId}/metadata`;
+                        break;
+                }
+
+                // Mock successful update
+                const mockResponse = {
+                    success: true,
+                    message: 'מטא-דאטה עודכנה בהצלחה',
+                    [currentMediaType]: {
+                        id: testMediaId,
+                        ...formData,
+                        updatedAt: new Date().toISOString()
+                    }
+                };
+
+                results.className = 'result success';
+                results.textContent = `✅ מטא-דאטה עודכנה בהצלחה!\n\n` +
+                    `מזהה: ${testMediaId}\n` +
+                    `שם מעודכן: ${formData.title}\n` +
+                    `תגיות מעודכנות: ${formData.tags.join(', ')}\n` +
+                    `זמן עדכון: ${mockResponse[currentMediaType].updatedAt}`;
+
+            } catch (error) {
+                results.className = 'result error';
+                results.textContent = `❌ שגיאה בעדכון מטא-דאטה:\n${error.message}`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        async function testMetadataRetrieval() {
+            const loading = document.getElementById('retrieveLoading');
+            const results = document.getElementById('testResults');
+            
+            if (!testMediaId) {
+                results.style.display = 'block';
+                results.className = 'result error';
+                results.textContent = '❌ אין מדיה לאחזור. צור תחילה מטא-דאטה חדשה.';
+                return;
+            }
+
+            loading.style.display = 'inline-block';
+            results.style.display = 'block';
+            results.className = 'result info';
+            results.textContent = 'מאחזר מטא-דאטה...';
+
+            try {
+                // Simulate API call
+                let endpoint = '';
+                switch (currentMediaType) {
+                    case 'audio':
+                    case 'video':
+                        endpoint = `/api/recordings/${testMediaId}`;
+                        break;
+                    case 'image':
+                        endpoint = `/api/images/${testMediaId}`;
+                        break;
+                    case 'document':
+                        endpoint = `/api/documents/${testMediaId}`;
+                        break;
+                }
+
+                // Mock retrieved data
+                const formData = getFormData();
+                const mockResponse = {
+                    success: true,
+                    [currentMediaType]: {
+                        id: testMediaId,
+                        ...formData,
+                        mediaType: currentMediaType,
+                        createdAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+                        updatedAt: new Date().toISOString()
+                    }
+                };
+
+                results.className = 'result success';
+                results.textContent = `✅ מטא-דאטה אוחזרה בהצלחה!\n\n` +
+                    `נתונים מלאים:\n${JSON.stringify(mockResponse[currentMediaType], null, 2)}`;
+
+            } catch (error) {
+                results.className = 'result error';
+                results.textContent = `❌ שגיאה באחזור מטא-דאטה:\n${error.message}`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        async function checkAPIStatus() {
+            const statusDiv = document.getElementById('apiStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'result info';
+            statusDiv.textContent = 'בודק סטטוס API...';
+
+            try {
+                // Mock API status check
+                const endpoints = [
+                    { name: 'recordingsUpload', url: '/api/recordings/upload', method: 'POST' },
+                    { name: 'recordingsMetadata', url: '/api/recordings/:id/metadata', method: 'PUT' },
+                    { name: 'imagesMetadata', url: '/api/images/:id/metadata', method: 'PUT' },
+                    { name: 'documentsMetadata', url: '/api/documents/:id/metadata', method: 'PUT' }
+                ];
+
+                let statusText = 'סטטוס נקודות קצה:\n\n';
+                
+                for (const endpoint of endpoints) {
+                    // Mock status check - in real implementation, this would make actual HTTP requests
+                    const isAvailable = Math.random() > 0.2; // 80% chance of being available
+                    const indicator = document.getElementById(endpoint.name);
+                    
+                    if (isAvailable) {
+                        indicator.className = 'status-indicator success';
+                        statusText += `✅ ${endpoint.method} ${endpoint.url} - זמין\n`;
+                    } else {
+                        indicator.className = 'status-indicator error';
+                        statusText += `❌ ${endpoint.method} ${endpoint.url} - לא זמין\n`;
+                    }
+                }
+
+                statusDiv.className = 'result success';
+                statusDiv.textContent = statusText;
+
+            } catch (error) {
+                statusDiv.className = 'result error';
+                statusDiv.textContent = `❌ שגיאה בבדיקת סטטוס API:\n${error.message}`;
+            }
+        }
+
+        function clearResults() {
+            const results = document.getElementById('testResults');
+            const apiStatus = document.getElementById('apiStatus');
+            
+            results.style.display = 'none';
+            apiStatus.style.display = 'none';
+            
+            // Reset status indicators
+            document.querySelectorAll('.status-indicator').forEach(indicator => {
+                indicator.className = 'status-indicator';
+            });
+        }
+    </script>
+</body>
+</html>

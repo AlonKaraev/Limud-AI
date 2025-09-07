@@ -158,6 +158,7 @@ const MetadataForm = ({
   mediaType = 'document'
 }) => {
   const [metadata, setMetadata] = useState({
+    title: fileData?.title || '',
     fileName: fileData?.name || '',
     domain: '',
     subject: '',
@@ -214,6 +215,17 @@ const MetadataForm = ({
       </MetadataTitle>
       
       <FormGrid>
+        <FormFieldFull>
+          <Label>כותרת *</Label>
+          <Input
+            type="text"
+            value={metadata.title}
+            onChange={(e) => handleMetadataChange('title', e.target.value)}
+            placeholder="הכנס כותרת לתצוגה..."
+            disabled={disabled}
+          />
+        </FormFieldFull>
+
         <FormFieldFull>
           <Label>שם הקובץ *</Label>
           <Input

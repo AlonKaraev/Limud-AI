@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
+import MediaFilteringHeader from './MediaFilteringHeader';
 import MediaViewModal from './MediaViewModal';
 import EditMediaModal from './EditMediaModal';
 import ExtractedTextModal from './ExtractedTextModal';
 import TagInput from './TagInput';
 import MetadataForm from './MetadataForm';
-import FilterControls from './FilterControls';
+import MediaGrid from './MediaGrid';
 import { compressFile, supportsCompression, getCompressionRatio } from '../utils/mediaCompression';
 
 const Container = styled.div`
@@ -405,8 +406,6 @@ const EmptyStateText = styled.p`
 const ImagesManager = ({ t }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [savedImages, setSavedImages] = useState([]);
-  const [filteredSelectedFiles, setFilteredSelectedFiles] = useState([]);
-  const [filteredSavedImages, setFilteredSavedImages] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -422,6 +421,8 @@ const ImagesManager = ({ t }) => {
   const [extractionStatuses, setExtractionStatuses] = useState({});
   const [extractedTextModalOpen, setExtractedTextModalOpen] = useState(false);
   const [selectedImageForText, setSelectedImageForText] = useState(null);
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Add refs for performance optimization
   const loadingRef = useRef(false);
@@ -432,14 +433,6 @@ const ImagesManager = ({ t }) => {
     loadImagesFromServer();
   }, []);
 
-  // Initialize filtered arrays when data changes
-  useEffect(() => {
-    setFilteredSelectedFiles(selectedFiles);
-  }, [selectedFiles]);
-
-  useEffect(() => {
-    setFilteredSavedImages(savedImages);
-  }, [savedImages]);
 
   // Update global tags when images change
   useEffect(() => {
@@ -586,15 +579,6 @@ const ImagesManager = ({ t }) => {
     }
   };
 
-  // Handle filter changes for selected files
-  const handleSelectedFilesFilterChange = (filteredItems) => {
-    setFilteredSelectedFiles(filteredItems);
-  };
-
-  // Handle filter changes for saved images
-  const handleSavedImagesFilterChange = (filteredItems) => {
-    setFilteredSavedImages(filteredItems);
-  };
 
   // Upload selected files to server
   const uploadSelectedFiles = async () => {
@@ -1015,43 +999,20 @@ const ImagesManager = ({ t }) => {
 
   return (
     <Container>
-      <Header>
-        <Title>🖼️ תמונות</Title>
-      </Header>
-
-      <UploadSection
-        className={dragOver ? 'dragover' : ''}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <UploadButton
-          onClick={() => document.getElementById('image-file-input').click()}
-          disabled={isUploading}
-        >
-          🖼️ בחר תמונות
-        </UploadButton>
-        
-        <FileInput
-          id="image-file-input"
-          type="file"
-          multiple
-          accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.svg,image/*"
-          onChange={(e) => handleFileSelect(e.target.files)}
-        />
-
-        <UploadText>
-          או גרור תמונות לכאן
-        </UploadText>
-
-        <SupportedFormats>
-          תמונות נתמכות: JPG, PNG, GIF, WebP, BMP, TIFF, SVG
-          <br />
-          גודל מקסימלי: 10MB לכל תמונה
-          <br />
-          <strong>חילוץ טקסט אוטומטי (OCR) יתחיל לאחר ההעלאה</strong>
-        </SupportedFormats>
-      </UploadSection>
+      <MediaFilteringHeader
+        mediaType="images"
+        onUpload={handleFileSelect}
+        onRecord={() => {
+          // Images don't have recording functionality
+          alert('Recording is not available for images');
+        }}
+        onSearch={(query) => {
+          setSearchQuery(query);
+          // TODO: Implement search functionality across all images
+        }}
+        isExpanded={isHeaderExpanded}
+        onToggleExpanded={() => setIsHeaderExpanded(!isHeaderExpanded)}
+      />
 
       {error && (
         <ErrorMessage>
@@ -1098,19 +1059,11 @@ const ImagesManager = ({ t }) => {
             )}
           </CompressionControls>
 
-          {/* Filter controls for selected files */}
-          <FilterControls
-            mediaItems={selectedFiles}
-            onFilterChange={handleSelectedFilesFilterChange}
-            availableTags={globalTags}
-            mediaType="image"
-          />
-          
           <h3 style={{ color: 'var(--color-text)', marginBottom: '1rem' }}>
-            תמונות נבחרות ({filteredSelectedFiles.length} מתוך {selectedFiles.length})
+            תמונות נבחרות ({selectedFiles.length})
           </h3>
           
-          {filteredSelectedFiles.map(fileData => (
+          {selectedFiles.map(fileData => (
             <FilePreview key={fileData.id}>
               <FileIcon>
                 🖼️
@@ -1169,88 +1122,39 @@ const ImagesManager = ({ t }) => {
 
       {savedImages.length > 0 ? (
         <SavedImagesSection>
-          {/* Filter controls for saved images */}
-          <FilterControls
-            mediaItems={savedImages}
-            onFilterChange={handleSavedImagesFilterChange}
-            availableTags={globalTags}
-            mediaType="image"
-          />
-          
           <SavedImagesTitle>
-            🖼️ תמונות שמורות ({filteredSavedImages.length} מתוך {savedImages.length})
+            🖼️ תמונות שמורות ({savedImages.length})
           </SavedImagesTitle>
           
-          <ImageGrid>
-            {filteredSavedImages.map(image => {
-              const status = extractionStatuses[image.id] || { status: image.extractionStatus || 'not_started', progress: 0 };
-              
-              return (
-                <ImageCard key={image.id}>
-                  <CardImage 
-                    src={image.url || image.thumbnail_url || '/api/placeholder-image.jpg'} 
-                    alt={image.filename || image.original_filename || image.name}
-                    onError={(e) => {
-                      e.target.src = '/api/placeholder-image.jpg';
-                    }}
-                  />
-                  <CardContent>
-                    <CardTitle>
-                      {image.filename || image.original_filename || image.name}
-                    </CardTitle>
-                    <CardMeta>
-                      <div>{formatFileSize(image.size || image.file_size)}</div>
-                      <div>הועלה: {new Date(image.createdAt || image.created_at).toLocaleDateString('he-IL')}</div>
-                      {image.dimensions && (
-                        <div>{image.dimensions.width}×{image.dimensions.height}px</div>
-                      )}
-                    </CardMeta>
-                    
-                    <ExtractionStatus className={status.status}>
-                      🔍 {getExtractionStatusText(status.status)}
-                      {status.status === 'processing' && status.progress > 0 && ` (${status.progress}%)`}
-                    </ExtractionStatus>
-                    
-                    {status.status === 'processing' && (
-                      <ProgressBar>
-                        <ProgressFill progress={status.progress} />
-                      </ProgressBar>
-                    )}
-                    
-                    <CardActions>
-                      {status.status === 'failed' && (
-                        <ExtractButton onClick={() => triggerTextExtraction(image.id)}>
-                          🔄 נסה שוב
-                        </ExtractButton>
-                      )}
-                      {status.status === 'not_started' && (
-                        <ExtractButton onClick={() => triggerTextExtraction(image.id)}>
-                          🔍 חלץ טקסט
-                        </ExtractButton>
-                      )}
-                      {status.status === 'completed' && (
-                        <ViewButton 
-                          onClick={() => handleViewExtractedText(image)}
-                          style={{ background: 'var(--color-success)' }}
-                        >
-                          📄 צפה בטקסט
-                        </ViewButton>
-                      )}
-                      <ViewButton onClick={() => handleEditMedia(image)}>
-                        ✏️ ערוך
-                      </ViewButton>
-                      <ViewButton onClick={() => handleViewMedia(image)}>
-                        👁️ צפה
-                      </ViewButton>
-                      <RemoveButton onClick={() => removeSavedImage(image.id)}>
-                        מחק
-                      </RemoveButton>
-                    </CardActions>
-                  </CardContent>
-                </ImageCard>
-              );
-            })}
-          </ImageGrid>
+          <MediaGrid
+            mediaItems={savedImages.map(image => ({
+              ...image,
+              name: image.filename || image.original_filename || image.name,
+              mediaType: 'image',
+              file_size: image.size || image.file_size,
+              created_at: image.createdAt || image.created_at,
+              thumbnail: image.url || image.thumbnail_url,
+              processingStatus: extractionStatuses[image.id]?.status || image.extractionStatus || 'not_started'
+            }))}
+            mediaType="image"
+            loading={false}
+            onItemClick={handleViewMedia}
+            onItemEdit={handleEditMedia}
+            onItemDelete={removeSavedImage}
+            onItemPreview={(item) => {
+              const status = extractionStatuses[item.id]?.status || item.extractionStatus || 'not_started';
+              if (status === 'completed') {
+                handleViewExtractedText(item);
+              } else {
+                handleViewMedia(item);
+              }
+            }}
+            emptyStateConfig={{
+              icon: '🖼️',
+              title: 'אין תמונות שמורות',
+              description: 'העלה תמונות כדי לראות אותן כאן עם חילוץ טקסט אוטומטי'
+            }}
+          />
         </SavedImagesSection>
       ) : (
         !error && selectedFiles.length === 0 && (

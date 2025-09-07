@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Popup Demo - Limud AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            direction: rtl;
+        }
+
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .demo-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+
+        .demo-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .demo-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* Media Grid Mockup */
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .media-item {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            height: 320px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .media-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .media-thumbnail {
+            height: 60%;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: #3498db;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .media-thumbnail::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(52, 152, 219, 0.1) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .media-item:hover .media-thumbnail::before {
+            transform: translateX(100%);
+        }
+
+        .media-info {
+            padding: 1.5rem;
+            height: 40%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .media-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            line-height: 1.3;
+        }
+
+        .media-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 1rem;
+        }
+
+        .media-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .play-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .media-item:hover .play-indicator {
+            opacity: 1;
+        }
+
+        /* Modal Popup Styles */
+        .media-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            padding: 2rem;
+        }
+
+        .media-popup-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .media-popup-container {
+            background: white;
+            border-radius: 16px;
+            max-width: 90vw;
+            max-height: 90vh;
+            width: 100%;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            transform: scale(0.9) translateY(20px);
+            transition: transform 0.3s ease;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .media-popup-overlay.active .media-popup-container {
+            transform: scale(1) translateY(0);
+        }
+
+        .popup-header {
+            background: #2c3e50;
+            color: white;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .popup-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .popup-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: background 0.2s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .popup-close:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .popup-content {
+            padding: 0;
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Audio Player Styles */
+        .audio-player {
+            padding: 2rem;
+            background: white;
+        }
+
+        .audio-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .main-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .control-btn {
+            background: #3498db;
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .control-btn.small {
+            width: 48px;
+            height: 48px;
+        }
+
+        .control-btn.large {
+            width: 64px;
+            height: 64px;
+            font-size: 1.5rem;
+        }
+
+        .control-btn:hover {
+            background: #2980b9;
+            transform: scale(1.05);
+        }
+
+        .progress-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #3498db;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+
+        /* Video Player Styles */
+        .video-player {
+            background: black;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+        }
+
+        .video-element {
+            width: 100%;
+            height: 100%;
+            max-height: calc(90vh - 120px);
+            object-fit: contain;
+            display: block;
+        }
+
+        .video-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            padding: 1rem;
+            color: white;
+        }
+
+        .video-progress {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            margin-bottom: 1rem;
+            cursor: pointer;
+        }
+
+        .video-progress-fill {
+            height: 100%;
+            background: #3498db;
+            border-radius: 3px;
+            width: 0%;
+        }
+
+        .video-control-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .video-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        .video-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .media-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .media-popup-overlay {
+                padding: 1rem;
+            }
+            
+            .popup-header {
+                padding: 1rem;
+            }
+            
+            .audio-player {
+                padding: 1rem;
+            }
+        }
+
+        /* Demo Controls */
+        .demo-controls {
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .demo-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .demo-btn:hover {
+            background: white;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>🎵 Media Popup Demo</h1>
+            <p>לחץ על פריטי המדיה כדי לראות את החלון הקופץ בפעולה</p>
+        </div>
+
+        <div class="media-grid">
+            <!-- Audio Item 1 -->
+            <div class="media-item" onclick="openAudioPopup('שיעור מתמטיקה - פרק 1', '15:30', 'audio1')">
+                <div class="media-thumbnail">
+                    🎵
+                    <div class="play-indicator">▶️</div>
+                </div>
+                <div class="media-info">
+                    <div class="media-title">שיעור מתמטיקה - פרק 1</div>
+                    <div class="media-meta">
+                        <span>🕐 15:30</span>
+                        <span>📊 12.5 MB</span>
+                        <span>📅 אתמול</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Item 1 -->
+            <div class="media-item" onclick="openVideoPopup('הרצאה בפיזיקה', '28:45', 'video1')">
+                <div class="media-thumbnail">
+                    🎥
+                    <div class="play-indicator">▶️</div>
+                </div>
+                <div class="media-info">
+                    <div class="media-title">הרצאה בפיזיקה - תנועה</div>
+                    <div class="media-meta">
+                        <span>🕐 28:45</span>
+                        <span>📊 156 MB</span>
+                        <span>📅 לפני 2 ימים</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audio Item 2 -->
+            <div class="media-item" onclick="openAudioPopup('שיעור היסטוריה', '22:15', 'audio2')">
+                <div class="media-thumbnail">
+                    🎵
+                    <div class="play-indicator">▶️</div>
+                </div>
+                <div class="media-info">
+                    <div class="media-title">שיעור היסטוריה - מלחמת העולם השנייה</div>
+                    <div class="media-meta">
+                        <span>🕐 22:15</span>
+                        <span>📊 18.2 MB</span>
+                        <span>📅 לפני שבוע</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Item 2 -->
+            <div class="media-item" onclick="openVideoPopup('ניסוי כימיה', '12:30', 'video2')">
+                <div class="media-thumbnail">
+                    🎥
+                    <div class="play-indicator">▶️</div>
+                </div>
+                <div class="media-info">
+                    <div class="media-title">ניסוי כימיה - תגובות חמצון</div>
+                    <div class="media-meta">
+                        <span>🕐 12:30</span>
+                        <span>📊 89 MB</span>
+                        <span>📅 לפני 3 ימים</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-controls">
+            <button class="demo-btn" onclick="openAudioPopup('דמו אודיו', '10:00', 'demo-audio')">
+                🎵 פתח דמו אודיו
+            </button>
+            <button class="demo-btn" onclick="openVideoPopup('דמו וידאו', '05:30', 'demo-video')">
+                🎥 פתח דמו וידאו
+            </button>
+        </div>
+    </div>
+
+    <!-- Audio Popup -->
+    <div id="audioPopup" class="media-popup-overlay">
+        <div class="media-popup-container">
+            <div class="popup-header">
+                <h3 id="audioTitle" class="popup-title">נגן אודיו</h3>
+                <button class="popup-close" onclick="closePopup('audioPopup')">✕</button>
+            </div>
+            <div class="popup-content">
+                <div class="audio-player">
+                    <div class="audio-controls">
+                        <div class="main-controls">
+                            <button class="control-btn small" onclick="skipBackward()">⏪</button>
+                            <button id="audioPlayBtn" class="control-btn large" onclick="toggleAudioPlay()">▶️</button>
+                            <button class="control-btn small" onclick="skipForward()">⏩</button>
+                        </div>
+                        
+                        <div class="progress-section">
+                            <div class="progress-bar" onclick="seekAudio(event)">
+                                <div id="audioProgress" class="progress-fill"></div>
+                            </div>
+                            <div class="time-display">
+                                <span id="audioCurrentTime">0:00</span>
+                                <span id="audioDuration">0:00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Popup -->
+    <div id="videoPopup" class="media-popup-overlay">
+        <div class="media-popup-container">
+            <div class="popup-header">
+                <h3 id="videoTitle" class="popup-title">נגן וידאו</h3>
+                <button class="popup-close" onclick="closePopup('videoPopup')">✕</button>
+            </div>
+            <div class="popup-content">
+                <div class="video-player">
+                    <video id="videoElement" class="video-element" controls>
+                        <source src="" type="video/mp4">
+                        הדפדפן שלך אינו תומך בתגית וידאו.
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAudio = null;
+        let isAudioPlaying = false;
+        let audioDuration = 0;
+        let audioCurrentTime = 0;
+
+        // Audio Popup Functions
+        function openAudioPopup(title, duration, audioId) {
+            document.getElementById('audioTitle').textContent = title;
+            document.getElementById('audioDuration').textContent = duration;
+            document.getElementById('audioPopup').classList.add('active');
+            
+            // Simulate audio loading
+            setTimeout(() => {
+                audioDuration = parseDuration(duration);
+                updateAudioDisplay();
+            }, 500);
+        }
+
+        function openVideoPopup(title, duration, videoId) {
+            document.getElementById('videoTitle').textContent = title;
+            document.getElementById('videoPopup').classList.add('active');
+            
+            // For demo purposes, we'll use a placeholder video
+            const videoElement = document.getElementById('videoElement');
+            videoElement.src = 'https://www.w3schools.com/html/mov_bbb.mp4';
+        }
+
+        function closePopup(popupId) {
+            document.getElementById(popupId).classList.remove('active');
+            
+            if (popupId === 'audioPopup' && currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+                isAudioPlaying = false;
+                document.getElementById('audioPlayBtn').textContent = '▶️';
+            }
+            
+            if (popupId === 'videoPopup') {
+                const videoElement = document.getElementById('videoElement');
+                videoElement.pause();
+                videoElement.src = '';
+            }
+        }
+
+        function toggleAudioPlay() {
+            const playBtn = document.getElementById('audioPlayBtn');
+            
+            if (!currentAudio) {
+                // Create a dummy audio for demo
+                currentAudio = new Audio();
+                currentAudio.addEventListener('timeupdate', updateAudioProgress);
+                currentAudio.addEventListener('ended', () => {
+                    isAudioPlaying = false;
+                    playBtn.textContent = '▶️';
+                });
+            }
+            
+            if (isAudioPlaying) {
+                currentAudio.pause();
+                playBtn.textContent = '▶️';
+                isAudioPlaying = false;
+            } else {
+                // Simulate play for demo
+                playBtn.textContent = '⏸️';
+                isAudioPlaying = true;
+                simulateAudioProgress();
+            }
+        }
+
+        function simulateAudioProgress() {
+            if (!isAudioPlaying) return;
+            
+            audioCurrentTime += 0.1;
+            if (audioCurrentTime >= audioDuration) {
+                audioCurrentTime = audioDuration;
+                isAudioPlaying = false;
+                document.getElementById('audioPlayBtn').textContent = '▶️';
+                return;
+            }
+            
+            updateAudioDisplay();
+            setTimeout(simulateAudioProgress, 100);
+        }
+
+        function updateAudioProgress() {
+            if (currentAudio) {
+                audioCurrentTime = currentAudio.currentTime;
+                updateAudioDisplay();
+            }
+        }
+
+        function updateAudioDisplay() {
+            const progress = audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0;
+            document.getElementById('audioProgress').style.width = progress + '%';
+            document.getElementById('audioCurrentTime').textContent = formatTime(audioCurrentTime);
+        }
+
+        function seekAudio(event) {
+            const progressBar = event.currentTarget;
+            const rect = progressBar.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const percentage = clickX / rect.width;
+            
+            audioCurrentTime = percentage * audioDuration;
+            if (currentAudio) {
+                currentAudio.currentTime = audioCurrentTime;
+            }
+            updateAudioDisplay();
+        }
+
+        function skipBackward() {
+            audioCurrentTime = Math.max(0, audioCurrentTime - 10);
+            if (currentAudio) {
+                currentAudio.currentTime = audioCurrentTime;
+            }
+            updateAudioDisplay();
+        }
+
+        function skipForward() {
+            audioCurrentTime = Math.min(audioDuration, audioCurrentTime + 10);
+            if (currentAudio) {
+                currentAudio.currentTime = audioCurrentTime;
+            }
+            updateAudioDisplay();
+        }
+
+        function parseDuration(durationStr) {
+            const parts = durationStr.split(':');
+            return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Close popup when clicking outside
+        document.addEventListener('click', function(event) {
+            const audioPopup = document.getElementById('audioPopup');
+            const videoPopup = document.getElementById('videoPopup');
+            
+            if (event.target === audioPopup) {
+                closePopup('audioPopup');
+            }
+            if (event.target === videoPopup) {
+                closePopup('videoPopup');
+            }
+        });
+
+        // Close popup with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closePopup('audioPopup');
+                closePopup('videoPopup');
+            }
+        });
+
+        // Prevent body scroll when popup is open
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.target.classList.contains('active')) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = '';
+                }
+            });
+        });
+
+        observer.observe(document.getElementById('audioPopup'), {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+
+        observer.observe(document.getElementById('videoPopup'), {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    </script>
+</body>
+</html>

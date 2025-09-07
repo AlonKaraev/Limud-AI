@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import MediaFilteringHeader from './MediaFilteringHeader';
 import CompressionControls from './CompressionControls';
 import ProgressBar from './ProgressBar';
 import BulkTranscriptionStatusManager from './BulkTranscriptionStatusManager';
 import MediaViewModal from './MediaViewModal';
 import TranscriptionModal from './TranscriptionModal';
-import TranscriptionSearch from './TranscriptionSearch';
 import TagInput from './TagInput';
 import MetadataForm from './MetadataForm';
-import FilterControls from './FilterControls';
 import EditMediaModal from './EditMediaModal';
+import MediaGrid from './MediaGrid';
 import { compressFile, supportsCompression, getCompressionRatio, shouldCompress } from '../utils/mediaCompression';
 
 const Container = styled.div`
@@ -287,13 +287,38 @@ const VideoManager = ({ t }) => {
   const [selectedMediaItemForEdit, setSelectedMediaItemForEdit] = useState(null);
   const [globalTags, setGlobalTags] = useState([]);
   
-  // Filtering state
-  const [filteredSavedVideoFiles, setFilteredSavedVideoFiles] = useState([]);
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Initialize filtered arrays when data changes
+  // Recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [recordingError, setRecordingError] = useState(null);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [mediaStream, setMediaStream] = useState(null);
+  const [recordedChunks, setRecordedChunks] = useState([]);
+
+  // Recording timer effect
   useEffect(() => {
-    setFilteredSavedVideoFiles(savedVideoFiles);
-  }, [savedVideoFiles]);
+    let interval = null;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingTime(prevTime => prevTime + 1);
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  // Cleanup media stream on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [mediaStream]);
 
   // Collect all available tags from all video files
   useEffect(() => {
@@ -316,10 +341,6 @@ const VideoManager = ({ t }) => {
     setGlobalTags(Array.from(allTags).sort());
   }, [savedVideoFiles, selectedFiles]);
 
-  // Handle filter changes for saved video files
-  const handleSavedVideoFilesFilterChange = (filteredItems) => {
-    setFilteredSavedVideoFiles(filteredItems);
-  };
 
   // Load saved video files from server on component mount
   useEffect(() => {
@@ -446,14 +467,6 @@ const VideoManager = ({ t }) => {
       setFileProgress({});
       setCurrentProcessingFile(null);
 
-      // Mute all video elements during processing (silent saving)
-      const videoElements = document.querySelectorAll('video');
-      const originalVolumes = [];
-      videoElements.forEach((video, index) => {
-        originalVolumes[index] = video.volume;
-        video.volume = 0;
-        video.pause();
-      });
 
       const uploadedVideos = [];
       
@@ -640,12 +653,6 @@ const VideoManager = ({ t }) => {
         setError('לא הצליח להעלות אף קובץ ווידאו');
       }
 
-      // Restore video volumes (end silent saving)
-      videoElements.forEach((video, index) => {
-        if (originalVolumes[index] !== undefined) {
-          video.volume = originalVolumes[index];
-        }
-      });
 
     } catch (error) {
       console.error('Error uploading video files:', error);
@@ -669,6 +676,118 @@ const VideoManager = ({ t }) => {
       reader.onload = () => resolve(reader.result);
       reader.onerror = error => reject(error);
     });
+  };
+
+  // Recording functions
+  const startRecording = async () => {
+    try {
+      setRecordingError(null);
+      setError('');
+      
+      // Request camera and microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      
+      setMediaStream(stream);
+      
+      // Create MediaRecorder
+      const recorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp8,opus'
+      });
+      
+      const chunks = [];
+      
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+      
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        
+        // Convert to File object
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `video-recording-${timestamp}.webm`;
+        const file = new File([blob], filename, { type: 'video/webm' });
+        
+        try {
+          // Get duration if possible
+          const duration = await getVideoDuration(file);
+          
+          // Add to selected files
+          const recordedFile = {
+            file,
+            id: Date.now() + Math.random(),
+            name: filename,
+            size: file.size,
+            type: file.type,
+            duration: duration,
+            url: URL.createObjectURL(file),
+            isRecorded: true
+          };
+          
+          setSelectedFiles(prev => [...prev, recordedFile]);
+          setSuccess(`הקלטת ווידאו הושלמה בהצלחה! משך: ${formatDuration(duration || recordingTime)}`);
+          
+        } catch (error) {
+          console.error('Error processing recorded video file:', error);
+          setError('שגיאה בעיבוד הקלטת הווידאו');
+        }
+        
+        // Cleanup
+        setRecordedChunks([]);
+        if (mediaStream) {
+          mediaStream.getTracks().forEach(track => track.stop());
+          setMediaStream(null);
+        }
+      };
+      
+      recorder.onerror = (event) => {
+        console.error('Video recording error:', event.error);
+        setRecordingError('שגיאה בהקלטת ווידאו: ' + event.error.message);
+        stopRecording();
+      };
+      
+      setMediaRecorder(recorder);
+      setRecordedChunks(chunks);
+      
+      // Start recording
+      recorder.start(1000); // Collect data every second
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+    } catch (error) {
+      console.error('Error starting video recording:', error);
+      let errorMessage = 'שגיאה בהתחלת הקלטת הווידאו';
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'נדרשת הרשאה לגישה למצלמה ומיקרופון. אנא אפשר גישה ונסה שוב.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'לא נמצאו מצלמה או מיקרופון. אנא וודא שהם מחוברים ונסה שוב.';
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage = 'הקלטת ווידאו אינה נתמכת בדפדפן זה.';
+      }
+      
+      setRecordingError(errorMessage);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    setIsRecording(false);
   };
 
   // Remove saved video file
@@ -845,26 +964,20 @@ const VideoManager = ({ t }) => {
     return filename.split('.').pop().toUpperCase();
   };
 
-  // Create blob URL for saved video files
-  const createBlobUrl = (base64Data) => {
-    try {
-      const byteCharacters = atob(base64Data.split(',')[1]);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'video/mp4' });
-      return URL.createObjectURL(blob);
-    } catch (error) {
-      console.error('Error creating blob URL:', error);
-      return null;
-    }
-  };
 
-  // Handle view media item
+  // Handle view media item - unified for both local and server-uploaded media
   const handleViewMedia = (mediaItem) => {
-    setSelectedMediaItem(mediaItem);
+    // For server-uploaded media, ensure we have a proper streaming URL
+    let processedMediaItem = { ...mediaItem };
+    
+    if (mediaItem.isFromServer && mediaItem.serverRecordingId) {
+      // Construct streaming URL for server-uploaded media
+      processedMediaItem.url = `/api/recordings/${mediaItem.serverRecordingId}/stream`;
+      // Ensure we have the right media type
+      processedMediaItem.mediaType = 'video';
+    }
+    
+    setSelectedMediaItem(processedMediaItem);
     setViewModalOpen(true);
   };
 
@@ -924,42 +1037,70 @@ const VideoManager = ({ t }) => {
     setError('');
   };
 
+  // Filter video files based on search query
+  const filterVideoFiles = (videoFiles, query) => {
+    if (!query || query.trim() === '') {
+      return videoFiles;
+    }
+
+    const searchTerm = query.toLowerCase().trim();
+    
+    return videoFiles.filter(video => {
+      // Search in name/filename
+      const name = (video.name || video.filename || '').toLowerCase();
+      if (name.includes(searchTerm)) return true;
+
+      // Search in tags
+      if (video.tags && Array.isArray(video.tags)) {
+        const tagsMatch = video.tags.some(tag => 
+          tag.toLowerCase().includes(searchTerm)
+        );
+        if (tagsMatch) return true;
+      }
+
+      // Search in metadata
+      if (video.metadata) {
+        const metadataFields = [
+          video.metadata.lessonName,
+          video.metadata.subject,
+          video.metadata.description,
+          video.metadata.domain,
+          video.metadata.topic,
+          video.metadata.keywords,
+          video.metadata.author
+        ];
+        
+        const metadataMatch = metadataFields.some(field => 
+          field && field.toLowerCase().includes(searchTerm)
+        );
+        if (metadataMatch) return true;
+      }
+
+      return false;
+    });
+  };
+
+  // Get filtered video files for display
+  const getFilteredVideoFiles = () => {
+    return filterVideoFiles(savedVideoFiles, searchQuery);
+  };
+
   return (
     <Container>
-      <Header>
-        <Title>🎬 ווידאו</Title>
-      </Header>
-
-      <UploadSection
-        className={dragOver ? 'dragover' : ''}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <UploadButton
-          onClick={() => document.getElementById('video-file-input').click()}
-        >
-          🎬 בחר קבצי ווידאו
-        </UploadButton>
-        
-        <FileInput
-          id="video-file-input"
-          type="file"
-          multiple
-          accept=".mp4,.avi,.mov,.wmv,.flv,.webm,.mkv,.m4v,.3gp,video/*"
-          onChange={(e) => handleFileSelect(e.target.files)}
-        />
-
-        <UploadText>
-          או גרור קבצי ווידאו לכאן
-        </UploadText>
-
-        <SupportedFormats>
-          קבצי ווידאו נתמכים: MP4, AVI, MOV, WMV, FLV, WebM, MKV, M4V, 3GP
-          <br />
-          גודל מקסימלי: 1GB לכל קובץ
-        </SupportedFormats>
-      </UploadSection>
+      <MediaFilteringHeader
+        mediaType="video"
+        onUpload={handleFileSelect}
+        onRecordStart={startRecording}
+        onRecordStop={stopRecording}
+        isRecording={isRecording}
+        recordingTime={recordingTime}
+        recordingError={recordingError}
+        onSearch={(query) => {
+          setSearchQuery(query);
+        }}
+        isExpanded={isHeaderExpanded}
+        onToggleExpanded={() => setIsHeaderExpanded(!isHeaderExpanded)}
+      />
 
       {error && (
         <ErrorMessage>
@@ -1056,74 +1197,34 @@ const VideoManager = ({ t }) => {
         </div>
       )}
 
-      {/* Filter controls for saved video files */}
       {savedVideoFiles.length > 0 && (
-        <FilterControls
-          mediaItems={savedVideoFiles}
-          onFilterChange={handleSavedVideoFilesFilterChange}
-          availableTags={globalTags}
-          mediaType="video"
-        />
-      )}
-
-      {/* Search functionality for saved video files with transcriptions */}
-      {filteredSavedVideoFiles.filter(video => video.isFromServer && video.serverRecordingId).length > 0 && (
-        <TranscriptionSearch
-          mediaItems={filteredSavedVideoFiles.filter(video => video.isFromServer && video.serverRecordingId)}
-          mediaType="video"
-          onItemClick={handleViewTranscription}
-        />
-      )}
-
-      {filteredSavedVideoFiles.length > 0 && (
         <SavedVideoSection>
           <SavedVideoTitle>
-            🎬 קבצי ווידאו שמורים ({filteredSavedVideoFiles.length})
+            🎬 קבצי ווידאו שמורים ({getFilteredVideoFiles().length}{searchQuery ? ` מתוך ${savedVideoFiles.length}` : ''})
           </SavedVideoTitle>
-          {filteredSavedVideoFiles.map(videoFile => {
-            const blobUrl = createBlobUrl(videoFile.base64Data);
-            return (
-              <SavedVideoItem key={videoFile.id}>
-                <FileIcon>
-                  🎬
-                </FileIcon>
-                <SavedVideoInfo>
-                  <SavedVideoName>{videoFile.name}</SavedVideoName>
-                  <SavedVideoMeta>
-                    <span>{formatFileSize(videoFile.size)}</span>
-                    {videoFile.duration && <span>משך: {formatDuration(videoFile.duration)}</span>}
-                    <span>נשמר: {new Date(videoFile.savedAt).toLocaleDateString('he-IL')}</span>
-                  </SavedVideoMeta>
-                  {blobUrl && (
-                    <VideoPreview>
-                      <VideoPlayer controls>
-                        <source src={blobUrl} type={videoFile.type} />
-                        הדפדפן שלך לא תומך בנגן הווידאו.
-                      </VideoPlayer>
-                    </VideoPreview>
-                  )}
-                </SavedVideoInfo>
-                <ButtonGroup>
-                  <ViewButton onClick={() => handleViewMedia(videoFile)}>
-                    👁️ צפה
-                  </ViewButton>
-                  <ViewButton onClick={() => handleEditMedia(videoFile)}>
-                    ✏️ ערוך
-                  </ViewButton>
-                  {videoFile.isFromServer && videoFile.serverRecordingId && (
-                    <ViewButton onClick={() => handleViewTranscription(videoFile)}>
-                      📝 צפה בתמלול
-                    </ViewButton>
-                  )}
-                  <RemoveButton onClick={() => removeSavedVideoFile(videoFile.id)}>
-                    מחק
-                  </RemoveButton>
-                </ButtonGroup>
-              </SavedVideoItem>
-            );
-          })}
+          <MediaGrid
+            mediaItems={getFilteredVideoFiles().map(videoFile => ({
+              ...videoFile,
+              mediaType: 'video',
+              file_size: videoFile.size,
+              created_at: videoFile.savedAt,
+              duration: videoFile.duration
+            }))}
+            mediaType="video"
+            loading={false}
+            onItemClick={handleViewMedia}
+            onItemEdit={handleEditMedia}
+            onItemDelete={removeSavedVideoFile}
+            onItemPreview={handleViewMedia}
+            onItemPlay={handleViewMedia}
+            emptyStateConfig={{
+              icon: '🎬',
+              title: 'אין קבצי ווידאו שמורים',
+              description: 'העלה קבצי ווידאו כדי לראות אותם כאן'
+            }}
+          />
           <BulkTranscriptionStatusManager
-            recordings={filteredSavedVideoFiles.filter(video => video.isFromServer && video.serverRecordingId).map(video => ({
+            recordings={savedVideoFiles.filter(video => video.isFromServer && video.serverRecordingId).map(video => ({
               id: video.serverRecordingId
             }))}
             onTranscriptionComplete={(transcription) => {

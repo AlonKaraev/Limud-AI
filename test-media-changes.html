@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Media Changes - Limud AI</title>
+    <style>
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #3498db;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .test-section {
+            margin-bottom: 3rem;
+            padding: 1.5rem;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+        }
+        
+        .test-section h2 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.5rem;
+        }
+        
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 1rem 0;
+        }
+        
+        .media-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            height: 280px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .media-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            border-color: #3498db;
+        }
+        
+        .thumbnail-area {
+            height: 60%;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .media-icon {
+            font-size: 2.5rem;
+            color: #3498db;
+            opacity: 0.7;
+        }
+        
+        /* Old style with waveform (for comparison) */
+        .old-audio-thumbnail {
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .old-audio-thumbnail .media-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .waveform-preview {
+            width: 100%;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: 0 1rem;
+        }
+        
+        .waveform-bar {
+            width: 3px;
+            background: #3498db;
+            border-radius: 1px;
+            opacity: 0.7;
+            animation: pulse 2s infinite ease-in-out;
+        }
+        
+        .waveform-bar:nth-child(1) { height: 20%; animation-delay: 0s; }
+        .waveform-bar:nth-child(2) { height: 60%; animation-delay: 0.1s; }
+        .waveform-bar:nth-child(3) { height: 40%; animation-delay: 0.2s; }
+        .waveform-bar:nth-child(4) { height: 80%; animation-delay: 0.3s; }
+        .waveform-bar:nth-child(5) { height: 30%; animation-delay: 0.4s; }
+        .waveform-bar:nth-child(6) { height: 70%; animation-delay: 0.5s; }
+        .waveform-bar:nth-child(7) { height: 50%; animation-delay: 0.6s; }
+        .waveform-bar:nth-child(8) { height: 90%; animation-delay: 0.7s; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+        
+        .info-area {
+            height: 40%;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .media-title {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2c3e50;
+            line-height: 1.2;
+        }
+        
+        .media-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            font-size: 0.7rem;
+            color: #7f8c8d;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .transcription-section {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+        }
+        
+        .transcription-preview {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            max-height: 100px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: #2c3e50;
+        }
+        
+        .status-indicator {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: white;
+            background: #27ae60;
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 1rem 0;
+        }
+        
+        .before, .after {
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        
+        .before {
+            background: #fff5f5;
+            border: 2px solid #e53e3e;
+        }
+        
+        .after {
+            background: #f0fff4;
+            border: 2px solid #38a169;
+        }
+        
+        .before h3 {
+            color: #e53e3e;
+            margin-top: 0;
+        }
+        
+        .after h3 {
+            color: #38a169;
+            margin-top: 0;
+        }
+        
+        .success-message {
+            background: #d5f4e6;
+            color: #27ae60;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border: 1px solid #a9dfbf;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .media-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 בדיקת שינויים במדיה - Limud AI</h1>
+        
+        <div class="success-message">
+            ✅ השינויים יושמו בהצלחה! הוסרו גלי הקול מתמונות הזעירות של האודיו והתמלילים מתחת לרשת
+        </div>
+        
+        <div class="test-section">
+            <h2>🔄 השוואה: לפני ואחרי השינויים</h2>
+            
+            <div class="comparison">
+                <div class="before">
+                    <h3>❌ לפני השינויים</h3>
+                    <div class="media-item">
+                        <div class="thumbnail-area old-audio-thumbnail">
+                            <div class="media-icon">🎵</div>
+                            <div class="waveform-preview">
+                                <div class="waveform-bar"></div>
+                                <div class="waveform-bar"></div>
+                                <div class="waveform-bar"></div>
+                                <div class="waveform-bar"></div>
+                                <div class="waveform-bar"></div>
+                                <div class="waveform-bar"></div>
+                                <div class="waveform-bar"></div>
+                                <div class="waveform-bar"></div>
+                            </div>
+                            <div class="status-indicator">הושלם</div>
+                        </div>
+                        <div class="info-area">
+                            <div class="media-title">הקלטת שיעור מתמטיקה - פרק 1</div>
+                            <div class="media-meta">
+                                <div class="meta-item">🕐 15:30</div>
+                                <div class="meta-item">📊 12.5 MB</div>
+                                <div class="meta-item">📅 לפני יום</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="transcription-section">
+                        <strong>תמלילים מוצגים מתחת לרשת:</strong>
+                        <div class="transcription-preview">
+                            שלום לכולם, היום נלמד על משוואות ממעלה שנייה. נתחיל עם הנוסחה הכללית ax² + bx + c = 0...
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="after">
+                    <h3>✅ אחרי השינויים</h3>
+                    <div class="media-item">
+                        <div class="thumbnail-area">
+                            <div class="media-icon">🎵</div>
+                            <div class="status-indicator">הושלם</div>
+                        </div>
+                        <div class="info-area">
+                            <div class="media-title">הקלטת שיעור מתמטיקה - פרק 1</div>
+                            <div class="media-meta">
+                                <div class="meta-item">🕐 15:30</div>
+                                <div class="meta-item">📊 12.5 MB</div>
+                                <div class="meta-item">📅 לפני יום</div>
+                            </div>
+                        </div>
+                    </div>
+                    <p><strong>✨ ללא תמלילים מתחת לרשת - רק סטטוס התמלול</strong></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎵 רשת מדיה חדשה - קבצי אודיו</h2>
+            <p>כעת קבצי האודיו מוצגים עם אייקון פשוט בלבד, ללא גלי קול מונפשים:</p>
+            
+            <div class="media-grid">
+                <div class="media-item">
+                    <div class="thumbnail-area">
+                        <div class="media-icon">🎵</div>
+                        <div class="status-indicator">הושלם</div>
+                    </div>
+                    <div class="info-area">
+                        <div class="media-title">שיעור פיזיקה - חוקי ניוטון</div>
+                        <div class="media-meta">
+                            <div class="meta-item">🕐 22:15</div>
+                            <div class="meta-item">📊 18.3 MB</div>
+                            <div class="meta-item">📅 לפני 2 ימים</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="media-item">
+                    <div class="thumbnail-area">
+                        <div class="media-icon">🎵</div>
+                        <div class="status-indicator">הושלם</div>
+                    </div>
+                    <div class="info-area">
+                        <div class="media-title">שיעור היסטוריה - מלחמת העולם השנייה</div>
+                        <div class="media-meta">
+                            <div class="meta-item">🕐 35:42</div>
+                            <div class="meta-item">📊 28.7 MB</div>
+                            <div class="meta-item">📅 לפני שבוע</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="media-item">
+                    <div class="thumbnail-area">
+                        <div class="media-icon">🎵</div>
+                        <div class="status-indicator">הושלם</div>
+                    </div>
+                    <div class="info-area">
+                        <div class="media-title">שיעור ספרות - ניתוח שיר</div>
+                        <div class="media-meta">
+                            <div class="meta-item">🕐 18:20</div>
+                            <div class="meta-item">📊 15.1 MB</div>
+                            <div class="meta-item">📅 לפני 3 ימים</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎬 רשת מדיה - קבצי וידאו</h2>
+            <p>קבצי הווידאו נשארים ללא שינוי:</p>
+            
+            <div class="media-grid">
+                <div class="media-item">
+                    <div class="thumbnail-area">
+                        <div class="media-icon">🎥</div>
+                        <div class="status-indicator">הושלם</div>
+                    </div>
+                    <div class="info-area">
+                        <div class="media-title">הרצאה על בינה מלאכותית</div>
+                        <div class="media-meta">
+                            <div class="meta-item">🕐 45:30</div>
+                            <div class="meta-item">📊 125.8 MB</div>
+                            <div class="meta-item">📅 לפני יום</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="media-item">
+                    <div class="thumbnail-area">
+                        <div class="media-icon">🎥</div>
+                        <div class="status-indicator">הושלם</div>
+                    </div>
+                    <div class="info-area">
+                        <div class="media-title">ניסוי מעבדה - כימיה</div>
+                        <div class="media-meta">
+                            <div class="meta-item">🕐 12:45</div>
+                            <div class="meta-item">📊 67.2 MB</div>
+                            <div class="meta-item">📅 לפני 4 ימים</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📋 סיכום השינויים</h2>
+            <ul style="font-size: 1.1rem; line-height: 1.6;">
+                <li><strong>✅ הוסרו גלי הקול מתמונות הזעירות של האודיו</strong> - כעת מוצג רק אייקון 🎵 פשוט</li>
+                <li><strong>✅ הוסרו התמלילים מתחת לרשת המדיה</strong> - התמלילים זמינים רק דרך מודלים נפרדים</li>
+                <li><strong>✅ הוסרו כל הודעות הסטטוס של התמלול מתחת לרשת</strong> - כולל "תמלול הושלם", "מתמלל...", וכו'</li>
+                <li><strong>✅ נשמר עיבוד התמלול ברקע</strong> - הקומפוננט ממשיך לעבוד ברקע ללא תצוגה חזותית</li>
+                <li><strong>✅ ממשק נקי לחלוטין</strong> - אין עומס חזותי מתחת לרשת המדיה</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

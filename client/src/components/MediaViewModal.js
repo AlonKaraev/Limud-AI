@@ -171,10 +171,11 @@ const DownloadButton = styled.button`
 `;
 
 const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
-  // Use refs to track cleanup state and prevent memory leaks
+  // Always call hooks in the same order - don't conditionally call them
   const blobUrlsRef = useRef(new Set());
   const isClosingRef = useRef(false);
   const [loading, setLoading] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState(null);
 
   // Optimized cleanup function
   const cleanupBlobUrls = useCallback(() => {
@@ -213,6 +214,8 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
     }
 
     return () => {
@@ -225,12 +228,73 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
   useEffect(() => {
     if (!isOpen) {
       cleanupBlobUrls();
+      setMediaUrl(null);
     }
 
     return () => {
       cleanupBlobUrls();
     };
   }, [isOpen, cleanupBlobUrls]);
+
+  // Create media URL when modal opens and mediaItem changes
+  useEffect(() => {
+    if (isOpen && mediaItem) {
+      const createMediaUrl = async () => {
+        if (mediaItem.base64Data) {
+          const url = createBlobUrl(mediaItem.base64Data);
+          setMediaUrl(url);
+        } else if (mediaItem.url || mediaItem.filePath || mediaItem.src) {
+          const sourceUrl = mediaItem.url || mediaItem.filePath || mediaItem.src;
+          
+          // Check if this is a server-side authenticated URL
+          if (sourceUrl.startsWith('/api/recordings/') && sourceUrl.includes('/stream')) {
+            try {
+              setLoading(true);
+              const token = localStorage.getItem('token');
+              
+              if (!token) {
+                console.error('No authentication token found');
+                setMediaUrl(null);
+                return;
+              }
+
+              const response = await fetch(sourceUrl, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+
+              if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              }
+
+              const blob = await response.blob();
+              const blobUrl = URL.createObjectURL(blob);
+              
+              // Track the blob URL for cleanup
+              blobUrlsRef.current.add(blobUrl);
+              setMediaUrl(blobUrl);
+              
+            } catch (error) {
+              console.error('Error fetching authenticated media:', error);
+              setMediaUrl(null);
+            } finally {
+              setLoading(false);
+            }
+          } else {
+            // For non-authenticated URLs, use directly
+            setMediaUrl(sourceUrl);
+          }
+        } else {
+          setMediaUrl(null);
+        }
+      };
+      
+      createMediaUrl();
+    }
+  }, [isOpen, mediaItem]);
 
   // Handle overlay click with debouncing
   const handleOverlayClick = useCallback((e) => {
@@ -239,6 +303,105 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
     }
   }, [handleClose]);
 
+  // Optimized blob URL creation with proper cleanup tracking
+  const createBlobUrl = useCallback((base64Data) => {
+    if (isClosingRef.current) return null;
+    
+    try {
+      const byteCharacters = atob(base64Data.split(',')[1]);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mediaItem?.type });
+      const url = URL.createObjectURL(blob);
+      
+      // Track the blob URL for cleanup
+      blobUrlsRef.current.add(url);
+      
+      return url;
+    } catch (error) {
+      console.error('Error creating blob URL:', error);
+      return null;
+    }
+  }, [mediaItem?.type]);
+
+  // Optimized download function
+  const downloadFile = useCallback(async () => {
+    if (isClosingRef.current || !mediaItem) return;
+    
+    let url;
+    let filename = mediaItem?.title || mediaItem?.name || mediaItem?.filename || 'download';
+
+    if (mediaItem?.base64Data) {
+      url = createBlobUrl(mediaItem.base64Data);
+    } else if (mediaItem?.url) {
+      const sourceUrl = mediaItem.url;
+      
+      // Check if this is a server-side authenticated URL that needs special handling
+      if (sourceUrl.startsWith('/api/recordings/')) {
+        try {
+          const token = localStorage.getItem('token');
+          
+          if (!token) {
+            console.error('No authentication token found for download');
+            return;
+          }
+
+          // Convert stream URL to download URL for proper Content-Disposition headers
+          const downloadUrl = sourceUrl.replace('/stream', '/download');
+
+          const response = await fetch(downloadUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const blob = await response.blob();
+          url = URL.createObjectURL(blob);
+          
+          // Track the blob URL for cleanup
+          blobUrlsRef.current.add(url);
+          
+        } catch (error) {
+          console.error('Error downloading authenticated media:', error);
+          return;
+        }
+      } else {
+        // For non-authenticated URLs, use directly
+        url = sourceUrl;
+      }
+    } else {
+      console.error('No download URL available');
+      return;
+    }
+
+    if (url) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up blob URL if we created it
+      if ((mediaItem?.base64Data || mediaItem?.url?.startsWith('/api/recordings/')) && blobUrlsRef.current.has(url)) {
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          blobUrlsRef.current.delete(url);
+        }, 1000);
+      }
+    }
+  }, [mediaItem, createBlobUrl]);
+
+  // Early return if modal is not open - but hooks are still called above
   if (!isOpen || !mediaItem) return null;
 
   const formatFileSize = (bytes) => {
@@ -267,80 +430,13 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
     return filename.split('.').pop().toUpperCase();
   };
 
-  // Optimized blob URL creation with proper cleanup tracking
-  const createBlobUrl = useCallback((base64Data) => {
-    if (isClosingRef.current) return null;
-    
-    try {
-      const byteCharacters = atob(base64Data.split(',')[1]);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: mediaItem?.type });
-      const url = URL.createObjectURL(blob);
-      
-      // Track the blob URL for cleanup
-      blobUrlsRef.current.add(url);
-      
-      return url;
-    } catch (error) {
-      console.error('Error creating blob URL:', error);
-      return null;
-    }
-  }, [mediaItem?.type]);
-
-  // Optimized download function
-  const downloadFile = useCallback(() => {
-    if (isClosingRef.current) return;
-    
-    let url;
-    let filename = mediaItem?.name || 'download';
-
-    if (mediaItem?.base64Data) {
-      url = createBlobUrl(mediaItem.base64Data);
-    } else if (mediaItem?.url) {
-      url = mediaItem.url;
-    } else {
-      console.error('No download URL available');
-      return;
-    }
-
-    if (url) {
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up blob URL if we created it
-      if (mediaItem?.base64Data && blobUrlsRef.current.has(url)) {
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-          blobUrlsRef.current.delete(url);
-        }, 1000);
-      }
-    }
-  }, [mediaItem, createBlobUrl]);
-
   const renderMediaContent = () => {
-    let mediaUrl;
-    
-    if (mediaItem.base64Data) {
-      mediaUrl = createBlobUrl(mediaItem.base64Data);
-    } else if (mediaItem.url) {
-      mediaUrl = mediaItem.url;
-    }
-
     switch (mediaType) {
       case 'audio':
         return (
           <MediaContainer>
             {mediaUrl ? (
-              <AudioPlayer controls autoPlay={false}>
+              <AudioPlayer controls autoPlay={true}>
                 <source src={mediaUrl} type={mediaItem.type} />
                 הדפדפן שלך לא תומך בנגן האודיו.
               </AudioPlayer>
@@ -356,7 +452,7 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
         return (
           <MediaContainer>
             {mediaUrl ? (
-              <VideoPlayer controls autoPlay={false}>
+              <VideoPlayer controls autoPlay={true}>
                 <source src={mediaUrl} type={mediaItem.type} />
                 הדפדפן שלך לא תומך בנגן הווידאו.
               </VideoPlayer>
@@ -368,19 +464,29 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
           </MediaContainer>
         );
 
+      case 'image':
+        return (
+          <MediaContainer>
+            {mediaUrl ? (
+              <ImagePreview src={mediaUrl} alt={mediaItem.title || mediaItem.name} />
+            ) : (
+              <UnsupportedMessage>
+                לא ניתן להציג את התמונה
+              </UnsupportedMessage>
+            )}
+          </MediaContainer>
+        );
+
       case 'document':
-        const isImage = mediaItem.type?.startsWith('image/');
         const isPDF = mediaItem.type === 'application/pdf';
         
         return (
           <MediaContainer>
             <DocumentViewer>
-              {isImage && mediaUrl ? (
-                <ImagePreview src={mediaUrl} alt={mediaItem.name} />
-              ) : isPDF && mediaUrl ? (
+              {isPDF && mediaUrl ? (
                 <DocumentPreview
                   src={mediaUrl}
-                  title={mediaItem.name}
+                  title={mediaItem.title || mediaItem.name}
                 />
               ) : (
                 <UnsupportedMessage>
@@ -409,9 +515,11 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
     const typeEmoji = {
       audio: '🎵',
       video: '🎬',
-      document: '📄'
+      document: '📄',
+      image: '🖼️'
     };
-    return `${typeEmoji[mediaType] || '📁'} ${mediaItem.name}`;
+    const title = mediaItem.title || mediaItem.name || mediaItem.filename || 'ללא שם';
+    return `${typeEmoji[mediaType] || '📁'} ${title}`;
   };
 
   return (
@@ -429,15 +537,15 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
         <FileInfo>
           <InfoRow>
             <InfoLabel>שם קובץ:</InfoLabel>
-            <InfoValue>{mediaItem.name}</InfoValue>
+            <InfoValue>{mediaItem.title || mediaItem.name || mediaItem.filename || 'ללא שם'}</InfoValue>
           </InfoRow>
           <InfoRow>
             <InfoLabel>גודל:</InfoLabel>
-            <InfoValue>{formatFileSize(mediaItem.size)}</InfoValue>
+            <InfoValue>{formatFileSize(mediaItem.size || mediaItem.file_size || 0)}</InfoValue>
           </InfoRow>
           <InfoRow>
             <InfoLabel>סוג:</InfoLabel>
-            <InfoValue>{getFileExtension(mediaItem.name)} ({mediaItem.type})</InfoValue>
+            <InfoValue>{getFileExtension(mediaItem.name || mediaItem.filename || '')} ({mediaItem.type || 'לא ידוע'})</InfoValue>
           </InfoRow>
           {mediaItem.duration && (
             <InfoRow>
@@ -445,10 +553,10 @@ const MediaViewModal = ({ isOpen, onClose, mediaItem, mediaType }) => {
               <InfoValue>{formatDuration(mediaItem.duration)}</InfoValue>
             </InfoRow>
           )}
-          {mediaItem.savedAt && (
+          {(mediaItem.savedAt || mediaItem.created_at || mediaItem.createdAt) && (
             <InfoRow>
               <InfoLabel>נשמר:</InfoLabel>
-              <InfoValue>{new Date(mediaItem.savedAt).toLocaleString('he-IL')}</InfoValue>
+              <InfoValue>{new Date(mediaItem.savedAt || mediaItem.created_at || mediaItem.createdAt).toLocaleString('he-IL')}</InfoValue>
             </InfoRow>
           )}
           {mediaItem.compressionInfo && (

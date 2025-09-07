@@ -1,1 +1,1 @@
-OS that currently runs right now is windows
+This development enviroment is running on windows, avoid any linux commands such as &&, use only windows supported prompts.

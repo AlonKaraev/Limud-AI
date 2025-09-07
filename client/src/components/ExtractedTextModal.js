@@ -267,8 +267,19 @@ const ExtractedTextModal = ({ isOpen, onClose, documentId, documentName, mediaTy
 
   // Fetch extracted text when modal opens
   useEffect(() => {
+    console.log('🔍 ExtractedTextModal useEffect triggered:', { 
+      isOpen, 
+      documentId, 
+      mediaType 
+    });
     if (isOpen && documentId) {
+      console.log('✅ Calling fetchExtractedText');
       fetchExtractedText();
+    } else {
+      console.log('❌ Not calling fetchExtractedText:', { 
+        isOpenFalsy: !isOpen, 
+        documentIdFalsy: !documentId 
+      });
     }
   }, [isOpen, documentId]);
 
@@ -281,7 +292,12 @@ const ExtractedTextModal = ({ isOpen, onClose, documentId, documentName, mediaTy
 
   // Optimized text fetching with timeout and caching
   const fetchExtractedText = useCallback(async () => {
-    if (loadingRef.current) return;
+    console.log('🚀 fetchExtractedText called with:', { documentId, mediaType });
+    
+    if (loadingRef.current) {
+      console.log('❌ fetchExtractedText aborted - already loading');
+      return;
+    }
     loadingRef.current = true;
     
     setLoading(true);
@@ -290,7 +306,9 @@ const ExtractedTextModal = ({ isOpen, onClose, documentId, documentName, mediaTy
 
     try {
       const token = localStorage.getItem('token');
+      console.log('🔑 Token exists:', !!token);
       if (!token) {
+        console.log('❌ No token found');
         setError('נדרש להתחבר מחדש');
         return;
       }
@@ -300,7 +318,17 @@ const ExtractedTextModal = ({ isOpen, onClose, documentId, documentName, mediaTy
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
       
       // Use correct endpoint based on media type
-      const endpoint = mediaType === 'image' ? `/api/images/${documentId}/text` : `/api/documents/${documentId}/text`;
+      let endpoint;
+      if (mediaType === 'audio' || mediaType === 'video') {
+        endpoint = `/api/recordings/${documentId}/transcription`;
+      } else if (mediaType === 'image') {
+        endpoint = `/api/images/${documentId}/text`;
+      } else {
+        endpoint = `/api/documents/${documentId}/text`;
+      }
+      
+      console.log('🌐 Constructed endpoint:', endpoint);
+      console.log('📤 Making API request...');
       
       const response = await fetch(endpoint, {
         headers: {
@@ -311,22 +339,42 @@ const ExtractedTextModal = ({ isOpen, onClose, documentId, documentName, mediaTy
       });
 
       clearTimeout(timeoutId);
+      console.log('📥 Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
 
       if (response.ok) {
+        console.log('✅ Response OK, parsing JSON...');
         const data = await response.json();
+        console.log('📊 Response data:', data);
+        console.log('🔍 Extraction object:', data.extraction);
+        console.log('📝 Extracted text preview:', data.extraction?.text?.substring(0, 100) + '...');
         setExtraction(data.extraction);
+        console.log('✅ Extraction set to state');
       } else {
+        console.log('❌ Response not OK, parsing error...');
         const errorData = await response.json();
+        console.log('❌ Error data:', errorData);
         setError(errorData.error || 'שגיאה בטעינת הטקסט המחולץ');
+        console.log('❌ Error set to state:', errorData.error);
       }
     } catch (error) {
       if (error.name === 'AbortError') {
+        console.log('⏰ Request aborted - timeout');
         setError('הבקשה נכשלה - זמן המתנה פג');
       } else {
-        console.error('Error fetching extracted text:', error);
+        console.error('💥 Error fetching extracted text:', error);
+        console.error('💥 Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
         setError('שגיאה בחיבור לשרת');
       }
     } finally {
+      console.log('🏁 fetchExtractedText completed, cleaning up...');
       setLoading(false);
       loadingRef.current = false;
     }
@@ -398,7 +446,7 @@ const ExtractedTextModal = ({ isOpen, onClose, documentId, documentName, mediaTy
       <ModalContent>
         <ModalHeader>
           <ModalTitle>
-            📄 טקסט מחולץ - {documentName}
+            {mediaType === 'audio' || mediaType === 'video' ? '🎵 תמלול' : '📄 טקסט מחולץ'} - {documentName}
           </ModalTitle>
           <CloseButton onClick={onClose}>
             ✕ סגור
@@ -408,7 +456,7 @@ const ExtractedTextModal = ({ isOpen, onClose, documentId, documentName, mediaTy
         {loading && (
           <LoadingContainer>
             <LoadingSpinner />
-            <div>טוען טקסט מחולץ...</div>
+            <div>{mediaType === 'audio' || mediaType === 'video' ? 'טוען תמלול...' : 'טוען טקסט מחולץ...'}</div>
           </LoadingContainer>
         )}
 
@@ -421,7 +469,7 @@ const ExtractedTextModal = ({ isOpen, onClose, documentId, documentName, mediaTy
         {extraction && (
           <>
             <MetadataContainer>
-              <MetadataTitle>פרטי החילוץ</MetadataTitle>
+              <MetadataTitle>{mediaType === 'audio' || mediaType === 'video' ? 'פרטי התמלול' : 'פרטי החילוץ'}</MetadataTitle>
               <MetadataGrid>
                 <MetadataItem>
                   <MetadataLabel>שיטת חילוץ:</MetadataLabel>

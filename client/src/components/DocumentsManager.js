@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import MediaFilteringHeader from './MediaFilteringHeader';
 import MediaViewModal from './MediaViewModal';
 import EditMediaModal from './EditMediaModal';
 import ExtractedTextModal from './ExtractedTextModal';
 import TagInput from './TagInput';
 import MetadataForm from './MetadataForm';
-import FilterControls from './FilterControls';
+import MediaGrid from './MediaGrid';
 
 const Container = styled.div`
   background: var(--color-surface);
@@ -381,8 +382,6 @@ const TextPreview = styled.div`
 const DocumentsManager = ({ t }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [savedDocuments, setSavedDocuments] = useState([]);
-  const [filteredSelectedFiles, setFilteredSelectedFiles] = useState([]);
-  const [filteredSavedDocuments, setFilteredSavedDocuments] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -395,20 +394,14 @@ const DocumentsManager = ({ t }) => {
   const [extractionStatuses, setExtractionStatuses] = useState({});
   const [extractedTextModalOpen, setExtractedTextModalOpen] = useState(false);
   const [selectedDocumentForText, setSelectedDocumentForText] = useState(null);
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Load saved documents from server on component mount
   useEffect(() => {
     loadDocumentsFromServer();
   }, []);
 
-  // Initialize filtered arrays when data changes
-  useEffect(() => {
-    setFilteredSelectedFiles(selectedFiles);
-  }, [selectedFiles]);
-
-  useEffect(() => {
-    setFilteredSavedDocuments(savedDocuments);
-  }, [savedDocuments]);
 
   // Update global tags when documents change
   useEffect(() => {
@@ -558,15 +551,6 @@ const DocumentsManager = ({ t }) => {
     }
   };
 
-  // Handle filter changes for selected files
-  const handleSelectedFilesFilterChange = (filteredItems) => {
-    setFilteredSelectedFiles(filteredItems);
-  };
-
-  // Handle filter changes for saved documents
-  const handleSavedDocumentsFilterChange = (filteredItems) => {
-    setFilteredSavedDocuments(filteredItems);
-  };
 
   // Upload selected files to server
   const uploadSelectedFiles = async () => {
@@ -902,43 +886,20 @@ const DocumentsManager = ({ t }) => {
 
   return (
     <Container>
-      <Header>
-        <Title>מסמכים</Title>
-      </Header>
-
-      <UploadSection
-        className={dragOver ? 'dragover' : ''}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <UploadButton
-          onClick={() => document.getElementById('file-input').click()}
-          disabled={isUploading}
-        >
-          📁 בחר קבצים
-        </UploadButton>
-        
-        <FileInput
-          id="file-input"
-          type="file"
-          multiple
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif"
-          onChange={(e) => handleFileSelect(e.target.files)}
-        />
-
-        <UploadText>
-          או גרור קבצים לכאן
-        </UploadText>
-
-        <SupportedFormats>
-          קבצים נתמכים: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, JPG, PNG, GIF
-          <br />
-          גודל מקסימלי: 10MB לכל קובץ
-          <br />
-          <strong>חילוץ טקסט אוטומטי יתחיל לאחר ההעלאה</strong>
-        </SupportedFormats>
-      </UploadSection>
+      <MediaFilteringHeader
+        mediaType="documents"
+        onUpload={handleFileSelect}
+        onRecord={() => {
+          // Documents don't have recording functionality
+          alert('Recording is not available for documents');
+        }}
+        onSearch={(query) => {
+          setSearchQuery(query);
+          // TODO: Implement search functionality across all documents
+        }}
+        isExpanded={isHeaderExpanded}
+        onToggleExpanded={() => setIsHeaderExpanded(!isHeaderExpanded)}
+      />
 
       {error && (
         <ErrorMessage>
@@ -955,18 +916,10 @@ const DocumentsManager = ({ t }) => {
 
       {selectedFiles.length > 0 && (
         <div>
-          {/* Filter controls for selected files */}
-          <FilterControls
-            mediaItems={selectedFiles}
-            onFilterChange={handleSelectedFilesFilterChange}
-            availableTags={globalTags}
-            mediaType="document"
-          />
-          
           <h3 style={{ color: 'var(--color-text)', marginBottom: '1rem' }}>
-            קבצים נבחרים ({filteredSelectedFiles.length} מתוך {selectedFiles.length})
+            קבצים נבחרים ({selectedFiles.length})
           </h3>
-          {filteredSelectedFiles.map(fileData => (
+          {selectedFiles.map(fileData => (
             <FilePreview key={fileData.id}>
               <FileIcon>
                 {getFileExtension(fileData.name)}
@@ -1017,114 +970,69 @@ const DocumentsManager = ({ t }) => {
 
       {savedDocuments.length > 0 && (
         <SavedDocumentsSection>
-          {/* Filter controls for saved documents */}
-          <FilterControls
-            mediaItems={savedDocuments}
-            onFilterChange={handleSavedDocumentsFilterChange}
-            availableTags={globalTags}
-            mediaType="document"
-          />
-          
           <SavedDocumentsTitle>
-            📚 מסמכים שמורים ({filteredSavedDocuments.length} מתוך {savedDocuments.length})
+            📚 מסמכים שמורים ({savedDocuments.length})
           </SavedDocumentsTitle>
-          {filteredSavedDocuments.map(document => {
-            const status = extractionStatuses[document.id] || { status: document.extractionStatus || 'not_started', progress: 0 };
-            
-            return (
-              <SavedDocumentItem key={document.id}>
-                <FileIcon>
-                  {getFileExtension(document.filename || document.original_filename || document.name)}
-                </FileIcon>
-                <SavedDocumentInfo>
-                  <SavedDocumentName>
-                    {document.filename || document.original_filename || document.name}
-                  </SavedDocumentName>
-                  <SavedDocumentMeta>
-                    <span>{formatFileSize(document.size || document.file_size)}</span>
-                    <span>הועלה: {new Date(document.createdAt || document.created_at).toLocaleDateString('he-IL')}</span>
-                    {document.fileType && <span>סוג: {document.fileType.toUpperCase()}</span>}
-                  </SavedDocumentMeta>
-                  
-                  <ExtractionStatus className={status.status}>
-                    🔍 {getExtractionStatusText(status.status)}
-                    {status.status === 'processing' && status.progress > 0 && ` (${status.progress}%)`}
-                  </ExtractionStatus>
-                  
-                  {status.progressMessage && status.status === 'processing' && (
-                    <ProgressMessage>
-                      {status.progressMessage}
-                    </ProgressMessage>
-                  )}
-                  
-                  {status.errorMessage && status.status === 'failed' && (
-                    <ProgressMessage style={{ color: 'var(--color-danger)', fontWeight: '500' }}>
-                      ❌ {status.errorMessage}
-                    </ProgressMessage>
-                  )}
-                  
-                  {status.status === 'processing' && (
-                    <ProgressBar>
-                      <ProgressFill progress={status.progress} />
-                    </ProgressBar>
-                  )}
-                  
-                  {status.extraction && status.extraction.text && (
-                    <ExtractionDetails>
-                      <TextPreview>
-                        {status.extraction.text.substring(0, 200)}
-                        {status.extraction.text.length > 200 && '...'}
-                      </TextPreview>
-                      
-                      <ExtractionMetadata>
-                        <span>שיטה: {status.extraction.method}</span>
-                        {status.extraction.confidence && (
-                          <ConfidenceScore confidence={status.extraction.confidence}>
-                            דיוק: {Math.round(status.extraction.confidence * 100)}%
-                          </ConfidenceScore>
-                        )}
-                        {status.extraction.language && (
-                          <span>שפה: {status.extraction.language === 'hebrew' ? 'עברית' : 'אנגלית'}</span>
-                        )}
-                        {status.extraction.processingDuration && (
-                          <span>זמן עיבוד: {Math.round(status.extraction.processingDuration / 1000)}s</span>
-                        )}
-                      </ExtractionMetadata>
-                    </ExtractionDetails>
-                  )}
-                </SavedDocumentInfo>
-                <ButtonGroup>
-                  {status.status === 'failed' && (
-                    <ExtractButton onClick={() => triggerTextExtraction(document.id)}>
-                      🔄 נסה שוב
-                    </ExtractButton>
-                  )}
-                  {status.status === 'not_started' && (
-                    <ExtractButton onClick={() => triggerTextExtraction(document.id)}>
-                      🔍 חלץ טקסט
-                    </ExtractButton>
-                  )}
-                  {status.status === 'completed' && status.extraction && status.extraction.text && (
-                    <ViewButton 
-                      onClick={() => handleViewExtractedText(document)}
-                      style={{ background: 'var(--color-success)' }}
-                    >
-                      📄 צפה בטקסט
-                    </ViewButton>
-                  )}
-                  <ViewButton onClick={() => handleEditMedia(document)}>
-                    ✏️ ערוך
-                  </ViewButton>
-                  <ViewButton onClick={() => handleViewMedia(document)}>
-                    👁️ צפה
-                  </ViewButton>
-                  <RemoveButton onClick={() => removeSavedDocument(document.id)}>
-                    מחק
-                  </RemoveButton>
-                </ButtonGroup>
-              </SavedDocumentItem>
-            );
-          })}
+          <MediaGrid
+            mediaItems={savedDocuments.map(document => {
+              const status = extractionStatuses[document.id] || { status: document.extractionStatus || 'not_started', progress: 0 };
+              return {
+                ...document,
+                name: document.filename || document.original_filename || document.name,
+                mediaType: 'document',
+                file_size: document.size || document.file_size,
+                created_at: document.createdAt || document.created_at,
+                processingStatus: status.status,
+                processingProgress: status.progress,
+                processingMessage: status.progressMessage,
+                errorMessage: status.errorMessage,
+                extraction: status.extraction
+              };
+            })}
+            mediaType="document"
+            loading={false}
+            onItemClick={handleViewMedia}
+            onItemEdit={handleEditMedia}
+            onItemDelete={removeSavedDocument}
+            onItemPreview={(item) => {
+              const status = extractionStatuses[item.id] || { status: item.extractionStatus || 'not_started', progress: 0 };
+              if (status.status === 'completed' && status.extraction && status.extraction.text) {
+                handleViewExtractedText(item);
+              } else {
+                handleViewMedia(item);
+              }
+            }}
+            customActions={(item) => {
+              const status = extractionStatuses[item.id] || { status: item.extractionStatus || 'not_started', progress: 0 };
+              const actions = [];
+              
+              if (status.status === 'failed') {
+                actions.push({
+                  label: '🔄 נסה שוב',
+                  onClick: () => triggerTextExtraction(item.id),
+                  style: { background: 'var(--color-info, #17a2b8)' }
+                });
+              }
+              
+              if (status.status === 'not_started') {
+                actions.push({
+                  label: '🔍 חלץ טקסט',
+                  onClick: () => triggerTextExtraction(item.id),
+                  style: { background: 'var(--color-info, #17a2b8)' }
+                });
+              }
+              
+              if (status.status === 'completed' && status.extraction && status.extraction.text) {
+                actions.push({
+                  label: '📄 צפה בטקסט',
+                  onClick: () => handleViewExtractedText(item),
+                  style: { background: 'var(--color-success)' }
+                });
+              }
+              
+              return actions;
+            }}
+          />
         </SavedDocumentsSection>
       )}
 

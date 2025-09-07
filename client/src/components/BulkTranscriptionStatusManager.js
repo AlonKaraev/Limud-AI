@@ -206,53 +206,8 @@ const TranscriptionStatusItem = ({ recordingId, status, onTranscriptionComplete,
     }
   }, [status.transcriptionStatus, status.transcription, onTranscriptionComplete]);
 
-  return (
-    <Container>
-      <StatusHeader>
-        <StatusIcon className={status.transcriptionStatus}>
-          {getStatusIcon()}
-        </StatusIcon>
-        <StatusText>{getStatusText()}</StatusText>
-      </StatusHeader>
-
-      {status.job && (
-        <StatusDetails>
-          {status.job.startedAt && `התחל: ${new Date(status.job.startedAt).toLocaleString('he-IL')}`}
-          {status.job.completedAt && ` • הושלם: ${new Date(status.job.completedAt).toLocaleString('he-IL')}`}
-          {status.job.aiProvider && ` • ספק: ${status.job.aiProvider}`}
-        </StatusDetails>
-      )}
-
-      {status.transcription && (
-        <>
-          <StatusDetails>
-            שפה: {status.transcription.language === 'he' ? 'עברית' : status.transcription.language === 'en' ? 'אנגלית' : status.transcription.language}
-            {status.transcription.confidenceScore && ` • רמת ביטחון: ${Math.round(status.transcription.confidenceScore * 100)}%`}
-            {status.transcription.processingDuration && ` • זמן עיבוד: ${formatDuration(status.transcription.processingDuration)}`}
-          </StatusDetails>
-          <TranscriptionPreview>
-            {truncateText(status.transcription.text)}
-          </TranscriptionPreview>
-        </>
-      )}
-
-      {status.transcriptionStatus === 'failed' && (
-        <>
-          {status.job?.errorMessage && (
-            <ErrorMessage>
-              שגיאה: {status.job.errorMessage}
-            </ErrorMessage>
-          )}
-          <RetryButton 
-            onClick={handleRetry} 
-            disabled={isRetrying}
-          >
-            {isRetrying ? 'מנסה שוב...' : 'נסה שוב'}
-          </RetryButton>
-        </>
-      )}
-    </Container>
-  );
+  // Component runs in background for processing but renders nothing
+  return null;
 };
 
 // Main bulk transcription status manager

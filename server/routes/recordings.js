@@ -521,6 +521,122 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 /**
+ * Stream recording for inline playback (audio or video)
+ */
+router.get('/:id/stream', authenticate, async (req, res) => {
+  try {
+    const recordingId = req.params.id;
+    const userId = req.user.id;
+
+    const recording = await getRecordingById(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    // Check if file exists
+    try {
+      await fs.access(recording.file_path);
+    } catch (error) {
+      return res.status(404).json({
+        error: 'קובץ המדיה לא נמצא',
+        code: 'FILE_NOT_FOUND'
+      });
+    }
+
+    // Determine content type based on file extension and media type
+    const fileExt = path.extname(recording.filename).toLowerCase();
+    let contentType = 'application/octet-stream'; // default
+    
+    if (recording.media_type === 'video') {
+      switch (fileExt) {
+        case '.mp4':
+          contentType = 'video/mp4';
+          break;
+        case '.avi':
+          contentType = 'video/x-msvideo';
+          break;
+        case '.mov':
+          contentType = 'video/quicktime';
+          break;
+        case '.wmv':
+          contentType = 'video/x-ms-wmv';
+          break;
+        case '.mkv':
+          contentType = 'video/x-matroska';
+          break;
+        case '.webm':
+          contentType = 'video/webm';
+          break;
+        case '.flv':
+          contentType = 'video/x-flv';
+          break;
+        case '.3gp':
+          contentType = 'video/3gpp';
+          break;
+        default:
+          contentType = 'video/mp4';
+      }
+    } else {
+      // Audio files
+      switch (fileExt) {
+        case '.mp3':
+          contentType = 'audio/mpeg';
+          break;
+        case '.wav':
+          contentType = 'audio/wav';
+          break;
+        case '.ogg':
+          contentType = 'audio/ogg';
+          break;
+        case '.m4a':
+          contentType = 'audio/mp4';
+          break;
+        case '.webm':
+          contentType = 'audio/webm';
+          break;
+        default:
+          contentType = 'audio/webm';
+      }
+    }
+
+    // Set appropriate headers for inline playback (no Content-Disposition: attachment)
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Length', recording.file_size);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+
+    // Support range requests for better media streaming
+    const range = req.headers.range;
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : recording.file_size - 1;
+      const chunksize = (end - start) + 1;
+
+      res.status(206); // Partial Content
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${recording.file_size}`);
+      res.setHeader('Content-Length', chunksize);
+
+      const fileStream = require('fs').createReadStream(recording.file_path, { start, end });
+      fileStream.pipe(res);
+    } else {
+      // Stream the entire file
+      const fileStream = require('fs').createReadStream(recording.file_path);
+      fileStream.pipe(res);
+    }
+  } catch (error) {
+    console.error('Error streaming media:', error);
+    res.status(500).json({
+      error: 'שגיאה בהזרמת הקובץ',
+      code: 'STREAM_ERROR'
+    });
+  }
+});
+
+/**
  * Download recording (audio or video)
  */
 router.get('/:id/download', authenticate, async (req, res) => {
@@ -1234,7 +1350,107 @@ router.get('/:id/transcription/history', authenticate, async (req, res) => {
 });
 
 /**
- * Update recording tags and metadata
+ * Update recording metadata (comprehensive)
+ */
+router.put('/:id/metadata', authenticate, async (req, res) => {
+  try {
+    const recordingId = req.params.id;
+    const userId = req.user.id;
+    const { title, metadata, tags } = req.body;
+
+    const recording = await getRecordingById(recordingId, userId);
+    if (!recording) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה',
+        code: 'RECORDING_NOT_FOUND'
+      });
+    }
+
+    const { run } = require('../config/database-sqlite');
+
+    // Prepare update data
+    const updates = [];
+    const params = [];
+
+    // Update filename if title is provided
+    if (title !== undefined && title.trim()) {
+      // Keep the original file extension
+      const originalExt = path.extname(recording.filename);
+      const newFilename = `${title.trim().replace(/[^a-zA-Z0-9\u0590-\u05FF\s-_]/g, '_')}${originalExt}`;
+      updates.push('filename = ?');
+      params.push(newFilename);
+    }
+
+    if (tags !== undefined) {
+      updates.push('tags = ?');
+      params.push(JSON.stringify(Array.isArray(tags) ? tags : []));
+    }
+
+    if (metadata !== undefined) {
+      // Merge with existing metadata, preserving important system fields
+      const currentMetadata = recording.metadata || {};
+      const updatedMetadata = { 
+        ...currentMetadata, 
+        ...metadata,
+        lastModified: new Date().toISOString(),
+        // Preserve system fields
+        uploadedAt: currentMetadata.uploadedAt || new Date().toISOString(),
+        originalFileName: currentMetadata.originalFileName || recording.filename
+      };
+      updates.push('metadata = ?');
+      params.push(JSON.stringify(updatedMetadata));
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        error: 'לא סופקו נתונים לעדכון',
+        code: 'NO_UPDATE_DATA'
+      });
+    }
+
+    updates.push('updated_at = datetime(\'now\')');
+    params.push(recordingId, userId);
+
+    const sql = `
+      UPDATE recordings 
+      SET ${updates.join(', ')}
+      WHERE (id = ? OR recording_id = ?) AND user_id = ?
+    `;
+
+    const result = await run(sql, params);
+
+    if (result.changes === 0) {
+      return res.status(404).json({
+        error: 'הקלטה לא נמצאה או לא ניתן לעדכן',
+        code: 'UPDATE_FAILED'
+      });
+    }
+
+    // Get updated recording
+    const updatedRecording = await getRecordingById(recordingId, userId);
+
+    res.json({
+      success: true,
+      message: 'מטא-דאטה עודכנה בהצלחה',
+      recording: {
+        id: updatedRecording.id,
+        filename: updatedRecording.filename,
+        tags: updatedRecording.tags || [],
+        metadata: updatedRecording.metadata || {},
+        updatedAt: updatedRecording.updated_at
+      }
+    });
+  } catch (error) {
+    console.error('Error updating recording metadata:', error);
+    res.status(500).json({
+      error: 'שגיאה בעדכון המטא-דאטה',
+      code: 'METADATA_UPDATE_ERROR'
+    });
+  }
+});
+
+/**
+ * Update recording tags and metadata (legacy endpoint)
  */
 router.put('/:id/tags-metadata', authenticate, async (req, res) => {
   try {

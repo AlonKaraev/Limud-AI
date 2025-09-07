@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Expandable Filtering Lines</title>
+    <style>
+        /* CSS Variables for Theme */
+        :root {
+            --color-primary: #3498db;
+            --color-primaryLight: #ebf3fd;
+            --color-primaryHover: #2980b9;
+            --color-secondary: #9b59b6;
+            --color-success: #27ae60;
+            --color-warning: #f39c12;
+            --color-info: #3498db;
+            --color-error: #e74c3c;
+            --color-errorHover: #c0392b;
+            --color-surface: #ffffff;
+            --color-backgroundLight: #f8f9fa;
+            --color-border: #e9ecef;
+            --color-borderLight: #f1f3f4;
+            --color-text: #2c3e50;
+            --color-textSecondary: #7f8c8d;
+            --color-textOnPrimary: #ffffff;
+            --color-shadowLight: rgba(0, 0, 0, 0.1);
+            --color-shadowMedium: rgba(0, 0, 0, 0.15);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition-normal: 0.2s ease;
+            --transition-slow: 0.3s ease;
+            --z-modal: 1050;
+        }
+
+        body {
+            font-family: 'Heebo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: #f5f6fa;
+            color: var(--color-text);
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--color-primary);
+            margin-bottom: 2rem;
+        }
+
+        .test-section {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px var(--color-shadowLight);
+        }
+
+        .test-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--color-text);
+        }
+
+        /* Button Styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: 2px solid transparent;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: var(--color-textOnPrimary);
+            border-color: var(--color-primary);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+
+        .btn-error {
+            background: var(--color-error);
+            color: var(--color-textOnPrimary);
+            border-color: var(--color-error);
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-spinner-small {
+            width: 16px;
+            height: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Demo Controls */
+        .demo-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .status-info {
+            background: var(--color-backgroundLight);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .filter-demo {
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 בדיקת מסננים מתרחבים בקווים</h1>
+        
+        <div class="test-section">
+            <div class="test-title">בקרות הדגמה</div>
+            <div class="demo-controls">
+                <button class="btn btn-primary" onclick="toggleFilters()">
+                    <span id="toggle-text">הרחב מסננים</span>
+                    <span id="toggle-icon">⌄</span>
+                </button>
+                <button class="btn btn-outline" onclick="clearAllFilters()">
+                    נקה כל המסננים
+                </button>
+                <button class="btn btn-outline" onclick="simulateSearch()">
+                    חיפוש לדוגמה
+                </button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">ממשק מסנני המדיה</div>
+            <div class="filter-demo">
+                <!-- Media Filtering Header -->
+                <div class="media-filtering-header">
+                    <div class="filter-top-row">
+                        <!-- Upload Button -->
+                        <div class="upload-section">
+                            <button class="btn btn-primary upload-btn">
+                                <span class="upload-icon">📁</span>
+                                <span class="upload-text">העלה קבצים</span>
+                            </button>
+                        </div>
+
+                        <!-- Record Button -->
+                        <button class="btn btn-error record-btn">
+                            <span class="record-icon">🔴</span>
+                            <span class="record-text">הקלט</span>
+                        </button>
+
+                        <!-- Search Bar -->
+                        <div class="search-section">
+                            <div class="search-input-container">
+                                <input
+                                    type="text"
+                                    class="search-input"
+                                    placeholder="חפש בשם, תגיות, תיאור או תמלול..."
+                                    dir="rtl"
+                                />
+                                <span class="search-icon">🔍</span>
+                            </div>
+                        </div>
+
+                        <!-- Status Filter -->
+                        <div class="status-filter-section">
+                            <select class="status-filter-select" title="סנן לפי סטטוס עיבוד">
+                                <option value="all">📋 הכל</option>
+                                <option value="processing">⏳ מעבד</option>
+                                <option value="completed">✅ הושלם</option>
+                                <option value="failed">❌ נכשל</option>
+                                <option value="pending">⏸️ ממתין</option>
+                            </select>
+                        </div>
+
+                        <!-- Expand Button -->
+                        <button class="btn btn-outline expand-btn" id="expand-btn">
+                            <span class="expand-icon" id="expand-icon">⌄</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Expanded Media Filters -->
+                <div class="expanded-media-filters" id="expanded-filters" style="display: none;">
+                    <div class="filters-container">
+                        
+                        <!-- Date Filter Line -->
+                        <div class="filter-line date-filter-line">
+                            <div class="filter-line-header">
+                                <span class="filter-line-icon">📅</span>
+                                <label class="filter-line-label">טווח תאריכים</label>
+                            </div>
+                            <div class="filter-line-content">
+                                <div class="date-inputs">
+                                    <input type="date" class="date-input" placeholder="מתאריך" />
+                                    <span class="date-separator">עד</span>
+                                    <input type="date" class="date-input" placeholder="עד תאריך" />
+                                </div>
+                                <div class="date-presets">
+                                    <button class="preset-btn">היום</button>
+                                    <button class="preset-btn">השבוע</button>
+                                    <button class="preset-btn">החודש</button>
+                                    <button class="preset-btn">השנה</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Size Filter Line -->
+                        <div class="filter-line size-filter-line">
+                            <div class="filter-line-header">
+                                <span class="filter-line-icon">📏</span>
+                                <label class="filter-line-label">גודל קובץ (MB)</label>
+                            </div>
+                            <div class="filter-line-content">
+                                <div class="size-presets">
+                                    <button class="preset-btn">קטן (&lt;10MB)</button>
+                                    <button class="preset-btn">בינוני (10-100MB)</button>
+                                    <button class="preset-btn">גדול (&gt;100MB)</button>
+                                </div>
+                                <div class="range-inputs">
+                                    <input type="number" class="range-input" placeholder="מינימום" min="0" max="1000" />
+                                    <span class="range-separator">-</span>
+                                    <input type="number" class="range-input" placeholder="מקסימום" min="0" max="1000" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Time Filter Line -->
+                        <div class="filter-line time-filter-line">
+                            <div class="filter-line-header">
+                                <span class="filter-line-icon">⏱️</span>
+                                <label class="filter-line-label">משך זמן (דקות)</label>
+                            </div>
+                            <div class="filter-line-content">
+                                <div class="duration-presets">
+                                    <button class="preset-btn">קצר (&lt;5 דק')</button>
+                                    <button class="preset-btn">בינוני (5-30 דק')</button>
+                                    <button class="preset-btn">ארוך (&gt;30 דק')</button>
+                                </div>
+                                <div class="range-inputs">
+                                    <input type="number" class="range-input" placeholder="מינימום" min="0" max="180" />
+                                    <span class="range-separator">-</span>
+                                    <input type="number" class="range-input" placeholder="מקסימום" min="0" max="180" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Media Type Filter Line -->
+                        <div class="filter-line media-type-filter-line">
+                            <div class="filter-line-header">
+                                <span class="filter-line-icon">🎭</span>
+                                <label class="filter-line-label">סוג מדיה</label>
+                            </div>
+                            <div class="filter-line-content">
+                                <div class="media-type-actions">
+                                    <button class="select-action-btn">בחר הכל</button>
+                                    <button class="select-action-btn">בטל הכל</button>
+                                </div>
+                                <div class="media-type-checkboxes">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" class="checkbox-input" checked />
+                                        <span class="checkbox-text">🎵 אודיו</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" class="checkbox-input" checked />
+                                        <span class="checkbox-text">🎬 וידאו</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" class="checkbox-input" checked />
+                                        <span class="checkbox-text">📄 מסמכים</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" class="checkbox-input" checked />
+                                        <span class="checkbox-text">🖼️ תמונות</span>
+                                    </label>
+                                </div>
+                                <div class="file-formats">
+                                    <span class="sub-filter-label">פורמטים:</span>
+                                    <div class="format-tags">
+                                        <button class="format-tag">MP3</button>
+                                        <button class="format-tag">MP4</button>
+                                        <button class="format-tag">PDF</button>
+                                        <button class="format-tag">JPG</button>
+                                        <button class="format-tag active">PNG</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tags Filter Line -->
+                        <div class="filter-line tags-filter-line">
+                            <div class="filter-line-header">
+                                <span class="filter-line-icon">🏷️</span>
+                                <label class="filter-line-label">תגיות</label>
+                            </div>
+                            <div class="filter-line-content">
+                                <div class="tag-dropdown-container">
+                                    <button class="tag-dropdown-trigger">
+                                        <span>בחר תגיות</span>
+                                        <span class="dropdown-arrow">⌄</span>
+                                    </button>
+                                </div>
+                                <div class="selected-tags">
+                                    <span class="selected-tag">
+                                        <span class="tag-color-dot" style="background-color: #e74c3c;"></span>
+                                        חשוב
+                                        <button class="remove-tag-btn">✕</button>
+                                    </span>
+                                    <span class="selected-tag">
+                                        <span class="tag-color-dot" style="background-color: #27ae60;"></span>
+                                        הושלם
+                                        <button class="remove-tag-btn">✕</button>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filter Actions -->
+                        <div class="filter-actions">
+                            <button class="btn btn-outline clear-filters-btn">
+                                נקה כל המסננים
+                            </button>
+                            <div class="active-filters-count">
+                                3 מסננים פעילים
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-info">
+                <strong>מצב נוכחי:</strong> <span id="status-text">מסננים מכווצים</span><br>
+                <strong>מסננים פעילים:</strong> <span id="active-filters">סטטוס: הכל, פורמט: PNG, תגיות: חשוב, הושלם</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let filtersExpanded = false;
+
+        function toggleFilters() {
+            const expandedFilters = document.getElementById('expanded-filters');
+            const expandBtn = document.getElementById('expand-btn');
+            const expandIcon = document.getElementById('expand-icon');
+            const toggleText = document.getElementById('toggle-text');
+            const statusText = document.getElementById('status-text');
+
+            filtersExpanded = !filtersExpanded;
+
+            if (filtersExpanded) {
+                expandedFilters.style.display = 'block';
+                expandBtn.classList.add('expanded');
+                expandIcon.classList.add('rotated');
+                toggleText.textContent = 'כווץ מסננים';
+                statusText.textContent = 'מסננים מורחבים';
+            } else {
+                expandedFilters.style.display = 'none';
+                expandBtn.classList.remove('expanded');
+                expandIcon.classList.remove('rotated');
+                toggleText.textContent = 'הרחב מסננים';
+                statusText.textContent = 'מסננים מכווצים';
+            }
+        }
+
+        function clearAllFilters() {
+            // Clear all inputs
+            document.querySelectorAll('.date-input, .range-input').forEach(input => {
+                input.value = '';
+            });
+
+            // Uncheck all checkboxes except media types
+            document.querySelectorAll('.checkbox-input').forEach(checkbox => {
+                checkbox.checked = true; // Keep media types checked
+            });
+
+            // Remove active states
+            document.querySelectorAll('.preset-btn.active, .format-tag.active').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Reset status select
+            document.querySelector('.status-filter-select').value = 'all';
+
+            // Update status
+            document.getElementById('active-filters').textContent = 'אין מסננים פעילים';
+            
+            alert('כל המסננים נוקו!');
+        }
+
+        function simulateSearch() {
+            const searchInput = document.querySelector('.search-input');
+            searchInput.value = 'דוגמה לחיפוש';
+            searchInput.focus();
+            
+            setTimeout(() => {
+                alert('מבצע חיפוש: "דוגמה לחיפוש"');
+                searchInput.value = '';
+            }, 1000);
+        }
+
+        // Add interactive behavior to preset buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove active from siblings
+                this.parentElement.querySelectorAll('.preset-btn').forEach(sibling => {
+                    sibling.classList.remove('active');
+                });
+                // Add active to clicked button
+                this.classList.add('active');
+            });
+        });
+
+        // Add interactive behavior to format tags
+        document.querySelectorAll('.format-tag').forEach(tag => {
+            tag.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+
+        // Add interactive behavior to expand button
+        document.getElementById('expand-btn').addEventListener('click', toggleFilters);
+
+        // Add hover effects to filter lines
+        document.querySelectorAll('.filter-line').forEach(line => {
+            line.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px)';
+            });
+            
+            line.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+
+        console.log('🔍 Test page loaded successfully!');
+        console.log('Features tested:');
+        console.log('✅ Line-based filter layout');
+        console.log('✅ Theme coloring for different filter types');
+        console.log('✅ Status filter moved to header');
+        console.log('✅ Interactive expand/collapse');
+        console.log('✅ Responsive design');
+    </script>
+</body>
+</html>

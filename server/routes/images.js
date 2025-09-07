@@ -490,6 +490,104 @@ router.post('/:id/extract', authenticate, async (req, res) => {
 });
 
 /**
+ * Update image metadata
+ */
+router.put('/:id/metadata', authenticate, async (req, res) => {
+  try {
+    const imageId = req.params.id;
+    const userId = req.user.id;
+    const { title, metadata, tags } = req.body;
+
+    const image = await getImageById(imageId, userId);
+    if (!image) {
+      return res.status(404).json({
+        error: 'תמונה לא נמצאה',
+        code: 'IMAGE_NOT_FOUND'
+      });
+    }
+
+    // Prepare update data
+    const updates = [];
+    const params = [];
+
+    // Update original filename if title is provided
+    if (title !== undefined && title.trim()) {
+      // Keep the original file extension
+      const originalExt = path.extname(image.original_filename);
+      const newFilename = `${title.trim().replace(/[^a-zA-Z0-9\u0590-\u05FF\s-_]/g, '_')}${originalExt}`;
+      updates.push('original_filename = ?');
+      params.push(newFilename);
+    }
+
+    if (tags !== undefined) {
+      updates.push('tags = ?');
+      params.push(JSON.stringify(Array.isArray(tags) ? tags : []));
+    }
+
+    if (metadata !== undefined) {
+      // Merge with existing metadata, preserving important system fields
+      const currentMetadata = image.metadata || {};
+      const updatedMetadata = { 
+        ...currentMetadata, 
+        ...metadata,
+        lastModified: new Date().toISOString(),
+        // Preserve system fields
+        uploadedAt: currentMetadata.uploadedAt || new Date().toISOString(),
+        originalFileName: currentMetadata.originalFileName || image.original_filename
+      };
+      updates.push('metadata = ?');
+      params.push(JSON.stringify(updatedMetadata));
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        error: 'לא סופקו נתונים לעדכון',
+        code: 'NO_UPDATE_DATA'
+      });
+    }
+
+    updates.push('updated_at = datetime(\'now\')');
+    params.push(image.id, userId);
+
+    const sql = `
+      UPDATE images 
+      SET ${updates.join(', ')}
+      WHERE id = ? AND user_id = ?
+    `;
+
+    const result = await run(sql, params);
+
+    if (result.changes === 0) {
+      return res.status(404).json({
+        error: 'תמונה לא נמצאה או לא ניתן לעדכן',
+        code: 'UPDATE_FAILED'
+      });
+    }
+
+    // Get updated image
+    const updatedImage = await getImageById(imageId, userId);
+
+    res.json({
+      success: true,
+      message: 'מטא-דאטה עודכנה בהצלחה',
+      image: {
+        id: updatedImage.id,
+        original_filename: updatedImage.original_filename,
+        tags: updatedImage.tags || [],
+        metadata: updatedImage.metadata || {},
+        updated_at: updatedImage.updated_at
+      }
+    });
+  } catch (error) {
+    console.error('Error updating image metadata:', error);
+    res.status(500).json({
+      error: 'שגיאה בעדכון המטא-דאטה',
+      code: 'METADATA_UPDATE_ERROR'
+    });
+  }
+});
+
+/**
  * Delete image
  */
 router.delete('/:id', authenticate, async (req, res) => {

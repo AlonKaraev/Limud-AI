@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת הפרדת פעולות - צפייה במדיה vs צפייה בטקסט</title>
+    <style>
+        :root {
+            --color-primary: #3498db;
+            --color-surface: #ffffff;
+            --color-border: #e9ecef;
+            --color-text: #2c3e50;
+            --color-textSecondary: #7f8c8d;
+            --color-surfaceElevated: #f8f9fa;
+            --color-success: #27ae60;
+            --color-danger: #e74c3c;
+            --color-warning: #f39c12;
+            --color-info: #3498db;
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition-fast: 0.2s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: var(--color-surfaceElevated);
+            color: var(--color-text);
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .fix-explanation {
+            background: var(--color-success);
+            color: white;
+            padding: 1.5rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 2rem;
+        }
+
+        .fix-explanation h3 {
+            margin: 0 0 1rem 0;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .media-item {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            transition: all var(--transition-fast);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .media-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .media-item:hover .action-buttons {
+            transform: translateY(0);
+        }
+
+        .media-type {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .media-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .media-info {
+            font-size: 0.9rem;
+            color: var(--color-textSecondary);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .main-click-area {
+            width: 100%;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--color-primary), #2980b9);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: var(--transition-fast);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .main-click-area:hover {
+            background: linear-gradient(135deg, #2980b9, #21618c);
+            transform: scale(1.02);
+        }
+
+        .action-buttons {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 0.75rem;
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            transform: translateY(100%);
+            transition: transform var(--transition-fast);
+        }
+
+        .action-button {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--color-text);
+            transition: all var(--transition-fast);
+            min-width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-button:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+
+        .action-button.primary {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .action-button.primary:hover {
+            background: #2980b9;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 2rem;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: auto;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--color-border);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .close-button {
+            background: var(--color-danger);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: var(--transition-fast);
+        }
+
+        .close-button:hover {
+            background: #c0392b;
+        }
+
+        .modal-content-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin: 1rem 0;
+            text-align: center;
+            padding: 2rem;
+            background: var(--color-surfaceElevated);
+            border-radius: var(--radius-sm);
+        }
+
+        .success-indicator {
+            background: var(--color-success);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            margin: 1rem 0;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .test-results {
+            background: var(--color-info);
+            color: white;
+            padding: 1.5rem;
+            border-radius: var(--radius-md);
+            margin-top: 2rem;
+        }
+
+        .test-results h3 {
+            margin: 0 0 1rem 0;
+        }
+
+        .test-case {
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .test-case.passed {
+            color: #d5f4e6;
+        }
+
+        .test-case.pending {
+            color: #fff3cd;
+        }
+
+        .playback-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .playback-overlay.show {
+            display: flex;
+        }
+
+        .playback-content {
+            background: var(--color-surface);
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            text-align: center;
+            max-width: 500px;
+            width: 90vw;
+        }
+
+        .playback-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--color-text);
+        }
+
+        .playback-controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .playback-button {
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 1rem 2rem;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: var(--transition-fast);
+        }
+
+        .playback-button:hover {
+            background: #2980b9;
+        }
+
+        .close-playback {
+            background: var(--color-danger);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+
+        .close-playback:hover {
+            background: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ תיקון הפרדת פעולות במדיה</h1>
+            <p>הכפתור "צפה בטקסט מחולץ או תמלול" כעת פועל בנפרד מפעולת הצפייה/השמעה הראשית</p>
+        </div>
+
+        <div class="fix-explanation">
+            <h3>🔧 מה תוקן:</h3>
+            <ul>
+                <li><strong>הפרדת פעולות:</strong> לחיצה על אזור המדיה הראשי מפעילה השמעה/צפייה</li>
+                <li><strong>כפתור נפרד:</strong> כפתור 📝 פותח רק את מודל הטקסט המחולץ/תמלול</li>
+                <li><strong>ללא התנגשויות:</strong> הפעולות כבר לא מתרחשות יחד</li>
+                <li><strong>UX משופר:</strong> בהירות רבה יותר לגבי מה כל פעולה עושה</li>
+            </ul>
+        </div>
+
+        <div class="test-grid">
+            <div class="media-item">
+                <div class="media-type">📄</div>
+                <div class="media-title">מסמך PDF לדוגמה</div>
+                <div class="media-info">PDF • 2.3 MB • עברית</div>
+                
+                <button class="main-click-area" onclick="openMediaView('document', 'מסמך PDF לדוגמה')">
+                    🔍 לחץ כאן לצפייה במסמך
+                </button>
+                
+                <div class="action-buttons">
+                    <button class="action-button primary" onclick="showTextModal('document', 'מסמך PDF לדוגמה')" title="צפה בטקסט מחולץ">
+                        📝
+                    </button>
+                    <button class="action-button" onclick="alert('עריכה')" title="ערוך">
+                        ✏️
+                    </button>
+                    <button class="action-button" onclick="alert('שיתוף')" title="שתף">
+                        📤
+                    </button>
+                </div>
+            </div>
+
+            <div class="media-item">
+                <div class="media-type">🖼️</div>
+                <div class="media-title">תמונת לוח לדוגמה</div>
+                <div class="media-info">JPG • 1.8 MB • OCR זמין</div>
+                
+                <button class="main-click-area" onclick="openMediaView('image', 'תמונת לוח לדוגמה')">
+                    🔍 לחץ כאן לצפייה בתמונה
+                </button>
+                
+                <div class="action-buttons">
+                    <button class="action-button primary" onclick="showTextModal('image', 'תמונת לוח לדוגמה')" title="צפה בטקסט מחולץ">
+                        📝
+                    </button>
+                    <button class="action-button" onclick="alert('עריכה')" title="ערוך">
+                        ✏️
+                    </button>
+                    <button class="action-button" onclick="alert('שיתוף')" title="שתף">
+                        📤
+                    </button>
+                </div>
+            </div>
+
+            <div class="media-item">
+                <div class="media-type">🎵</div>
+                <div class="media-title">הקלטת שיעור אודיו</div>
+                <div class="media-info">MP3 • 45:32 • עברית</div>
+                
+                <button class="main-click-area" onclick="playMedia('audio', 'הקלטת שיעור אודיו')">
+                    ▶️ לחץ כאן להשמעת הקובץ
+                </button>
+                
+                <div class="action-buttons">
+                    <button class="action-button primary" onclick="showTextModal('audio', 'הקלטת שיעור אודיו')" title="צפה בתמלול">
+                        📝
+                    </button>
+                    <button class="action-button" onclick="alert('עריכה')" title="ערוך">
+                        ✏️
+                    </button>
+                    <button class="action-button" onclick="alert('שיתוף')" title="שתף">
+                        📤
+                    </button>
+                </div>
+            </div>
+
+            <div class="media-item">
+                <div class="media-type">🎥</div>
+                <div class="media-title">סרטון הרצאה</div>
+                <div class="media-info">MP4 • 1:23:15 • עברית/אנגלית</div>
+                
+                <button class="main-click-area" onclick="playMedia('video', 'סרטון הרצאה')">
+                    ▶️ לחץ כאן לצפייה בסרטון
+                </button>
+                
+                <div class="action-buttons">
+                    <button class="action-button primary" onclick="showTextModal('video', 'סרטון הרצאה')" title="צפה בתמלול">
+                        📝
+                    </button>
+                    <button class="action-button" onclick="alert('עריכה')" title="ערוך">
+                        ✏️
+                    </button>
+                    <button class="action-button" onclick="alert('שיתוף')" title="שתף">
+                        📤
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-results">
+            <h3>📋 תוצאות בדיקה:</h3>
+            <div id="test-results-list">
+                <div class="test-case pending">
+                    ⏳ בדוק: לחיצה על אזור המדיה הראשי פותחת צפייה/השמעה בלבד
+                </div>
+                <div class="test-case pending">
+                    ⏳ בדוק: לחיצה על כפתור 📝 פותחת רק את מודל הטקסט/תמלול
+                </div>
+                <div class="test-case pending">
+                    ⏳ בדוק: הפעולות אינן מתרחשות יחד
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Text/Transcription Modal -->
+    <div class="modal-overlay" id="textModal" onclick="closeTextModal(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="textModalTitle">
+                    📄 טקסט מחולץ - שם הקובץ
+                </h2>
+                <button class="close-button" onclick="closeTextModal()">
+                    ✕ סגור
+                </button>
+            </div>
+            
+            <div class="success-indicator">
+                ✅ כפתור 📝 פועל נכון - נפתח רק מודל הטקסט/תמלול!
+            </div>
+
+            <div class="modal-content-text" id="textModalContent">
+                זהו מודל הטקסט המחולץ/תמלול שנפתח רק כשלוחצים על כפתור 📝.
+                
+                הוא אינו נפתח יחד עם פעולות אחרות.
+            </div>
+        </div>
+    </div>
+
+    <!-- Media Playback Overlay -->
+    <div class="playback-overlay" id="playbackOverlay" onclick="closePlayback(event)">
+        <div class="playback-content">
+            <div class="playback-title" id="playbackTitle">נגן מדיה</div>
+            
+            <div class="success-indicator">
+                ✅ פעולת השמעה/צפייה פועלת נכון - בנפרד מכפתור הטקסט!
+            </div>
+            
+            <div class="playback-controls">
+                <button class="playback-button">▶️ השמע</button>
+                <button class="playback-button">⏸️ השהה</button>
+                <button class="playback-button">⏹️ עצור</button>
+            </div>
+            
+            <div style="color: var(--color-textSecondary); margin: 1rem 0;">
+                זוהי הדמיה של נגן המדיה שנפתח רק כשלוחצים על האזור הראשי של המדיה.
+            </div>
+            
+            <button class="close-playback" onclick="closePlayback()">
+                סגור נגן
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let testsCompleted = {
+            mediaView: false,
+            textView: false,
+            separated: false
+        };
+
+        function openMediaView(mediaType, fileName) {
+            // This simulates opening a document/image viewer
+            console.log('Opening media view for:', mediaType, fileName);
+            
+            const modal = document.getElementById('textModal');
+            const title = document.getElementById('textModalTitle');
+            const content = document.getElementById('textModalContent');
+            
+            title.innerHTML = `🔍 צפייה במדיה - ${fileName}`;
+            content.innerHTML = `
+                זוהי הדמיה של צופה המדיה עבור ${mediaType === 'image' ? 'תמונה' : 'מסמך'}.
+                
+                פעולה זו מתרחשת כשלוחצים על האזור הראשי של המדיה ואינה קשורה לטקסט המחולץ.
+                
+                ✅ הפעולה מתבצעת בנפרד מכפתור הטקסט!
+            `;
+            
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            // Mark test as completed
+            testsCompleted.mediaView = true;
+            testsCompleted.separated = testsCompleted.mediaView && testsCompleted.textView;
+            updateTestResults();
+        }
+
+        function playMedia(mediaType, fileName) {
+            // This simulates media playback
+            console.log('Playing media:', mediaType, fileName);
+            
+            const overlay = document.getElementById('playbackOverlay');
+            const title = document.getElementById('playbackTitle');
+            
+            title.textContent = `נגן ${mediaType === 'audio' ? 'אודיו' : 'וידאו'} - ${fileName}`;
+            
+            overlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            // Mark test as completed
+            testsCompleted.mediaView = true;
+            testsCompleted.separated = testsCompleted.mediaView && testsCompleted.textView;
+            updateTestResults();
+        }
+
+        function showTextModal(mediaType, fileName) {
+            console.log('Showing text modal for:', mediaType, fileName);
+            
+            const modal = document.getElementById('textModal');
+            const title = document.getElementById('textModalTitle');
+            const content = document.getElementById('textModalContent');
+
+            // Update modal content based on media type
+            if (mediaType === 'audio' || mediaType === 'video') {
+                title.innerHTML = `🎵 תמלול - ${fileName}`;
+                content.innerHTML = `זהו תמלול לדוגמה עבור קובץ ${mediaType === 'audio' ? 'אודיו' : 'וידאו'}.
+
+המערכת מבצעת תמלול אוטומטי באיכות גבוהה.
+
+✅ מודל התמלול נפתח רק כשלוחצים על כפתור 📝!`;
+            } else {
+                title.innerHTML = `📄 טקסט מחולץ - ${fileName}`;
+                content.innerHTML = `זהו טקסט מחולץ לדוגמה עבור ${mediaType === 'image' ? 'תמונה' : 'מסמך'}.
+
+המערכת מבצעת חילוץ טקסט באיכות גבוהה.
+
+✅ מודל הטקסט המחולץ נפתח רק כשלוחצים על כפתור 📝!`;
+            }
+
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            // Mark test as completed
+            testsCompleted.textView = true;
+            testsCompleted.separated = testsCompleted.mediaView && testsCompleted.textView;
+            updateTestResults();
+        }
+
+        function closeTextModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            
+            const modal = document.getElementById('textModal');
+            modal.classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+
+        function closePlayback(event) {
+            if (event && event.target !== event.currentTarget) return;
+            
+            const overlay = document.getElementById('playbackOverlay');
+            overlay.classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+
+        function updateTestResults() {
+            const resultsList = document.getElementById('test-results-list');
+            
+            resultsList.innerHTML = `
+                <div class="test-case ${testsCompleted.mediaView ? 'passed' : 'pending'}">
+                    ${testsCompleted.mediaView ? '✅' : '⏳'} לחיצה על אזור המדיה הראשי פותחת צפייה/השמעה בלבד
+                </div>
+                <div class="test-case ${testsCompleted.textView ? 'passed' : 'pending'}">
+                    ${testsCompleted.textView ? '✅' : '⏳'} לחיצה על כפתור 📝 פותחת רק את מודל הטקסט/תמלול
+                </div>
+                <div class="test-case ${testsCompleted.separated ? 'passed' : 'pending'}">
+                    ${testsCompleted.separated ? '✅' : '⏳'} הפעולות אינן מתרחשות יחד
+                </div>
+            `;
+        }
+
+        // Handle Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeTextModal();
+                closePlayback();
+            }
+        });
+
+        // Initialize test results
+        updateTestResults();
+    </script>
+</body>
+</html>

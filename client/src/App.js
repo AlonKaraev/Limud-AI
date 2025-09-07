@@ -11,6 +11,7 @@ import LessonsManager from './components/LessonsManager';
 import PrincipalDashboard from './components/PrincipalDashboard';
 import StudentDashboard from './components/StudentDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
+import MediaGridTest from './components/MediaGridTest';
 
 // Create contexts for global state management
 const AuthContext = createContext();
@@ -639,6 +640,22 @@ const App = () => {
 const AppContent = ({ showRegister, setShowRegister }) => {
   const { user, loading, logout, isAuthenticated } = useAuth();
   const { t } = useTranslation();
+
+  // Check if we should show the MediaGridTest (for development/testing)
+  const showMediaGridTest = window.location.search.includes('test=mediagrid');
+
+  if (showMediaGridTest) {
+    return (
+      <div className="theme-bg-background" style={{ 
+        direction: 'rtl', 
+        textAlign: 'right', 
+        fontFamily: 'Heebo, sans-serif', 
+        minHeight: '100vh' 
+      }}>
+        <MediaGridTest />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
